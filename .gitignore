@@ -1,0 +1,21 @@
+# OS関連
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# エディタ関連
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 一時ファイル
+*.tmp
+*.log
+*.bak
+
+# 個人情報・機密情報（必要に応じて追加）
+# *.key
+# *.pem
+# config.local.*
