@@ -4,8 +4,21 @@
 
 ## 📁 ファイル構成
 
-- `タスク整理・思考の整理.md` - メインのタスク管理ファイル（週次更新）
-- `週次タスク_テンプレート.md` - 週単位でファイルを作成する際のテンプレート
+```
+.
+├── タスク整理・思考の整理.md    # メインのタスク管理ファイル（週次更新）
+├── README.md                    # このファイル
+├── .gitignore                   # Git除外設定
+├── docs/                        # ドキュメント
+│   └── git/                     # Git関連ドキュメント
+│       ├── Gitセットアップ手順.md
+│       ├── Git設定クイックガイド.md
+│       ├── GitHub接続手順.md
+│       ├── Git_Credential_Manager使い方.md
+│       └── プッシュ手順.md
+└── templates/                   # テンプレート
+    └── 週次タスク_テンプレート.md
+```
 
 ## 🎯 使い方
 
@@ -49,17 +62,14 @@
 
 ## 🛠️ セットアップ
 
-```bash
-# Gitリポジトリの初期化（まだの場合）
-git init
+詳細なセットアップ手順は `docs/git/` フォルダ内のドキュメントを参照してください：
 
-# リモートリポジトリの追加（GitHubで作成後）
-git remote add origin https://github.com/your-username/your-repo-name.git
+- **初めてセットアップする場合**: `docs/git/Gitセットアップ手順.md`
+- **Git設定を確認する場合**: `docs/git/Git設定クイックガイド.md`
+- **GitHubに接続する場合**: `docs/git/GitHub接続手順.md`
+- **認証情報の管理**: `docs/git/Git_Credential_Manager使い方.md`
 
-# 初回コミット
-git add .
-git commit -m "feat: 初期セットアップ - タスク整理システム"
+## 📚 ドキュメント
 
-# GitHubにプッシュ
-git push -u origin main
-```
+- **Git関連**: `docs/git/` フォルダ内の各ドキュメント
+- **テンプレート**: `templates/週次タスク_テンプレート.md`

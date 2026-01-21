@@ -7,19 +7,35 @@
 
 ## 🚀 セットアップ手順
 
+### 0. Gitのユーザー情報を設定（初回のみ）
+
+GitHubアカウントの情報を使って設定します：
+
+```bash
+# ユーザー名を設定（GitHubのユーザー名に置き換える）
+git config --global user.name "YourGitHubUsername"
+
+# メールアドレスを設定（GitHubに登録しているメールアドレスに置き換える）
+git config --global user.email "your-email@example.com"
+```
+
+**注意**: 
+- GitHubでメールアドレスを非公開にしている場合は、GitHubの設定から「Keep my email addresses private」の下に表示される`username@users.noreply.github.com`形式のメールアドレスを使用してください
+- 確認方法: GitHub → Settings → Emails → 「Keep my email addresses private」の下に表示されるメールアドレス
+
 ### 1. Gitリポジトリの初期化
 
 ```bash
 # プロジェクトディレクトリに移動
 cd "G:\マイドライブ\90.Work\MiyaiYutaro\20.cursol"
 
-# Gitリポジトリを初期化
+# Gitリポジトリを初期化（✅ 完了済み）
 git init
 
-# 現在のファイルをステージング
+# 現在のファイルをステージング（✅ 完了済み）
 git add .
 
-# 初回コミット
+# 初回コミット（ユーザー情報設定後に実行）
 git commit -m "feat: 初期セットアップ - タスク整理システム"
 ```
 
