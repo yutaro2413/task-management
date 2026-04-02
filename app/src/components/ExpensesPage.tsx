@@ -1,52 +1,43 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { formatDate } from "@/lib/utils";
+import { formatDate, toJSTDateString } from "@/lib/utils";
+import ExpenseModal from "./ExpenseModal";
 
+type ExpenseCategory = { id: string; name: string } | null;
 type Expense = {
   id: string;
   date: string;
   amount: number;
+  type: string;
   memo: string | null;
+  category: ExpenseCategory;
 };
 
 export default function ExpensesPage() {
-  const [date, setDate] = useState(() => formatDate(new Date()));
+  const [year, setYear] = useState(() => new Date().getFullYear());
+  const [month, setMonth] = useState(() => new Date().getMonth());
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [amount, setAmount] = useState("");
-  const [memo, setMemo] = useState("");
-  const [showForm, setShowForm] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [showInput, setShowInput] = useState(false);
+
+  const startDate = formatDate(new Date(year, month, 1));
+  const endDate = formatDate(new Date(year, month + 1, 0));
 
   const fetchExpenses = useCallback(async () => {
-    // Fetch current month
-    const d = new Date(date);
-    const start = new Date(d.getFullYear(), d.getMonth(), 1);
-    const end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-    const res = await fetch(
-      `/api/expenses?startDate=${formatDate(start)}&endDate=${formatDate(end)}`
-    );
+    const res = await fetch(`/api/expenses?startDate=${startDate}&endDate=${endDate}`);
     setExpenses(await res.json());
-  }, [date]);
+  }, [startDate, endDate]);
 
   useEffect(() => {
     fetchExpenses();
   }, [fetchExpenses]);
 
-  const handleSave = async () => {
-    if (!amount || isNaN(Number(amount))) return;
-    await fetch("/api/expenses", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        date,
-        amount: Number(amount),
-        memo: memo.trim() || null,
-      }),
-    });
-    setAmount("");
-    setMemo("");
-    setShowForm(false);
-    fetchExpenses();
+  const changeMonth = (delta: number) => {
+    const d = new Date(year, month + delta, 1);
+    setYear(d.getFullYear());
+    setMonth(d.getMonth());
+    setSelectedDate(null);
   };
 
   const handleDelete = async (id: string) => {
@@ -54,24 +45,44 @@ export default function ExpensesPage() {
     fetchExpenses();
   };
 
-  const monthTotal = expenses.reduce((sum, e) => sum + e.amount, 0);
-  const currentMonth = new Date(date);
-
-  const changeMonth = (delta: number) => {
-    const d = new Date(date);
-    d.setMonth(d.getMonth() + delta);
-    d.setDate(1);
-    setDate(formatDate(d));
-  };
-
-  // Group by date
-  const byDate = new Map<string, Expense[]>();
+  // Daily totals
+  const dailyTotals = new Map<string, { income: number; expense: number }>();
   expenses.forEach((e) => {
-    const key = e.date.split("T")[0];
-    const list = byDate.get(key) || [];
-    list.push(e);
-    byDate.set(key, list);
+    const dateKey = e.date.split("T")[0];
+    const totals = dailyTotals.get(dateKey) || { income: 0, expense: 0 };
+    if (e.type === "income") {
+      totals.income += e.amount;
+    } else {
+      totals.expense += e.amount;
+    }
+    dailyTotals.set(dateKey, totals);
   });
+
+  // Monthly totals
+  const monthlyIncome = expenses.filter((e) => e.type === "income").reduce((s, e) => s + e.amount, 0);
+  const monthlyExpense = expenses.filter((e) => e.type === "expense").reduce((s, e) => s + e.amount, 0);
+  const monthlyBalance = monthlyIncome - monthlyExpense;
+
+  // Calendar grid
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startDayOfWeek = (firstDay.getDay() + 6) % 7; // Monday = 0
+  const daysInMonth = lastDay.getDate();
+  const today = toJSTDateString();
+
+  const calendarDays: (number | null)[] = [];
+  for (let i = 0; i < startDayOfWeek; i++) calendarDays.push(null);
+  for (let d = 1; d <= daysInMonth; d++) calendarDays.push(d);
+  while (calendarDays.length % 7 !== 0) calendarDays.push(null);
+
+  // Selected date's expenses
+  const selectedExpenses = selectedDate
+    ? expenses.filter((e) => e.date.split("T")[0] === selectedDate)
+    : [];
+
+  const selectedDateTotal = selectedDate
+    ? dailyTotals.get(selectedDate)
+    : null;
 
   return (
     <div className="flex-1 flex flex-col">
@@ -83,9 +94,12 @@ export default function ExpensesPage() {
               <path d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <p className="text-lg font-bold">
-            {currentMonth.toLocaleDateString("ja-JP", { year: "numeric", month: "long" })}
-          </p>
+          <div className="text-center">
+            <p className="text-lg font-bold">{year}年{month + 1}月</p>
+            <p className="text-xs text-slate-400">
+              {formatDate(new Date(year, month, 1))} - {formatDate(new Date(year, month + 1, 0))}
+            </p>
+          </div>
           <button onClick={() => changeMonth(1)} className="p-2 rounded-lg hover:bg-slate-100">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path d="M9 5l7 7-7 7" />
@@ -94,115 +108,182 @@ export default function ExpensesPage() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 max-w-lg mx-auto w-full space-y-4">
-        {/* Monthly total */}
-        <div className="bg-white rounded-xl p-4 border border-slate-200 text-center">
-          <p className="text-sm text-slate-500">今月の支出</p>
-          <p className="text-3xl font-bold text-rose-600">
-            {monthTotal.toLocaleString()}
-            <span className="text-base font-normal ml-1">円</span>
-          </p>
+      <div className="flex-1 overflow-y-auto max-w-lg mx-auto w-full">
+        {/* Calendar */}
+        <div className="px-2 py-2">
+          {/* Day headers */}
+          <div className="grid grid-cols-7 text-center mb-1">
+            {["月", "火", "水", "木", "金", "土", "日"].map((d, i) => (
+              <span
+                key={d}
+                className={`text-xs font-medium py-1 ${
+                  i === 5 ? "text-blue-500" : i === 6 ? "text-red-500" : "text-slate-500"
+                }`}
+              >
+                {d}
+              </span>
+            ))}
+          </div>
+
+          {/* Calendar grid */}
+          <div className="grid grid-cols-7">
+            {calendarDays.map((day, idx) => {
+              if (day === null) return <div key={idx} />;
+              const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+              const totals = dailyTotals.get(dateStr);
+              const isToday = dateStr === today;
+              const isSelected = dateStr === selectedDate;
+              const dayOfWeek = idx % 7;
+
+              return (
+                <button
+                  key={idx}
+                  onClick={() => setSelectedDate(isSelected ? null : dateStr)}
+                  className={`py-1 px-0.5 text-center border border-transparent rounded-lg min-h-[3.5rem] flex flex-col items-center transition-colors ${
+                    isSelected
+                      ? "bg-indigo-50 border-indigo-300"
+                      : "hover:bg-slate-50"
+                  }`}
+                >
+                  <span
+                    className={`text-xs font-medium ${
+                      isToday
+                        ? "bg-indigo-600 text-white w-5 h-5 rounded-full flex items-center justify-center"
+                        : dayOfWeek === 5
+                        ? "text-blue-500"
+                        : dayOfWeek === 6
+                        ? "text-red-500"
+                        : "text-slate-700"
+                    }`}
+                  >
+                    {day}
+                  </span>
+                  {totals && (
+                    <div className="mt-0.5">
+                      {totals.expense > 0 && (
+                        <p className="text-[9px] text-rose-500 font-medium leading-tight">
+                          {totals.expense >= 10000
+                            ? `${Math.round(totals.expense / 1000)}k`
+                            : totals.expense.toLocaleString()}
+                        </p>
+                      )}
+                      {totals.income > 0 && (
+                        <p className="text-[9px] text-green-500 font-medium leading-tight">
+                          {totals.income >= 10000
+                            ? `${Math.round(totals.income / 1000)}k`
+                            : totals.income.toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Expense list by date */}
-        {Array.from(byDate.entries()).map(([dateKey, items]) => (
-          <div key={dateKey} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div className="px-3 py-2 bg-slate-50 border-b border-slate-100 flex justify-between">
-              <p className="text-sm font-semibold">
-                {new Date(dateKey + "T00:00:00").toLocaleDateString("ja-JP", {
-                  month: "numeric",
+        {/* Monthly summary */}
+        <div className="grid grid-cols-3 gap-2 px-4 py-3 border-t border-b border-slate-200 bg-slate-50">
+          <div className="text-center">
+            <p className="text-xs text-slate-500">収入</p>
+            <p className="text-sm font-bold text-green-600">{monthlyIncome.toLocaleString()}円</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-slate-500">支出</p>
+            <p className="text-sm font-bold text-rose-600">{monthlyExpense.toLocaleString()}円</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-slate-500">合計</p>
+            <p className={`text-sm font-bold ${monthlyBalance >= 0 ? "text-green-600" : "text-rose-600"}`}>
+              {monthlyBalance >= 0 ? "" : "-"}{Math.abs(monthlyBalance).toLocaleString()}円
+            </p>
+          </div>
+        </div>
+
+        {/* Selected date detail */}
+        {selectedDate && (
+          <div className="px-4 py-3">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-bold">
+                {new Date(selectedDate + "T00:00:00").toLocaleDateString("ja-JP", {
+                  month: "long",
                   day: "numeric",
                   weekday: "short",
                 })}
-              </p>
-              <p className="text-sm font-medium text-slate-600">
-                {items.reduce((s, e) => s + e.amount, 0).toLocaleString()}円
-              </p>
+              </h3>
+              {selectedDateTotal && (
+                <span className="text-xs text-slate-500">
+                  -{selectedDateTotal.expense.toLocaleString()}円
+                </span>
+              )}
             </div>
-            <div className="divide-y divide-slate-50">
-              {items.map((e) => (
-                <div key={e.id} className="px-3 py-2.5 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm">{e.memo || "支出"}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{e.amount.toLocaleString()}円</span>
-                    <button
-                      onClick={() => handleDelete(e.id)}
-                      className="text-slate-300 hover:text-red-500 p-1"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
 
-        {expenses.length === 0 && (
+            {selectedExpenses.length === 0 ? (
+              <p className="text-xs text-slate-400 py-4 text-center">記録なし</p>
+            ) : (
+              <div className="space-y-1">
+                {selectedExpenses.map((e) => (
+                  <div
+                    key={e.id}
+                    className="flex items-center justify-between py-2.5 border-b border-slate-100"
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {e.category?.name || "未分類"}
+                        </p>
+                        {e.memo && (
+                          <p className="text-xs text-slate-400 truncate">({e.memo})</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-bold ${e.type === "income" ? "text-green-600" : "text-slate-800"}`}>
+                        {e.amount.toLocaleString()}円
+                      </span>
+                      <button
+                        onClick={() => handleDelete(e.id)}
+                        className="text-slate-300 hover:text-red-500 p-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {!selectedDate && expenses.length === 0 && (
           <p className="text-center text-sm text-slate-400 py-8">まだ記録がありません</p>
         )}
       </div>
 
-      {/* Add button / Form */}
-      {showForm ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center modal-backdrop" onClick={() => setShowForm(false)}>
-          <div className="bg-white rounded-t-2xl w-full max-w-lg p-5 pb-8 safe-area-bottom" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-bold mb-4">支出を追加</h2>
-            <div className="mb-3">
-              <label className="text-xs font-semibold text-slate-500 mb-1 block">日付</label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <div className="mb-3">
-              <label className="text-xs font-semibold text-slate-500 mb-1 block">金額</label>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="1000"
-                className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                autoFocus
-                inputMode="numeric"
-              />
-            </div>
-            <div className="mb-4">
-              <label className="text-xs font-semibold text-slate-500 mb-1 block">メモ</label>
-              <input
-                type="text"
-                value={memo}
-                onChange={(e) => setMemo(e.target.value)}
-                placeholder="ランチ、交通費など"
-                className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <button
-              onClick={handleSave}
-              disabled={!amount || isNaN(Number(amount))}
-              className="w-full py-2.5 rounded-lg text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
-            >
-              保存
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="fixed bottom-20 right-4 z-40">
-          <button
-            onClick={() => setShowForm(true)}
-            className="w-14 h-14 rounded-full bg-indigo-600 text-white shadow-lg hover:bg-indigo-700 active:bg-indigo-800 flex items-center justify-center"
-          >
-            <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-          </button>
-        </div>
+      {/* FAB */}
+      <div className="fixed bottom-20 right-4 z-40">
+        <button
+          onClick={() => setShowInput(true)}
+          className="w-14 h-14 rounded-full bg-rose-500 text-white shadow-lg hover:bg-rose-600 active:bg-rose-700 flex items-center justify-center"
+        >
+          <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Input modal */}
+      {showInput && (
+        <ExpenseModal
+          date={selectedDate || toJSTDateString()}
+          onSave={() => {
+            setShowInput(false);
+            fetchExpenses();
+          }}
+          onClose={() => setShowInput(false)}
+        />
       )}
     </div>
   );
