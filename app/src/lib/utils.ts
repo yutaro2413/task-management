@@ -25,3 +25,13 @@ export function getDayLabel(date: Date): string {
   const days = ["日", "月", "火", "水", "木", "金", "土"];
   return `${date.getMonth() + 1}/${date.getDate()}(${days[date.getDay()]})`;
 }
+
+export function getMonthDates(year: number, month: number): { start: Date; end: Date } {
+  const start = new Date(year, month, 1);
+  const end = new Date(year, month + 1, 0);
+  return { start, end };
+}
+
+export function getMonthLabel(year: number, month: number): string {
+  return `${year}年${month + 1}月`;
+}

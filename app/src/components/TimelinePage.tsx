@@ -45,15 +45,20 @@ export default function TimelinePage() {
     });
   }, []);
 
-  // Scroll to current time on mount
+  const isToday = date === formatDate(new Date());
+
+  // Scroll to current time on mount and date change
   useEffect(() => {
     if (timelineRef.current) {
       const now = new Date();
       const currentSlot = now.getHours() * 2 + (now.getMinutes() >= 30 ? 1 : 0);
-      const targetEl = timelineRef.current.children[Math.max(0, currentSlot - 2)] as HTMLElement;
-      targetEl?.scrollIntoView({ behavior: "auto" });
+      const targetSlot = isToday ? Math.max(0, currentSlot - 2) : 12; // 6:00 for non-today
+      const targetEl = timelineRef.current.children[targetSlot] as HTMLElement;
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: "auto", block: "start" });
+      }
     }
-  }, []);
+  }, [date, isToday]);
 
   const entryMap = new Map(entries.map((e) => [e.slotIndex, e]));
 
@@ -62,8 +67,6 @@ export default function TimelinePage() {
     d.setDate(d.getDate() + delta);
     setDate(formatDate(d));
   };
-
-  const isToday = date === formatDate(new Date());
 
   const handleSlotClick = (slotIndex: number) => {
     const existing = entryMap.get(slotIndex);

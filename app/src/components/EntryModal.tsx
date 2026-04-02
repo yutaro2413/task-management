@@ -44,9 +44,9 @@ export default function EntryModal({
   const canSave = categoryId && genreId && title.trim();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center modal-backdrop" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop px-4" onClick={onClose}>
       <div
-        className="bg-white rounded-t-2xl w-full max-w-lg p-5 pb-8 safe-area-bottom animate-slide-up"
+        className="bg-white rounded-2xl w-full max-w-lg p-5 max-h-[90vh] overflow-y-auto shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -111,7 +111,6 @@ export default function EntryModal({
             onChange={(e) => setTitle(e.target.value)}
             placeholder="何をしていましたか？"
             className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            autoFocus
           />
         </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { getWeekDates, getDayLabel, formatDate, slotToTime } from "@/lib/utils";
+import { getWeekDates, getDayLabel, formatDate, slotToTime, getMonthDates, getMonthLabel } from "@/lib/utils";
 
 type TimeEntry = {
   id: string;
@@ -17,15 +17,23 @@ type DailyNote = {
   content: string;
 };
 
+type ViewMode = "summary" | "timeline";
+type PeriodMode = "weekly" | "monthly";
+
 export default function WeeklyPage() {
   const [baseDate, setBaseDate] = useState(new Date());
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [notes, setNotes] = useState<DailyNote[]>([]);
-  const [view, setView] = useState<"timeline" | "summary">("summary");
+  const [view, setView] = useState<ViewMode>("summary");
+  const [period, setPeriod] = useState<PeriodMode>("weekly");
 
   const weekDates = getWeekDates(baseDate);
-  const startDate = formatDate(weekDates[0]);
-  const endDate = formatDate(weekDates[6]);
+  const year = baseDate.getFullYear();
+  const month = baseDate.getMonth();
+  const monthRange = getMonthDates(year, month);
+
+  const startDate = period === "weekly" ? formatDate(weekDates[0]) : formatDate(monthRange.start);
+  const endDate = period === "weekly" ? formatDate(weekDates[6]) : formatDate(monthRange.end);
 
   const fetchData = useCallback(async () => {
     const [entriesRes, notesRes] = await Promise.all([
@@ -40,11 +48,19 @@ export default function WeeklyPage() {
     fetchData();
   }, [fetchData]);
 
-  const changeWeek = (delta: number) => {
+  const changePeriod = (delta: number) => {
     const d = new Date(baseDate);
-    d.setDate(d.getDate() + delta * 7);
+    if (period === "weekly") {
+      d.setDate(d.getDate() + delta * 7);
+    } else {
+      d.setMonth(d.getMonth() + delta);
+    }
     setBaseDate(d);
   };
+
+  const periodLabel = period === "weekly"
+    ? `${getDayLabel(weekDates[0])} - ${getDayLabel(weekDates[6])}`
+    : getMonthLabel(year, month);
 
   // Summary calculations
   const genreSummary = new Map<string, { name: string; color: string; count: number }>();
@@ -74,46 +90,78 @@ export default function WeeklyPage() {
     entriesByDate.set(dateKey, list);
   });
 
+  // Timeline dates list
+  const timelineDates = period === "weekly"
+    ? weekDates
+    : (() => {
+        const dates: Date[] = [];
+        const d = new Date(monthRange.start);
+        while (d <= monthRange.end) {
+          dates.push(new Date(d));
+          d.setDate(d.getDate() + 1);
+        }
+        return dates;
+      })();
+
   return (
     <div className="flex-1 flex flex-col">
       {/* Header */}
       <header className="sticky top-0 bg-white border-b border-slate-200 z-40 px-4 py-3">
         <div className="flex items-center justify-between max-w-lg mx-auto">
-          <button onClick={() => changeWeek(-1)} className="p-2 rounded-lg hover:bg-slate-100">
+          <button onClick={() => changePeriod(-1)} className="p-2 rounded-lg hover:bg-slate-100">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <div className="text-center">
-            <p className="text-sm font-bold">
-              {getDayLabel(weekDates[0])} - {getDayLabel(weekDates[6])}
-            </p>
-          </div>
-          <button onClick={() => changeWeek(1)} className="p-2 rounded-lg hover:bg-slate-100">
+          <p className="text-sm font-bold">{periodLabel}</p>
+          <button onClick={() => changePeriod(1)} className="p-2 rounded-lg hover:bg-slate-100">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path d="M9 5l7 7-7 7" />
             </svg>
           </button>
         </div>
 
-        {/* View toggle */}
-        <div className="flex gap-1 mt-2 max-w-lg mx-auto bg-slate-100 rounded-lg p-0.5">
-          <button
-            onClick={() => setView("summary")}
-            className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${
-              view === "summary" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
-            }`}
-          >
-            集計
-          </button>
-          <button
-            onClick={() => setView("timeline")}
-            className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${
-              view === "timeline" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
-            }`}
-          >
-            タイムライン
-          </button>
+        {/* Period + View toggle */}
+        <div className="max-w-lg mx-auto mt-2 space-y-1.5">
+          {/* Period toggle: weekly / monthly */}
+          <div className="flex gap-1 bg-slate-100 rounded-lg p-0.5">
+            <button
+              onClick={() => setPeriod("weekly")}
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                period === "weekly" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+              }`}
+            >
+              週次
+            </button>
+            <button
+              onClick={() => setPeriod("monthly")}
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                period === "monthly" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+              }`}
+            >
+              月次
+            </button>
+          </div>
+
+          {/* View toggle: summary / timeline */}
+          <div className="flex gap-1 bg-slate-100 rounded-lg p-0.5">
+            <button
+              onClick={() => setView("summary")}
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                view === "summary" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+              }`}
+            >
+              サマリー
+            </button>
+            <button
+              onClick={() => setView("timeline")}
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                view === "timeline" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+              }`}
+            >
+              タイムライン
+            </button>
+          </div>
         </div>
       </header>
 
@@ -122,7 +170,9 @@ export default function WeeklyPage() {
           <div className="space-y-6">
             {/* Total */}
             <div className="bg-white rounded-xl p-4 border border-slate-200">
-              <p className="text-sm text-slate-500">今週の記録時間</p>
+              <p className="text-sm text-slate-500">
+                {period === "weekly" ? "今週" : "今月"}の記録時間
+              </p>
               <p className="text-3xl font-bold text-indigo-600">{totalHours}h</p>
               <p className="text-xs text-slate-400">{totalSlots}スロット</p>
             </div>
@@ -130,47 +180,55 @@ export default function WeeklyPage() {
             {/* Genre breakdown */}
             <div className="bg-white rounded-xl p-4 border border-slate-200">
               <h3 className="text-sm font-semibold text-slate-700 mb-3">ジャンル別</h3>
-              <div className="space-y-2">
-                {Array.from(genreSummary.values())
-                  .sort((a, b) => b.count - a.count)
-                  .map((g) => (
-                    <div key={g.name} className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} />
-                      <span className="text-sm flex-1">{g.name}</span>
-                      <span className="text-sm font-medium">{g.count * 0.5}h</span>
-                      <div className="w-20 h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full"
-                          style={{
-                            backgroundColor: g.color,
-                            width: `${totalSlots > 0 ? (g.count / totalSlots) * 100 : 0}%`,
-                          }}
-                        />
+              {genreSummary.size === 0 ? (
+                <p className="text-sm text-slate-400">記録なし</p>
+              ) : (
+                <div className="space-y-2">
+                  {Array.from(genreSummary.values())
+                    .sort((a, b) => b.count - a.count)
+                    .map((g) => (
+                      <div key={g.name} className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} />
+                        <span className="text-sm flex-1">{g.name}</span>
+                        <span className="text-sm font-medium">{g.count * 0.5}h</span>
+                        <div className="w-20 h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full"
+                            style={{
+                              backgroundColor: g.color,
+                              width: `${totalSlots > 0 ? (g.count / totalSlots) * 100 : 0}%`,
+                            }}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  ))}
-              </div>
+                    ))}
+                </div>
+              )}
             </div>
 
             {/* Category breakdown */}
             <div className="bg-white rounded-xl p-4 border border-slate-200">
               <h3 className="text-sm font-semibold text-slate-700 mb-3">カテゴリ別</h3>
-              <div className="space-y-2">
-                {Array.from(categorySummary.values())
-                  .sort((a, b) => b.count - a.count)
-                  .map((c) => (
-                    <div key={c.name} className="flex items-center gap-2">
-                      <span className="text-sm flex-1">{c.name}</span>
-                      <span className="text-sm font-medium">{c.count * 0.5}h</span>
-                      <div className="w-20 h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-indigo-500"
-                          style={{ width: `${totalSlots > 0 ? (c.count / totalSlots) * 100 : 0}%` }}
-                        />
+              {categorySummary.size === 0 ? (
+                <p className="text-sm text-slate-400">記録なし</p>
+              ) : (
+                <div className="space-y-2">
+                  {Array.from(categorySummary.values())
+                    .sort((a, b) => b.count - a.count)
+                    .map((c) => (
+                      <div key={c.name} className="flex items-center gap-2">
+                        <span className="text-sm flex-1">{c.name}</span>
+                        <span className="text-sm font-medium">{c.count * 0.5}h</span>
+                        <div className="w-20 h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-indigo-500"
+                            style={{ width: `${totalSlots > 0 ? (c.count / totalSlots) * 100 : 0}%` }}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  ))}
-              </div>
+                    ))}
+                </div>
+              )}
             </div>
 
             {/* Daily notes */}
@@ -192,7 +250,7 @@ export default function WeeklyPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {weekDates.map((wd) => {
+            {timelineDates.map((wd) => {
               const dateKey = formatDate(wd);
               const dayEntries = entriesByDate.get(dateKey) || [];
               return (

@@ -18,8 +18,6 @@ export default function SettingsPage() {
   const [newGenreColor, setNewGenreColor] = useState("#6366f1");
   const [editingCat, setEditingCat] = useState<Category | null>(null);
   const [editingGenre, setEditingGenre] = useState<Genre | null>(null);
-  const [seeding, setSeeding] = useState(false);
-
   const fetchData = useCallback(async () => {
     const [cats, gnrs] = await Promise.all([
       fetch("/api/categories").then((r) => r.json()),
@@ -89,13 +87,6 @@ export default function SettingsPage() {
     fetchData();
   };
 
-  const seedData = async () => {
-    setSeeding(true);
-    await fetch("/api/seed", { method: "POST" });
-    await fetchData();
-    setSeeding(false);
-  };
-
   return (
     <div className="flex-1 flex flex-col">
       <header className="sticky top-0 bg-white border-b border-slate-200 z-40 px-4 py-3">
@@ -103,20 +94,6 @@ export default function SettingsPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 max-w-lg mx-auto w-full space-y-6">
-        {/* Seed data */}
-        {categories.length === 0 && genres.length === 0 && (
-          <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-200 text-center">
-            <p className="text-sm text-indigo-700 mb-2">初期データがありません</p>
-            <button
-              onClick={seedData}
-              disabled={seeding}
-              className="px-4 py-2 rounded-lg text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
-            >
-              {seeding ? "設定中..." : "初期データを作成"}
-            </button>
-          </div>
-        )}
-
         {/* Categories */}
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="px-4 py-3 bg-slate-50 border-b border-slate-100">
