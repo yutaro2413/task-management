@@ -14,6 +14,8 @@ export async function POST(request: NextRequest) {
   const category = await prisma.expenseCategory.create({
     data: {
       name: body.name,
+      color: body.color || "#6b7280",
+      icon: body.icon || "default",
       sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
     },
   });
@@ -22,9 +24,24 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   const body = await request.json();
+
+  // Reorder
+  if (body.reorder && Array.isArray(body.ids)) {
+    const updates = body.ids.map((id: string, index: number) =>
+      prisma.expenseCategory.update({ where: { id }, data: { sortOrder: index } })
+    );
+    await prisma.$transaction(updates);
+    return NextResponse.json({ success: true });
+  }
+
+  const data: Record<string, unknown> = {};
+  if (body.name !== undefined) data.name = body.name;
+  if (body.color !== undefined) data.color = body.color;
+  if (body.icon !== undefined) data.icon = body.icon;
+
   const category = await prisma.expenseCategory.update({
     where: { id: body.id },
-    data: { name: body.name },
+    data,
   });
   return NextResponse.json(category);
 }

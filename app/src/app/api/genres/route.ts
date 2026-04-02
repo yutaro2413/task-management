@@ -23,6 +23,16 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   const body = await request.json();
+
+  // Reorder support
+  if (body.reorder && Array.isArray(body.ids)) {
+    const updates = body.ids.map((id: string, index: number) =>
+      prisma.genre.update({ where: { id }, data: { sortOrder: index } })
+    );
+    await prisma.$transaction(updates);
+    return NextResponse.json({ success: true });
+  }
+
   const genre = await prisma.genre.update({
     where: { id: body.id },
     data: { name: body.name, color: body.color },

@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { formatDate, toJSTDateString } from "@/lib/utils";
 import ExpenseModal from "./ExpenseModal";
+import ExpenseIcon from "./ExpenseIcon";
 
-type ExpenseCategory = { id: string; name: string } | null;
+type ExpenseCategory = { id: string; name: string; color: string; icon: string } | null;
 type Expense = {
   id: string;
   date: string;
@@ -228,6 +229,9 @@ export default function ExpensesPage() {
                     className="flex items-center justify-between py-2.5 border-b border-slate-100"
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
+                      {e.category && (
+                        <ExpenseIcon icon={e.category.icon} color={e.category.color} size={20} />
+                      )}
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">
                           {e.category?.name || "未分類"}

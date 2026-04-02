@@ -28,14 +28,20 @@ export default function TimelinePage() {
   const [editEntry, setEditEntry] = useState<TimeEntry | null>(null);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [loading, setLoading] = useState(false);
   const timelineRef = useRef<HTMLDivElement>(null);
 
   const isToday = date === toJSTDateString();
 
   const fetchEntries = useCallback(async () => {
-    const res = await fetch(`/api/time-entries?date=${date}`);
-    const data = await res.json();
-    setEntries(data);
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/time-entries?date=${date}`);
+      const data = await res.json();
+      setEntries(data);
+    } finally {
+      setLoading(false);
+    }
   }, [date]);
 
   useEffect(() => {
@@ -52,17 +58,17 @@ export default function TimelinePage() {
     });
   }, []);
 
-  // Scroll to 9:00 or current time
+  // Scroll to 9:00 (JST) by default, or near current time if today
   useEffect(() => {
-    if (timelineRef.current) {
-      const currentSlot = getCurrentSlotJST();
-      const targetSlot = isToday ? Math.max(0, currentSlot - 2) : 18; // 18 = 9:00
-      const targetEl = timelineRef.current.children[targetSlot] as HTMLElement;
-      if (targetEl) {
-        targetEl.scrollIntoView({ behavior: "auto", block: "start" });
-      }
+    if (loading || !timelineRef.current) return;
+    const currentSlot = getCurrentSlotJST();
+    // Always start at 9:00 (slot 18), but if today and past 9:00, show near current time
+    const targetSlot = isToday && currentSlot >= 18 ? Math.max(0, currentSlot - 2) : 18;
+    const targetEl = timelineRef.current.children[targetSlot] as HTMLElement;
+    if (targetEl) {
+      targetEl.scrollIntoView({ behavior: "auto", block: "start" });
     }
-  }, [date, isToday]);
+  }, [date, isToday, loading]);
 
   // Build a map: slotIndex -> entry (for entries spanning multiple slots)
   const slotEntryMap = new Map<number, TimeEntry>();
@@ -77,7 +83,10 @@ export default function TimelinePage() {
   const changeDate = (delta: number) => {
     const d = new Date(date + "T00:00:00");
     d.setDate(d.getDate() + delta);
-    setDate(d.toISOString().split("T")[0]);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    setDate(`${y}-${m}-${day}`);
   };
 
   const handleSlotClick = (slotIndex: number) => {
@@ -179,8 +188,15 @@ export default function TimelinePage() {
         </div>
       </header>
 
-      {/* Search Panel */}
+      {/* Search Modal */}
       {showSearch && <SearchPanel onClose={() => setShowSearch(false)} />}
+
+      {/* Loading */}
+      {loading && (
+        <div className="flex justify-center py-2">
+          <div className="w-5 h-5 border-2 border-indigo-300 border-t-indigo-600 rounded-full animate-spin" />
+        </div>
+      )}
 
       {/* Daily Note */}
       <div className="px-4 py-2 max-w-lg mx-auto w-full">

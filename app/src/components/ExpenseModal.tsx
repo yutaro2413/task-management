@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import ExpenseIcon from "./ExpenseIcon";
 
-type ExpenseCategory = { id: string; name: string };
+type ExpenseCategory = { id: string; name: string; color: string; icon: string };
 
 type Props = {
   date: string;
@@ -139,13 +140,14 @@ export default function ExpenseModal({ date, onSave, onClose }: Props) {
                   <button
                     key={cat.id}
                     onClick={() => setCategoryId(categoryId === cat.id ? "" : cat.id)}
-                    className={`py-3 px-2 rounded-lg border text-center text-xs font-medium transition-all ${
+                    className={`py-2.5 px-2 rounded-lg border text-center transition-all flex flex-col items-center gap-1 ${
                       categoryId === cat.id
-                        ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                        : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                        ? "border-indigo-500 bg-indigo-50"
+                        : "border-slate-200 hover:bg-slate-50"
                     }`}
                   >
-                    {cat.name}
+                    <ExpenseIcon icon={cat.icon} color={cat.color} size={22} />
+                    <span className="text-[10px] font-medium text-slate-700 leading-tight">{cat.name}</span>
                   </button>
                 ))}
               </div>
