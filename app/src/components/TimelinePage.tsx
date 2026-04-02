@@ -136,6 +136,14 @@ export default function TimelinePage() {
   const slots = Array.from({ length: 48 }, (_, i) => i);
   const currentSlot = getCurrentSlotJST();
 
+  // Build occupied set for empty slot click targets
+  const occupiedSlots = new Set<number>();
+  entries.forEach((e) => {
+    for (let i = e.startSlot; i < e.endSlot; i++) {
+      occupiedSlots.add(i);
+    }
+  });
+
   return (
     <div className="flex-1 flex flex-col">
       {/* Header */}
@@ -203,65 +211,121 @@ export default function TimelinePage() {
         <DailyNoteInput date={date} />
       </div>
 
-      {/* Timeline */}
-      <div ref={timelineRef} className="flex-1 overflow-y-auto timeline-scroll px-4 max-w-lg mx-auto w-full">
-        {slots.map((slotIndex) => {
-          const entry = slotEntryMap.get(slotIndex);
-          const isStart = entry && entryStartSlots.has(slotIndex);
-          const isContinuation = entry && !isStart;
-          const isCurrent = isToday && slotIndex === currentSlot;
+      {/* Timeline - CSS Grid */}
+      <div
+        ref={timelineRef}
+        className="flex-1 overflow-y-auto timeline-scroll px-4 max-w-lg mx-auto w-full"
+      >
+        <div
+          className="grid relative"
+          style={{
+            gridTemplateColumns: "3.5rem 1fr",
+            gridTemplateRows: "repeat(48, minmax(3rem, auto))",
+          }}
+        >
+          {/* Time labels + empty slot click targets */}
+          {slots.map((slotIndex) => {
+            const isCurrent = isToday && slotIndex === currentSlot;
+            const isOccupied = occupiedSlots.has(slotIndex);
+            return (
+              <div
+                key={`row-${slotIndex}`}
+                className="contents"
+              >
+                {/* Time label */}
+                <div
+                  className={`flex items-center justify-center text-xs font-mono border-b border-slate-100 ${
+                    isCurrent ? "bg-indigo-50" : ""
+                  } ${slotIndex % 2 === 0 ? "text-slate-600 font-semibold" : "text-slate-400"}`}
+                  style={{ gridRow: slotIndex + 1, gridColumn: 1 }}
+                >
+                  {slotToTime(slotIndex)}
+                </div>
 
-          return (
-            <button
-              key={slotIndex}
-              onClick={() => handleSlotClick(slotIndex)}
-              className={`w-full flex items-stretch border-b border-slate-100 min-h-[3rem] transition-colors text-left ${
-                isCurrent ? "bg-indigo-50" : isContinuation ? "bg-slate-50/50" : "hover:bg-slate-50 active:bg-slate-100"
-              }`}
-            >
-              {/* Time label */}
-              <div className={`w-14 flex-shrink-0 flex items-center justify-center text-xs font-mono ${
-                slotIndex % 2 === 0 ? "text-slate-600 font-semibold" : "text-slate-400"
-              }`}>
-                {slotToTime(slotIndex)}
-              </div>
-
-              {/* Entry content */}
-              <div className="flex-1 flex items-center py-1.5 pl-2">
-                {isStart && entry ? (
-                  <div className="flex items-center gap-2 w-full">
-                    <span
-                      className="w-3 h-3 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: entry.genre.color }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs text-slate-500">{entry.category.name}</span>
-                        <span className="text-xs px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: entry.genre.color }}>
-                          {entry.genre.name}
-                        </span>
-                        <span className="text-xs text-slate-400">
-                          {slotToTime(entry.startSlot)}-{slotToTime(entry.endSlot)}
-                        </span>
-                      </div>
-                      {entry.title && <p className="text-sm font-medium truncate">{entry.title}</p>}
-                    </div>
-                  </div>
-                ) : isContinuation ? (
-                  <div className="w-full border-l-2 pl-2 ml-1" style={{ borderColor: entry?.genre.color }}>
-                    <span className="text-xs text-slate-300">...</span>
-                  </div>
-                ) : (
-                  <span className="text-slate-300 text-sm">-</span>
+                {/* Empty slot - clickable area */}
+                {!isOccupied && (
+                  <button
+                    onClick={() => handleSlotClick(slotIndex)}
+                    className={`flex items-center pl-3 border-b border-slate-100 transition-colors text-left ${
+                      isCurrent
+                        ? "bg-indigo-50 hover:bg-indigo-100"
+                        : "hover:bg-slate-50 active:bg-slate-100"
+                    }`}
+                    style={{ gridRow: slotIndex + 1, gridColumn: 2 }}
+                  >
+                    <span className="text-slate-300 text-sm">-</span>
+                  </button>
                 )}
               </div>
-            </button>
-          );
-        })}
+            );
+          })}
+
+          {/* Entry blocks - spanning multiple rows */}
+          {entries.map((entry) => {
+            const spanSlots = entry.endSlot - entry.startSlot;
+            return (
+              <button
+                key={entry.id}
+                onClick={() => handleSlotClick(entry.startSlot)}
+                className="relative flex text-left rounded-lg mx-1 my-0.5 overflow-hidden transition-colors hover:brightness-95 active:brightness-90"
+                style={{
+                  gridRow: `${entry.startSlot + 1} / ${entry.endSlot + 1}`,
+                  gridColumn: 2,
+                  backgroundColor: `${entry.genre.color}12`,
+                }}
+              >
+                {/* Color band on left */}
+                <div
+                  className="w-1 flex-shrink-0 rounded-l-lg"
+                  style={{ backgroundColor: entry.genre.color }}
+                />
+
+                {/* Content - vertically centered */}
+                <div className="flex-1 flex flex-col justify-center px-2.5 py-1.5 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs text-slate-500 font-medium">{entry.category.name}</span>
+                    <span
+                      className="text-xs px-1.5 py-0.5 rounded-full text-white font-medium"
+                      style={{ backgroundColor: entry.genre.color }}
+                    >
+                      {entry.genre.name}
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      {slotToTime(entry.startSlot)}-{slotToTime(entry.endSlot)}
+                    </span>
+                  </div>
+                  {entry.title && (
+                    <p className={`font-medium truncate mt-0.5 ${spanSlots > 2 ? "text-sm" : "text-xs"}`}>
+                      {entry.title}
+                    </p>
+                  )}
+                  {entry.detail && spanSlots >= 3 && (
+                    <p className="text-xs text-slate-400 truncate mt-0.5">{entry.detail}</p>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* FAB for expense */}
-      <div className="fixed bottom-20 right-4 z-40">
+      {/* FABs */}
+      <div className="fixed bottom-20 right-4 z-40 flex flex-col gap-3">
+        {/* Add time entry */}
+        <button
+          onClick={() => {
+            setEditEntry(null);
+            const now = getCurrentSlotJST();
+            setSelectedSlot(isToday ? now : 18);
+          }}
+          className="w-12 h-12 rounded-full bg-indigo-600 text-white shadow-lg hover:bg-indigo-700 active:bg-indigo-800 flex items-center justify-center"
+          title="予定を追加"
+        >
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
+        {/* Add expense */}
         <button
           onClick={() => setShowExpenseModal(true)}
           className="w-12 h-12 rounded-full bg-rose-500 text-white shadow-lg hover:bg-rose-600 active:bg-rose-700 flex items-center justify-center"
