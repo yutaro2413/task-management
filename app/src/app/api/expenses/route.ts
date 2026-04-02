@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
 
   const expenses = await prisma.expense.findMany({
     where,
+    include: { category: true },
     orderBy: [{ date: "desc" }, { createdAt: "desc" }],
   });
   return NextResponse.json(expenses);
@@ -27,8 +28,11 @@ export async function POST(request: NextRequest) {
     data: {
       date: new Date(body.date),
       amount: body.amount,
+      type: body.type || "expense",
+      categoryId: body.categoryId || null,
       memo: body.memo || null,
     },
+    include: { category: true },
   });
   return NextResponse.json(expense, { status: 201 });
 }

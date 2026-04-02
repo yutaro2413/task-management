@@ -4,6 +4,21 @@ export function slotToTime(slotIndex: number): string {
   return `${hours.toString().padStart(2, "0")}:${minutes}`;
 }
 
+// JST date string (YYYY-MM-DD) from a Date or "now"
+export function toJSTDateString(date?: Date): string {
+  const d = date || new Date();
+  const jst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+  return jst.toISOString().split("T")[0];
+}
+
+// JST current slot index
+export function getCurrentSlotJST(): number {
+  const now = new Date();
+  const jstHours = (now.getUTCHours() + 9) % 24;
+  const jstMinutes = now.getUTCMinutes();
+  return jstHours * 2 + (jstMinutes >= 30 ? 1 : 0);
+}
+
 export function formatDate(date: Date): string {
   return date.toISOString().split("T")[0];
 }
@@ -34,4 +49,12 @@ export function getMonthDates(year: number, month: number): { start: Date; end: 
 
 export function getMonthLabel(year: number, month: number): string {
   return `${year}年${month + 1}月`;
+}
+
+// Generate time slot options (30-min increments)
+export function getSlotOptions(): { value: number; label: string }[] {
+  return Array.from({ length: 48 }, (_, i) => ({
+    value: i,
+    label: slotToTime(i),
+  }));
 }

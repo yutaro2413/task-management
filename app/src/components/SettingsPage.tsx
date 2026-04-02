@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 
 type Category = { id: string; name: string };
 type Genre = { id: string; name: string; color: string };
+type ExpenseCategory = { id: string; name: string };
 
 const COLORS = [
   "#ef4444", "#f97316", "#eab308", "#22c55e", "#10b981",
@@ -13,24 +14,30 @@ const COLORS = [
 export default function SettingsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
+  const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([]);
   const [newCatName, setNewCatName] = useState("");
   const [newGenreName, setNewGenreName] = useState("");
   const [newGenreColor, setNewGenreColor] = useState("#6366f1");
+  const [newExpCatName, setNewExpCatName] = useState("");
   const [editingCat, setEditingCat] = useState<Category | null>(null);
-  const [editingGenre, setEditingGenre] = useState<Genre | null>(null);
+  const [editingGenre, setEditingGenre] = useState<(Genre & { color: string }) | null>(null);
+
   const fetchData = useCallback(async () => {
-    const [cats, gnrs] = await Promise.all([
+    const [cats, gnrs, expCats] = await Promise.all([
       fetch("/api/categories").then((r) => r.json()),
       fetch("/api/genres").then((r) => r.json()),
+      fetch("/api/expense-categories").then((r) => r.json()),
     ]);
     setCategories(cats);
     setGenres(gnrs);
+    setExpenseCategories(expCats);
   }, []);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
+  // Category CRUD
   const addCategory = async () => {
     if (!newCatName.trim()) return;
     await fetch("/api/categories", {
@@ -54,11 +61,25 @@ export default function SettingsPage() {
   };
 
   const deleteCategory = async (id: string) => {
-    if (!confirm("このカテゴリを削除しますか？関連する記録も影響を受けます。")) return;
+    if (!confirm("このカテゴリを削除しますか？")) return;
     await fetch(`/api/categories?id=${id}`, { method: "DELETE" });
     fetchData();
   };
 
+  const moveCategoryOrder = async (index: number, direction: -1 | 1) => {
+    const newList = [...categories];
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= newList.length) return;
+    [newList[index], newList[targetIndex]] = [newList[targetIndex], newList[index]];
+    setCategories(newList);
+    await fetch("/api/categories", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reorder: true, ids: newList.map((c) => c.id) }),
+    });
+  };
+
+  // Genre CRUD
   const addGenre = async () => {
     if (!newGenreName.trim()) return;
     await fetch("/api/genres", {
@@ -82,8 +103,26 @@ export default function SettingsPage() {
   };
 
   const deleteGenre = async (id: string) => {
-    if (!confirm("このジャンルを削除しますか？関連する記録も影響を受けます。")) return;
+    if (!confirm("このジャンルを削除しますか？")) return;
     await fetch(`/api/genres?id=${id}`, { method: "DELETE" });
+    fetchData();
+  };
+
+  // Expense Category CRUD
+  const addExpenseCategory = async () => {
+    if (!newExpCatName.trim()) return;
+    await fetch("/api/expense-categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newExpCatName.trim() }),
+    });
+    setNewExpCatName("");
+    fetchData();
+  };
+
+  const deleteExpenseCategory = async (id: string) => {
+    if (!confirm("この家計簿カテゴリを削除しますか？")) return;
+    await fetch(`/api/expense-categories?id=${id}`, { method: "DELETE" });
     fetchData();
   };
 
@@ -94,13 +133,13 @@ export default function SettingsPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 max-w-lg mx-auto w-full space-y-6">
-        {/* Categories */}
+        {/* Categories with reorder */}
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="px-4 py-3 bg-slate-50 border-b border-slate-100">
             <h2 className="text-sm font-semibold">カテゴリ</h2>
           </div>
           <div className="divide-y divide-slate-100">
-            {categories.map((cat) => (
+            {categories.map((cat, i) => (
               <div key={cat.id} className="px-4 py-3 flex items-center justify-between">
                 {editingCat?.id === cat.id ? (
                   <div className="flex items-center gap-2 flex-1">
@@ -109,14 +148,36 @@ export default function SettingsPage() {
                       value={editingCat.name}
                       onChange={(e) => setEditingCat({ ...editingCat, name: e.target.value })}
                       className="flex-1 px-2 py-1 rounded border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      autoFocus
                     />
                     <button onClick={updateCategory} className="text-xs text-indigo-600 font-medium">保存</button>
                     <button onClick={() => setEditingCat(null)} className="text-xs text-slate-400">取消</button>
                   </div>
                 ) : (
                   <>
-                    <span className="text-sm">{cat.name}</span>
+                    <div className="flex items-center gap-2">
+                      {/* Reorder buttons */}
+                      <div className="flex flex-col gap-0.5">
+                        <button
+                          onClick={() => moveCategoryOrder(i, -1)}
+                          disabled={i === 0}
+                          className="text-slate-400 hover:text-slate-600 disabled:opacity-20"
+                        >
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path d="M5 15l7-7 7 7" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => moveCategoryOrder(i, 1)}
+                          disabled={i === categories.length - 1}
+                          className="text-slate-400 hover:text-slate-600 disabled:opacity-20"
+                        >
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                      </div>
+                      <span className="text-sm">{cat.name}</span>
+                    </div>
                     <div className="flex items-center gap-2">
                       <button onClick={() => setEditingCat(cat)} className="text-xs text-indigo-600">編集</button>
                       <button onClick={() => deleteCategory(cat.id)} className="text-xs text-red-500">削除</button>
@@ -160,7 +221,6 @@ export default function SettingsPage() {
                       value={editingGenre.name}
                       onChange={(e) => setEditingGenre({ ...editingGenre, name: e.target.value })}
                       className="w-full px-2 py-1 rounded border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      autoFocus
                     />
                     <div className="flex flex-wrap gap-1.5">
                       {COLORS.map((c) => (
@@ -220,6 +280,38 @@ export default function SettingsPage() {
                 />
               ))}
             </div>
+          </div>
+        </div>
+
+        {/* Expense Categories */}
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="px-4 py-3 bg-slate-50 border-b border-slate-100">
+            <h2 className="text-sm font-semibold">家計簿カテゴリ</h2>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {expenseCategories.map((cat) => (
+              <div key={cat.id} className="px-4 py-3 flex items-center justify-between">
+                <span className="text-sm">{cat.name}</span>
+                <button onClick={() => deleteExpenseCategory(cat.id)} className="text-xs text-red-500">削除</button>
+              </div>
+            ))}
+          </div>
+          <div className="px-4 py-3 border-t border-slate-100 flex items-center gap-2">
+            <input
+              type="text"
+              value={newExpCatName}
+              onChange={(e) => setNewExpCatName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addExpenseCategory()}
+              placeholder="食費、交通費、etc"
+              className="flex-1 px-2 py-1.5 rounded border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <button
+              onClick={addExpenseCategory}
+              disabled={!newExpCatName.trim()}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300"
+            >
+              追加
+            </button>
           </div>
         </div>
       </div>

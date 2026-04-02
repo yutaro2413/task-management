@@ -34,28 +34,42 @@ model Genre {
 model TimeEntry {
   id         String   @id @default(cuid())
   date       DateTime @db.Date
-  slotIndex  Int      // 0-47 (30分刻み、0=0:00, 1=0:30, ...)
+  startSlot  Int      // 0-47 (30分刻み、0=0:00, 1=0:30, ...)
+  endSlot    Int      // 0-47 (開始の次以降)
   categoryId String
   genreId    String
-  title      String
+  title      String?
   detail     String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   category Category @relation(fields: [categoryId], references: [id])
   genre    Genre    @relation(fields: [genreId], references: [id])
+}
 
-  @@unique([date, slotIndex])
+// 家計簿カテゴリ
+model ExpenseCategory {
+  id        String   @id @default(cuid())
+  name      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  expenses Expense[]
 }
 
 // 家計簿
 model Expense {
-  id        String   @id @default(cuid())
-  date      DateTime @db.Date
-  amount    Int
-  memo      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  date       DateTime @db.Date
+  amount     Int
+  type       String   @default("expense") // "expense" or "income"
+  categoryId String?
+  memo       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  category ExpenseCategory? @relation(fields: [categoryId], references: [id])
 }
 
 // 一言日記

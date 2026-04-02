@@ -6,8 +6,9 @@ import { getWeekDates, getDayLabel, formatDate, slotToTime, getMonthDates, getMo
 type TimeEntry = {
   id: string;
   date: string;
-  slotIndex: number;
-  title: string;
+  startSlot: number;
+  endSlot: number;
+  title?: string | null;
   category: { id: string; name: string };
   genre: { id: string; name: string; color: string };
 };
@@ -67,18 +68,19 @@ export default function WeeklyPage() {
   const categorySummary = new Map<string, { name: string; count: number }>();
 
   entries.forEach((e) => {
+    const slots = e.endSlot - e.startSlot;
     const gKey = e.genre.id;
     const existing = genreSummary.get(gKey) || { name: e.genre.name, color: e.genre.color, count: 0 };
-    existing.count += 1;
+    existing.count += slots;
     genreSummary.set(gKey, existing);
 
     const cKey = e.category.id;
     const cExisting = categorySummary.get(cKey) || { name: e.category.name, count: 0 };
-    cExisting.count += 1;
+    cExisting.count += slots;
     categorySummary.set(cKey, cExisting);
   });
 
-  const totalSlots = entries.length;
+  const totalSlots = entries.reduce((sum, e) => sum + (e.endSlot - e.startSlot), 0);
   const totalHours = totalSlots * 0.5;
 
   // Group entries by date for timeline view
@@ -264,13 +266,13 @@ export default function WeeklyPage() {
                     <div className="divide-y divide-slate-50">
                       {dayEntries.map((e) => (
                         <div key={e.id} className="px-3 py-2 flex items-center gap-2">
-                          <span className="text-xs text-slate-400 font-mono w-10">{slotToTime(e.slotIndex)}</span>
+                          <span className="text-xs text-slate-400 font-mono w-10">{slotToTime(e.startSlot)}-{slotToTime(e.endSlot)}</span>
                           <span
                             className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                             style={{ backgroundColor: e.genre.color }}
                           />
                           <span className="text-xs text-slate-500">{e.category.name}</span>
-                          <span className="text-sm flex-1 truncate">{e.title}</span>
+                          <span className="text-sm flex-1 truncate">{e.title || e.genre.name}</span>
                         </div>
                       ))}
                     </div>

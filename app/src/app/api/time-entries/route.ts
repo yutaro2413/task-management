@@ -6,6 +6,9 @@ export async function GET(request: NextRequest) {
   const date = searchParams.get("date");
   const startDate = searchParams.get("startDate");
   const endDate = searchParams.get("endDate");
+  const categoryId = searchParams.get("categoryId");
+  const genreId = searchParams.get("genreId");
+  const keyword = searchParams.get("keyword");
 
   const where: Record<string, unknown> = {};
   if (date) {
@@ -13,41 +16,55 @@ export async function GET(request: NextRequest) {
   } else if (startDate && endDate) {
     where.date = { gte: new Date(startDate), lte: new Date(endDate) };
   }
+  if (categoryId) where.categoryId = categoryId;
+  if (genreId) where.genreId = genreId;
+  if (keyword) {
+    where.OR = [
+      { title: { contains: keyword, mode: "insensitive" } },
+      { detail: { contains: keyword, mode: "insensitive" } },
+    ];
+  }
 
   const entries = await prisma.timeEntry.findMany({
     where,
     include: { category: true, genre: true },
-    orderBy: [{ date: "asc" }, { slotIndex: "asc" }],
+    orderBy: [{ date: "asc" }, { startSlot: "asc" }],
   });
   return NextResponse.json(entries);
 }
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const entry = await prisma.timeEntry.upsert({
-    where: {
-      date_slotIndex: {
-        date: new Date(body.date),
-        slotIndex: body.slotIndex,
-      },
-    },
-    update: {
-      categoryId: body.categoryId,
-      genreId: body.genreId,
-      title: body.title,
-      detail: body.detail || null,
-    },
-    create: {
+  const entry = await prisma.timeEntry.create({
+    data: {
       date: new Date(body.date),
-      slotIndex: body.slotIndex,
+      startSlot: body.startSlot,
+      endSlot: body.endSlot,
       categoryId: body.categoryId,
       genreId: body.genreId,
-      title: body.title,
+      title: body.title || null,
       detail: body.detail || null,
     },
     include: { category: true, genre: true },
   });
   return NextResponse.json(entry, { status: 201 });
+}
+
+export async function PUT(request: NextRequest) {
+  const body = await request.json();
+  const entry = await prisma.timeEntry.update({
+    where: { id: body.id },
+    data: {
+      startSlot: body.startSlot,
+      endSlot: body.endSlot,
+      categoryId: body.categoryId,
+      genreId: body.genreId,
+      title: body.title || null,
+      detail: body.detail || null,
+    },
+    include: { category: true, genre: true },
+  });
+  return NextResponse.json(entry);
 }
 
 export async function DELETE(request: NextRequest) {
