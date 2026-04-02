@@ -21,12 +21,21 @@ type DailyNote = {
 type ViewMode = "summary" | "timeline";
 type PeriodMode = "weekly" | "monthly";
 
+function CardSpinner() {
+  return (
+    <div className="flex justify-center py-6">
+      <div className="w-6 h-6 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+    </div>
+  );
+}
+
 export default function WeeklyPage() {
   const [baseDate, setBaseDate] = useState(new Date());
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [notes, setNotes] = useState<DailyNote[]>([]);
   const [view, setView] = useState<ViewMode>("summary");
   const [period, setPeriod] = useState<PeriodMode>("weekly");
+  const [loading, setLoading] = useState(true);
 
   const weekDates = getWeekDates(baseDate);
   const year = baseDate.getFullYear();
@@ -37,12 +46,17 @@ export default function WeeklyPage() {
   const endDate = period === "weekly" ? formatDate(weekDates[6]) : formatDate(monthRange.end);
 
   const fetchData = useCallback(async () => {
-    const [entriesRes, notesRes] = await Promise.all([
-      fetch(`/api/time-entries?startDate=${startDate}&endDate=${endDate}`),
-      fetch(`/api/daily-notes?startDate=${startDate}&endDate=${endDate}`),
-    ]);
-    setEntries(await entriesRes.json());
-    setNotes(await notesRes.json());
+    setLoading(true);
+    try {
+      const [entriesRes, notesRes] = await Promise.all([
+        fetch(`/api/time-entries?startDate=${startDate}&endDate=${endDate}`),
+        fetch(`/api/daily-notes?startDate=${startDate}&endDate=${endDate}`),
+      ]);
+      setEntries(await entriesRes.json());
+      setNotes(await notesRes.json());
+    } finally {
+      setLoading(false);
+    }
   }, [startDate, endDate]);
 
   useEffect(() => {
@@ -63,25 +77,39 @@ export default function WeeklyPage() {
     ? `${getDayLabel(weekDates[0])} - ${getDayLabel(weekDates[6])}`
     : getMonthLabel(year, month);
 
-  // Summary calculations
-  const genreSummary = new Map<string, { name: string; color: string; count: number }>();
-  const categorySummary = new Map<string, { name: string; count: number }>();
+  // Summary calculations - exclude プライベート from totals
+  const workEntries = entries.filter((e) => e.category.name !== "プライベート");
+  const totalWorkSlots = workEntries.reduce((sum, e) => sum + (e.endSlot - e.startSlot), 0);
+  const totalWorkHours = totalWorkSlots * 0.5;
 
+  // All entries for breakdowns (including プライベート)
+  const allSlots = entries.reduce((sum, e) => sum + (e.endSlot - e.startSlot), 0);
+
+  // Average calculation
+  const avgDays = period === "weekly" ? 5 : 20;
+  const avgHoursPerDay = avgDays > 0 ? totalWorkHours / avgDays : 0;
+  const avgH = Math.floor(avgHoursPerDay);
+  const avgM = Math.round((avgHoursPerDay - avgH) * 60);
+
+  // Category breakdown (all entries)
+  const categorySummary = new Map<string, { name: string; count: number }>();
+  entries.forEach((e) => {
+    const slots = e.endSlot - e.startSlot;
+    const cKey = e.category.id;
+    const existing = categorySummary.get(cKey) || { name: e.category.name, count: 0 };
+    existing.count += slots;
+    categorySummary.set(cKey, existing);
+  });
+
+  // Genre breakdown (all entries)
+  const genreSummary = new Map<string, { name: string; color: string; count: number }>();
   entries.forEach((e) => {
     const slots = e.endSlot - e.startSlot;
     const gKey = e.genre.id;
     const existing = genreSummary.get(gKey) || { name: e.genre.name, color: e.genre.color, count: 0 };
     existing.count += slots;
     genreSummary.set(gKey, existing);
-
-    const cKey = e.category.id;
-    const cExisting = categorySummary.get(cKey) || { name: e.category.name, count: 0 };
-    cExisting.count += slots;
-    categorySummary.set(cKey, cExisting);
   });
-
-  const totalSlots = entries.reduce((sum, e) => sum + (e.endSlot - e.startSlot), 0);
-  const totalHours = totalSlots * 0.5;
 
   // Group entries by date for timeline view
   const entriesByDate = new Map<string, TimeEntry[]>();
@@ -92,7 +120,6 @@ export default function WeeklyPage() {
     entriesByDate.set(dateKey, list);
   });
 
-  // Timeline dates list
   const timelineDates = period === "weekly"
     ? weekDates
     : (() => {
@@ -123,9 +150,7 @@ export default function WeeklyPage() {
           </button>
         </div>
 
-        {/* Period + View toggle */}
         <div className="max-w-lg mx-auto mt-2 space-y-1.5">
-          {/* Period toggle: weekly / monthly */}
           <div className="flex gap-1 bg-slate-100 rounded-lg p-0.5">
             <button
               onClick={() => setPeriod("weekly")}
@@ -145,7 +170,6 @@ export default function WeeklyPage() {
             </button>
           </div>
 
-          {/* View toggle: summary / timeline */}
           <div className="flex gap-1 bg-slate-100 rounded-lg p-0.5">
             <button
               onClick={() => setView("summary")}
@@ -169,20 +193,58 @@ export default function WeeklyPage() {
 
       <div className="flex-1 overflow-y-auto px-4 py-4 max-w-lg mx-auto w-full">
         {view === "summary" ? (
-          <div className="space-y-6">
-            {/* Total */}
+          <div className="space-y-4">
+            {/* Total work hours (excluding プライベート) */}
             <div className="bg-white rounded-xl p-4 border border-slate-200">
-              <p className="text-sm text-slate-500">
-                {period === "weekly" ? "今週" : "今月"}の記録時間
-              </p>
-              <p className="text-3xl font-bold text-indigo-600">{totalHours}h</p>
-              <p className="text-xs text-slate-400">{totalSlots}スロット</p>
+              {loading ? <CardSpinner /> : (
+                <>
+                  <p className="text-xs text-slate-500">
+                    {period === "weekly" ? "今週" : "今月"}の稼働時間
+                    <span className="text-slate-400 ml-1">(プライベート除く)</span>
+                  </p>
+                  <p className="text-3xl font-bold text-indigo-600">{totalWorkHours}h</p>
+                  <div className="flex items-center gap-3 mt-1">
+                    <p className="text-xs text-slate-400">{totalWorkSlots}スロット</p>
+                    <p className="text-xs text-indigo-500 font-medium">
+                      1日平均 {avgH}時間{avgM > 0 ? `${avgM}分` : ""}
+                      <span className="text-slate-400 ml-1">
+                        ({period === "weekly" ? "5" : "20"}日換算)
+                      </span>
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
 
-            {/* Genre breakdown */}
+            {/* Category breakdown (show all including プライベート) */}
+            <div className="bg-white rounded-xl p-4 border border-slate-200">
+              <h3 className="text-sm font-semibold text-slate-700 mb-3">カテゴリ別</h3>
+              {loading ? <CardSpinner /> : categorySummary.size === 0 ? (
+                <p className="text-sm text-slate-400">記録なし</p>
+              ) : (
+                <div className="space-y-2">
+                  {Array.from(categorySummary.values())
+                    .sort((a, b) => b.count - a.count)
+                    .map((c) => (
+                      <div key={c.name} className="flex items-center gap-2">
+                        <span className="text-sm flex-1">{c.name}</span>
+                        <span className="text-sm font-medium">{c.count * 0.5}h</span>
+                        <div className="w-20 h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-indigo-500"
+                            style={{ width: `${allSlots > 0 ? (c.count / allSlots) * 100 : 0}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            {/* Genre breakdown (show all including プライベート) */}
             <div className="bg-white rounded-xl p-4 border border-slate-200">
               <h3 className="text-sm font-semibold text-slate-700 mb-3">ジャンル別</h3>
-              {genreSummary.size === 0 ? (
+              {loading ? <CardSpinner /> : genreSummary.size === 0 ? (
                 <p className="text-sm text-slate-400">記録なし</p>
               ) : (
                 <div className="space-y-2">
@@ -198,7 +260,7 @@ export default function WeeklyPage() {
                             className="h-full rounded-full"
                             style={{
                               backgroundColor: g.color,
-                              width: `${totalSlots > 0 ? (g.count / totalSlots) * 100 : 0}%`,
+                              width: `${allSlots > 0 ? (g.count / allSlots) * 100 : 0}%`,
                             }}
                           />
                         </div>
@@ -208,33 +270,8 @@ export default function WeeklyPage() {
               )}
             </div>
 
-            {/* Category breakdown */}
-            <div className="bg-white rounded-xl p-4 border border-slate-200">
-              <h3 className="text-sm font-semibold text-slate-700 mb-3">カテゴリ別</h3>
-              {categorySummary.size === 0 ? (
-                <p className="text-sm text-slate-400">記録なし</p>
-              ) : (
-                <div className="space-y-2">
-                  {Array.from(categorySummary.values())
-                    .sort((a, b) => b.count - a.count)
-                    .map((c) => (
-                      <div key={c.name} className="flex items-center gap-2">
-                        <span className="text-sm flex-1">{c.name}</span>
-                        <span className="text-sm font-medium">{c.count * 0.5}h</span>
-                        <div className="w-20 h-2 bg-slate-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-indigo-500"
-                            style={{ width: `${totalSlots > 0 ? (c.count / totalSlots) * 100 : 0}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
-
             {/* Daily notes */}
-            {notes.length > 0 && (
+            {!loading && notes.length > 0 && (
               <div className="bg-white rounded-xl p-4 border border-slate-200">
                 <h3 className="text-sm font-semibold text-slate-700 mb-3">日記</h3>
                 <div className="space-y-2">
@@ -252,34 +289,40 @@ export default function WeeklyPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {timelineDates.map((wd) => {
-              const dateKey = formatDate(wd);
-              const dayEntries = entriesByDate.get(dateKey) || [];
-              return (
-                <div key={dateKey} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                  <div className="px-3 py-2 bg-slate-50 border-b border-slate-100">
-                    <p className="text-sm font-semibold">{getDayLabel(wd)}</p>
-                  </div>
-                  {dayEntries.length === 0 ? (
-                    <p className="px-3 py-3 text-xs text-slate-400">記録なし</p>
-                  ) : (
-                    <div className="divide-y divide-slate-50">
-                      {dayEntries.map((e) => (
-                        <div key={e.id} className="px-3 py-2 flex items-center gap-2">
-                          <span className="text-xs text-slate-400 font-mono w-10">{slotToTime(e.startSlot)}-{slotToTime(e.endSlot)}</span>
-                          <span
-                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: e.genre.color }}
-                          />
-                          <span className="text-xs text-slate-500">{e.category.name}</span>
-                          <span className="text-sm flex-1 truncate">{e.title || e.genre.name}</span>
-                        </div>
-                      ))}
+            {loading ? (
+              <div className="bg-white rounded-xl p-4 border border-slate-200">
+                <CardSpinner />
+              </div>
+            ) : (
+              timelineDates.map((wd) => {
+                const dateKey = formatDate(wd);
+                const dayEntries = entriesByDate.get(dateKey) || [];
+                return (
+                  <div key={dateKey} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <div className="px-3 py-2 bg-slate-50 border-b border-slate-100">
+                      <p className="text-sm font-semibold">{getDayLabel(wd)}</p>
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                    {dayEntries.length === 0 ? (
+                      <p className="px-3 py-3 text-xs text-slate-400">記録なし</p>
+                    ) : (
+                      <div className="divide-y divide-slate-50">
+                        {dayEntries.map((e) => (
+                          <div key={e.id} className="px-3 py-2 flex items-center gap-2">
+                            <span className="text-xs text-slate-400 font-mono w-10">{slotToTime(e.startSlot)}-{slotToTime(e.endSlot)}</span>
+                            <span
+                              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: e.genre.color }}
+                            />
+                            <span className="text-xs text-slate-500">{e.category.name}</span>
+                            <span className="text-sm flex-1 truncate">{e.title || e.genre.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
         )}
       </div>
