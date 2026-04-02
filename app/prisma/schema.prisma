@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// カテゴリ (事業A, 事業B, 全体, プライベート)
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  timeEntries TimeEntry[]
+}
+
+// ジャンル (1on1, MTG, 開発, プロジェクト, 思考, 対話, ルーティン)
+model Genre {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("#6366f1")
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  timeEntries TimeEntry[]
+}
+
+// 時間記録
+model TimeEntry {
+  id         String   @id @default(cuid())
+  date       DateTime @db.Date
+  slotIndex  Int      // 0-47 (30分刻み、0=0:00, 1=0:30, ...)
+  categoryId String
+  genreId    String
+  title      String
+  detail     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  category Category @relation(fields: [categoryId], references: [id])
+  genre    Genre    @relation(fields: [genreId], references: [id])
+
+  @@unique([date, slotIndex])
+}
+
+// 家計簿
+model Expense {
+  id        String   @id @default(cuid())
+  date      DateTime @db.Date
+  amount    Int
+  memo      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// 一言日記
+model DailyNote {
+  id        String   @id @default(cuid())
+  date      DateTime @unique @db.Date
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
