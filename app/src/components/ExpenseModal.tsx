@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import ExpenseIcon from "./ExpenseIcon";
+import LoadingOverlay from "./LoadingOverlay";
 
 type ExpenseCategory = { id: string; name: string; color: string; icon: string };
 
@@ -18,6 +19,7 @@ export default function ExpenseModal({ date, onSave, onClose }: Props) {
   const [categoryId, setCategoryId] = useState("");
   const [memo, setMemo] = useState("");
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetch("/api/expense-categories")
@@ -27,28 +29,37 @@ export default function ExpenseModal({ date, onSave, onClose }: Props) {
 
   const handleSave = async () => {
     if (!amount || isNaN(Number(amount))) return;
-    await fetch("/api/expenses", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        date: expenseDate,
-        amount: Number(amount),
-        type,
-        categoryId: categoryId || null,
-        memo: memo.trim() || null,
-      }),
-    });
-    onSave();
+    setSaving(true);
+    try {
+      await fetch("/api/expenses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: expenseDate,
+          amount: Number(amount),
+          type,
+          categoryId: categoryId || null,
+          memo: memo.trim() || null,
+        }),
+      });
+      onSave();
+    } finally {
+      setSaving(false);
+    }
   };
 
   const changeDate = (delta: number) => {
     const d = new Date(expenseDate + "T00:00:00");
     d.setDate(d.getDate() + delta);
-    setExpenseDate(d.toISOString().split("T")[0]);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    setExpenseDate(`${y}-${m}-${day}`);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop px-4" onClick={onClose}>
+      {saving && <LoadingOverlay />}
       <div
         className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl"
         onClick={(e) => e.stopPropagation()}

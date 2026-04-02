@@ -25,8 +25,6 @@ export default function SettingsPage() {
   const [editingCat, setEditingCat] = useState<Category | null>(null);
   const [editingGenre, setEditingGenre] = useState<Genre | null>(null);
   const [editingExpCat, setEditingExpCat] = useState<ExpenseCategory | null>(null);
-  const [seeding, setSeeding] = useState(false);
-
   const fetchData = useCallback(async () => {
     const [cats, gnrs, expCats] = await Promise.all([
       fetch("/api/categories").then((r) => r.json()),
@@ -112,13 +110,6 @@ export default function SettingsPage() {
     await fetch("/api/expense-categories", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reorder: true, ids: list.map(c => c.id) }) });
   };
 
-  const seedData = async () => {
-    setSeeding(true);
-    await fetch("/api/seed", { method: "POST" });
-    await fetchData();
-    setSeeding(false);
-  };
-
   const ArrowButtons = ({ index, total, onMove }: { index: number; total: number; onMove: (i: number, d: -1 | 1) => void }) => (
     <div className="flex flex-col gap-0.5">
       <button onClick={() => onMove(index, -1)} disabled={index === 0} className="text-slate-400 hover:text-slate-600 disabled:opacity-20">
@@ -137,16 +128,6 @@ export default function SettingsPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 max-w-lg mx-auto w-full space-y-6">
-        {/* Seed button for initial data */}
-        {expenseCategories.length === 0 && (
-          <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-200 text-center">
-            <p className="text-sm text-indigo-700 mb-2">家計簿カテゴリなどの初期データを作成</p>
-            <button onClick={seedData} disabled={seeding} className="px-4 py-2 rounded-lg text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50">
-              {seeding ? "作成中..." : "初期データを作成"}
-            </button>
-          </div>
-        )}
-
         {/* Categories */}
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="px-4 py-3 bg-slate-50 border-b border-slate-100"><h2 className="text-sm font-semibold">カテゴリ</h2></div>

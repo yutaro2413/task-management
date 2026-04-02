@@ -6,11 +6,13 @@ import EntryModal from "./EntryModal";
 import ExpenseModal from "./ExpenseModal";
 import DailyNoteInput from "./DailyNoteInput";
 import SearchPanel from "./SearchPanel";
+import LoadingOverlay from "./LoadingOverlay";
 
 type Category = { id: string; name: string };
 type Genre = { id: string; name: string; color: string };
 type TimeEntry = {
   id: string;
+  date?: string;
   startSlot: number;
   endSlot: number;
   title?: string | null;
@@ -29,22 +31,50 @@ export default function TimelinePage() {
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const timelineRef = useRef<HTMLDivElement>(null);
+  const scrollDoneRef = useRef(false);
 
   const isToday = date === toJSTDateString();
 
   const fetchEntries = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/time-entries?date=${date}`);
-      const data = await res.json();
-      setEntries(data);
+      // Fetch current date entries + previous day (for cross-midnight entries)
+      const prevDate = (() => {
+        const d = new Date(date + "T00:00:00");
+        d.setDate(d.getDate() - 1);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      })();
+
+      const [currentRes, prevRes] = await Promise.all([
+        fetch(`/api/time-entries?date=${date}`),
+        fetch(`/api/time-entries?date=${prevDate}`),
+      ]);
+      const currentData: TimeEntry[] = await currentRes.json();
+      const prevData: TimeEntry[] = await prevRes.json();
+
+      // Include previous day entries that cross midnight (endSlot > 48 equivalent)
+      // In our system, cross-midnight means endSlot > startSlot wraps, or endSlot == 48
+      // For simplicity: if previous day entry has endSlot > 47 (i.e. goes to 24:00 / midnight),
+      // we show it as a continuation on this day starting at slot 0
+      const crossMidnightEntries: TimeEntry[] = prevData
+        .filter((e) => e.endSlot >= 48)
+        .map((e) => ({
+          ...e,
+          startSlot: 0,
+          endSlot: Math.min(e.endSlot - 48, 48),
+          _crossDate: true,
+        }));
+
+      setEntries([...crossMidnightEntries, ...currentData]);
     } finally {
       setLoading(false);
     }
   }, [date]);
 
   useEffect(() => {
+    scrollDoneRef.current = false;
     fetchEntries();
   }, [fetchEntries]);
 
@@ -60,25 +90,76 @@ export default function TimelinePage() {
 
   // Scroll to 9:00 (JST) by default, or near current time if today
   useEffect(() => {
-    if (loading || !timelineRef.current) return;
-    const currentSlot = getCurrentSlotJST();
-    // Always start at 9:00 (slot 18), but if today and past 9:00, show near current time
-    const targetSlot = isToday && currentSlot >= 18 ? Math.max(0, currentSlot - 2) : 18;
-    const targetEl = timelineRef.current.children[targetSlot] as HTMLElement;
-    if (targetEl) {
-      targetEl.scrollIntoView({ behavior: "auto", block: "start" });
+    if (loading || !timelineRef.current || scrollDoneRef.current) return;
+    scrollDoneRef.current = true;
+    const slot = getCurrentSlotJST();
+    const targetSlot = isToday && slot >= 18 ? Math.max(0, slot - 2) : 18;
+    // Find the time label element for the target slot in the grid
+    const gridEl = timelineRef.current.querySelector("[data-grid]");
+    if (gridEl) {
+      const label = gridEl.querySelector(`[data-slot="${targetSlot}"]`);
+      if (label) {
+        label.scrollIntoView({ behavior: "auto", block: "start" });
+        return;
+      }
     }
+    // Fallback: estimate scroll position (each row ~3rem = 48px)
+    timelineRef.current.scrollTop = targetSlot * 48;
   }, [date, isToday, loading]);
 
-  // Build a map: slotIndex -> entry (for entries spanning multiple slots)
-  const slotEntryMap = new Map<number, TimeEntry>();
-  const entryStartSlots = new Set<number>();
+  // Build slot -> entries map (supports up to 2 overlapping entries per slot)
+  const slotEntriesMap = new Map<number, TimeEntry[]>();
   entries.forEach((e) => {
-    entryStartSlots.add(e.startSlot);
     for (let i = e.startSlot; i < e.endSlot; i++) {
-      slotEntryMap.set(i, e);
+      const list = slotEntriesMap.get(i) || [];
+      list.push(e);
+      slotEntriesMap.set(i, list);
     }
   });
+
+  // Build occupied set
+  const occupiedSlots = new Set<number>();
+  entries.forEach((e) => {
+    for (let i = e.startSlot; i < e.endSlot; i++) {
+      occupiedSlots.add(i);
+    }
+  });
+
+  // Detect which slots have overlapping entries (2 entries)
+  const overlapSlots = new Set<number>();
+  for (const [slot, list] of slotEntriesMap) {
+    if (list.length > 1) overlapSlots.add(slot);
+  }
+
+  // Group entries by column (for overlapping entries, assign col 0 or 1)
+  const entryColumns = new Map<string, number>();
+  const processedOverlaps = new Set<string>();
+  entries.forEach((entry) => {
+    if (processedOverlaps.has(entry.id)) return;
+    // Check if this entry overlaps with any other
+    let hasOverlap = false;
+    for (let i = entry.startSlot; i < entry.endSlot; i++) {
+      const list = slotEntriesMap.get(i) || [];
+      if (list.length > 1) {
+        hasOverlap = true;
+        break;
+      }
+    }
+    if (!hasOverlap) {
+      entryColumns.set(entry.id, -1); // full width
+    }
+  });
+
+  // For overlapping entries, assign columns
+  for (const [, list] of slotEntriesMap) {
+    if (list.length <= 1) continue;
+    list.forEach((entry, idx) => {
+      if (!entryColumns.has(entry.id)) {
+        entryColumns.set(entry.id, idx);
+        processedOverlaps.add(entry.id);
+      }
+    });
+  }
 
   const changeDate = (delta: number) => {
     const d = new Date(date + "T00:00:00");
@@ -90,8 +171,9 @@ export default function TimelinePage() {
   };
 
   const handleSlotClick = (slotIndex: number) => {
-    const existing = slotEntryMap.get(slotIndex);
-    if (existing) {
+    const list = slotEntriesMap.get(slotIndex);
+    if (list && list.length > 0) {
+      const existing = list[0];
       setEditEntry(existing);
       setSelectedSlot(existing.startSlot);
     } else {
@@ -108,90 +190,101 @@ export default function TimelinePage() {
     title?: string;
     detail?: string;
   }) => {
-    if (editEntry) {
-      await fetch("/api/time-entries", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editEntry.id, ...data }),
-      });
-    } else {
-      await fetch("/api/time-entries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date, ...data }),
-      });
+    setSaving(true);
+    try {
+      if (editEntry) {
+        await fetch("/api/time-entries", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: editEntry.id, ...data }),
+        });
+      } else {
+        await fetch("/api/time-entries", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ date, ...data }),
+        });
+      }
+      setSelectedSlot(null);
+      setEditEntry(null);
+      await fetchEntries();
+    } finally {
+      setSaving(false);
     }
-    setSelectedSlot(null);
-    setEditEntry(null);
-    fetchEntries();
   };
 
   const handleDelete = async (id: string) => {
-    await fetch(`/api/time-entries?id=${id}`, { method: "DELETE" });
-    setSelectedSlot(null);
-    setEditEntry(null);
-    fetchEntries();
+    setSaving(true);
+    try {
+      await fetch(`/api/time-entries?id=${id}`, { method: "DELETE" });
+      setSelectedSlot(null);
+      setEditEntry(null);
+      await fetchEntries();
+    } finally {
+      setSaving(false);
+    }
   };
 
   const slots = Array.from({ length: 48 }, (_, i) => i);
   const currentSlot = getCurrentSlotJST();
 
-  // Build occupied set for empty slot click targets
-  const occupiedSlots = new Set<number>();
-  entries.forEach((e) => {
-    for (let i = e.startSlot; i < e.endSlot; i++) {
-      occupiedSlots.add(i);
-    }
-  });
-
   return (
     <div className="flex-1 flex flex-col">
-      {/* Header */}
-      <header className="sticky top-0 bg-white border-b border-slate-200 z-40 px-4 py-3">
-        <div className="flex items-center justify-between max-w-lg mx-auto">
-          <button
-            onClick={() => changeDate(-1)}
-            className="p-2 rounded-lg hover:bg-slate-100 active:bg-slate-200"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <div className="text-center flex items-center gap-2">
-            <span className="text-lg font-bold">
-              {new Date(date + "T00:00:00").toLocaleDateString("ja-JP", {
-                month: "long",
-                day: "numeric",
-                weekday: "short",
-              })}
-            </span>
-            {!isToday && (
-              <button
-                onClick={() => setDate(toJSTDateString())}
-                className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-medium"
-              >
-                今日
-              </button>
-            )}
-          </div>
-          <div className="flex items-center gap-1">
+      {/* Fullscreen saving overlay */}
+      {saving && <LoadingOverlay />}
+
+      {/* Header with daily note */}
+      <header className="sticky top-0 bg-white border-b border-slate-200 z-40 px-4">
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-center justify-between py-3">
             <button
-              onClick={() => setShowSearch(!showSearch)}
-              className="p-2 rounded-lg hover:bg-slate-100"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <circle cx="11" cy="11" r="8" />
-                <path d="M21 21l-4.35-4.35" />
-              </svg>
-            </button>
-            <button
-              onClick={() => changeDate(1)}
+              onClick={() => changeDate(-1)}
               className="p-2 rounded-lg hover:bg-slate-100 active:bg-slate-200"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path d="M9 5l7 7-7 7" />
+                <path d="M15 19l-7-7 7-7" />
               </svg>
             </button>
+            <div className="text-center flex items-center gap-2">
+              <span className="text-lg font-bold">
+                {new Date(date + "T00:00:00").toLocaleDateString("ja-JP", {
+                  month: "long",
+                  day: "numeric",
+                  weekday: "short",
+                })}
+              </span>
+              {!isToday && (
+                <button
+                  onClick={() => setDate(toJSTDateString())}
+                  className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-medium"
+                >
+                  今日
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setShowSearch(!showSearch)}
+                className="p-2 rounded-lg hover:bg-slate-100"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="M21 21l-4.35-4.35" />
+                </svg>
+              </button>
+              <button
+                onClick={() => changeDate(1)}
+                className="p-2 rounded-lg hover:bg-slate-100 active:bg-slate-200"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          {/* Daily Note in header */}
+          <div className="pb-2">
+            <DailyNoteInput date={date} />
           </div>
         </div>
       </header>
@@ -206,17 +299,13 @@ export default function TimelinePage() {
         </div>
       )}
 
-      {/* Daily Note */}
-      <div className="px-4 py-2 max-w-lg mx-auto w-full">
-        <DailyNoteInput date={date} />
-      </div>
-
       {/* Timeline - CSS Grid */}
       <div
         ref={timelineRef}
         className="flex-1 overflow-y-auto timeline-scroll px-4 max-w-lg mx-auto w-full"
       >
         <div
+          data-grid
           className="grid relative"
           style={{
             gridTemplateColumns: "3.5rem 1fr",
@@ -234,6 +323,7 @@ export default function TimelinePage() {
               >
                 {/* Time label */}
                 <div
+                  data-slot={slotIndex}
                   className={`flex items-center justify-center text-xs font-mono border-b border-slate-100 ${
                     isCurrent ? "bg-indigo-50" : ""
                   } ${slotIndex % 2 === 0 ? "text-slate-600 font-semibold" : "text-slate-400"}`}
@@ -263,16 +353,33 @@ export default function TimelinePage() {
           {/* Entry blocks - spanning multiple rows */}
           {entries.map((entry) => {
             const spanSlots = entry.endSlot - entry.startSlot;
+            const col = entryColumns.get(entry.id) ?? -1;
+            const isOverlap = col >= 0;
+
+            // For overlapping entries, use sub-grid positioning via CSS
+            const style: React.CSSProperties = {
+              gridRow: `${entry.startSlot + 1} / ${entry.endSlot + 1}`,
+              gridColumn: 2,
+              backgroundColor: `${entry.genre.color}15`,
+            };
+
+            if (isOverlap) {
+              // Position side by side: left half or right half
+              style.width = "50%";
+              style.marginLeft = col === 1 ? "50%" : "0";
+            }
+
             return (
               <button
                 key={entry.id}
-                onClick={() => handleSlotClick(entry.startSlot)}
-                className="relative flex text-left rounded-lg mx-1 my-0.5 overflow-hidden transition-colors hover:brightness-95 active:brightness-90"
-                style={{
-                  gridRow: `${entry.startSlot + 1} / ${entry.endSlot + 1}`,
-                  gridColumn: 2,
-                  backgroundColor: `${entry.genre.color}12`,
+                onClick={() => {
+                  setEditEntry(entry);
+                  setSelectedSlot(entry.startSlot);
                 }}
+                className={`relative flex text-left rounded-lg overflow-hidden transition-colors hover:brightness-95 active:brightness-90 ${
+                  isOverlap ? "mx-0.5 my-0.5" : "mx-1 my-0.5"
+                }`}
+                style={style}
               >
                 {/* Color band on left */}
                 <div
@@ -281,25 +388,27 @@ export default function TimelinePage() {
                 />
 
                 {/* Content - vertically centered */}
-                <div className="flex-1 flex flex-col justify-center px-2.5 py-1.5 min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-xs text-slate-500 font-medium">{entry.category.name}</span>
+                <div className="flex-1 flex flex-col justify-center px-2 py-1 min-w-0">
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span className="text-[10px] text-slate-500 font-medium">{entry.category.name}</span>
                     <span
-                      className="text-xs px-1.5 py-0.5 rounded-full text-white font-medium"
+                      className="text-[10px] px-1 py-0.5 rounded-full text-white font-medium leading-none"
                       style={{ backgroundColor: entry.genre.color }}
                     >
                       {entry.genre.name}
                     </span>
-                    <span className="text-xs text-slate-400">
-                      {slotToTime(entry.startSlot)}-{slotToTime(entry.endSlot)}
-                    </span>
+                    {!isOverlap && (
+                      <span className="text-[10px] text-slate-400">
+                        {slotToTime(entry.startSlot)}-{slotToTime(entry.endSlot)}
+                      </span>
+                    )}
                   </div>
                   {entry.title && (
-                    <p className={`font-medium truncate mt-0.5 ${spanSlots > 2 ? "text-sm" : "text-xs"}`}>
+                    <p className={`font-medium truncate mt-0.5 ${spanSlots > 2 && !isOverlap ? "text-sm" : "text-xs"}`}>
                       {entry.title}
                     </p>
                   )}
-                  {entry.detail && spanSlots >= 3 && (
+                  {entry.detail && spanSlots >= 3 && !isOverlap && (
                     <p className="text-xs text-slate-400 truncate mt-0.5">{entry.detail}</p>
                   )}
                 </div>
