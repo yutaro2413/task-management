@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { slotToTime, slotToTimeLabel, getSlotOptions, getEndSlotOptions } from "@/lib/utils";
 
 type Category = { id: string; name: string };
@@ -30,6 +30,8 @@ type Props = {
   onClose: () => void;
   /** PC right-panel mode: renders inline without backdrop */
   panelMode?: boolean;
+  /** 未保存変更の有無を親に通知 */
+  onDirtyChange?: (dirty: boolean) => void;
 };
 
 export default function EntryModal({
@@ -41,6 +43,7 @@ export default function EntryModal({
   onDelete,
   onClose,
   panelMode = false,
+  onDirtyChange,
 }: Props) {
   const [categoryId, setCategoryId] = useState(editEntry?.category.id || "");
   const [genreId, setGenreId] = useState(editEntry?.genre.id || "");
@@ -49,6 +52,34 @@ export default function EntryModal({
   const [title, setTitle] = useState(editEntry?.title || "");
   const [detail, setDetail] = useState(editEntry?.detail || "");
   const [showDetail, setShowDetail] = useState(!!editEntry?.detail);
+
+  // マウント時の初期値を記憶して dirty 判定に使う
+  const initialRef = useRef({
+    categoryId: editEntry?.category.id || "",
+    genreId: editEntry?.genre.id || "",
+    startSlot: editEntry?.startSlot ?? slotIndex,
+    endSlot: editEntry?.endSlot ?? Math.min(slotIndex + 1, 48),
+    title: editEntry?.title || "",
+    detail: editEntry?.detail || "",
+  });
+
+  const isDirty =
+    categoryId !== initialRef.current.categoryId ||
+    genreId !== initialRef.current.genreId ||
+    startSlot !== initialRef.current.startSlot ||
+    endSlot !== initialRef.current.endSlot ||
+    title.trim() !== initialRef.current.title.trim() ||
+    detail.trim() !== initialRef.current.detail.trim();
+
+  // 親に dirty 状態を通知
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // アンマウント時は必ず false を通知
+  useEffect(() => {
+    return () => { onDirtyChange?.(false); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const canSave = categoryId && genreId && startSlot < endSlot;
   const slotOptions = getSlotOptions();

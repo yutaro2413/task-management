@@ -195,9 +195,12 @@ export default function TimelinePage() {
   const [showSearch, setShowSearch] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isPanelDirty, setIsPanelDirty] = useState(false);
+  const [showDirtyWarning, setShowDirtyWarning] = useState(false);
   const timelineRef = useRef<HTMLDivElement>(null);
   const scrollDoneRef = useRef(false);
   const initialLoadDone = useRef(false);
+  const dirtyWarnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isToday = date === toJSTDateString();
 
@@ -335,7 +338,14 @@ export default function TimelinePage() {
     () => changeDate(-1),  // swipe right → prev day
   );
 
+  const triggerDirtyWarning = () => {
+    setShowDirtyWarning(true);
+    if (dirtyWarnTimerRef.current) clearTimeout(dirtyWarnTimerRef.current);
+    dirtyWarnTimerRef.current = setTimeout(() => setShowDirtyWarning(false), 2500);
+  };
+
   const handleSlotClick = (slotIndex: number) => {
+    if (isPanelDirty) { triggerDirtyWarning(); return; }
     const list = slotEntriesMap.get(slotIndex);
     if (list && list.length > 0) {
       const existing = list[0];
@@ -349,6 +359,7 @@ export default function TimelinePage() {
   };
 
   const handleEntryClick = (entry: TimeEntry) => {
+    if (isPanelDirty) { triggerDirtyWarning(); return; }
     setEditEntry(entry);
     setSelectedSlot(entry.startSlot);
     setShowExpenseModal(false);
@@ -379,6 +390,8 @@ export default function TimelinePage() {
       }
       setSelectedSlot(null);
       setEditEntry(null);
+      setIsPanelDirty(false);
+      setShowDirtyWarning(false);
       await fetchEntries(date, true);
     } finally {
       setSaving(false);
@@ -391,6 +404,8 @@ export default function TimelinePage() {
       await fetch(`/api/time-entries?id=${id}`, { method: "DELETE" });
       setSelectedSlot(null);
       setEditEntry(null);
+      setIsPanelDirty(false);
+      setShowDirtyWarning(false);
       await fetchEntries(date, true);
     } finally {
       setSaving(false);
@@ -398,6 +413,7 @@ export default function TimelinePage() {
   };
 
   const handleNewAtSlot = (slotIndex: number) => {
+    if (isPanelDirty) { triggerDirtyWarning(); return; }
     setEditEntry(null);
     setSelectedSlot(slotIndex);
     setShowExpenseModal(false);
@@ -407,6 +423,8 @@ export default function TimelinePage() {
     setSelectedSlot(null);
     setEditEntry(null);
     setShowExpenseModal(false);
+    setIsPanelDirty(false);
+    setShowDirtyWarning(false);
   };
 
   const currentSlot = getCurrentSlotJST();
@@ -571,6 +589,16 @@ export default function TimelinePage() {
               )}
             </div>
 
+            {/* 未保存警告バナー */}
+            {showDirtyWarning && (
+              <div className="mx-3 mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2 flex-shrink-0">
+                <svg className="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                </svg>
+                <p className="text-xs text-amber-700 font-medium">変更を保存してください</p>
+              </div>
+            )}
+
             {/* Panel content */}
             {selectedSlot !== null && (
               <EntryModal
@@ -582,6 +610,7 @@ export default function TimelinePage() {
                 onDelete={editEntry ? () => handleDelete(editEntry.id) : undefined}
                 onClose={closePanel}
                 panelMode
+                onDirtyChange={setIsPanelDirty}
               />
             )}
             {showExpenseModal && (
