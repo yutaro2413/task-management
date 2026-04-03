@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { slotToTime, toJSTDateString, getCurrentSlotJST } from "@/lib/utils";
+import { cachedFetch, invalidateCache, MASTER_TTL } from "@/lib/cache";
 import EntryModal from "./EntryModal";
 import ExpenseModal from "./ExpenseModal";
 import DailyNoteInput from "./DailyNoteInput";
@@ -30,15 +31,16 @@ export default function TimelinePage() {
   const [editEntry, setEditEntry] = useState<TimeEntry | null>(null);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [fetching, setFetching] = useState(false);
   const [saving, setSaving] = useState(false);
   const timelineRef = useRef<HTMLDivElement>(null);
   const scrollDoneRef = useRef(false);
+  const initialLoadDone = useRef(false);
 
   const isToday = date === toJSTDateString();
 
-  const fetchEntries = useCallback(async () => {
-    setLoading(true);
+  const fetchEntries = useCallback(async (bustCache = false) => {
+    setFetching(true);
     try {
       const prevDate = (() => {
         const d = new Date(date + "T00:00:00");
@@ -46,12 +48,15 @@ export default function TimelinePage() {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       })();
 
-      const [currentRes, prevRes] = await Promise.all([
-        fetch(`/api/time-entries?date=${date}`),
-        fetch(`/api/time-entries?date=${prevDate}`),
+      if (bustCache) {
+        invalidateCache(`time-entries?date=${date}`);
+        invalidateCache(`time-entries?date=${prevDate}`);
+      }
+
+      const [currentData, prevData] = await Promise.all([
+        cachedFetch<TimeEntry[]>(`/api/time-entries?date=${date}`),
+        cachedFetch<TimeEntry[]>(`/api/time-entries?date=${prevDate}`),
       ]);
-      const currentData: TimeEntry[] = await currentRes.json();
-      const prevData: TimeEntry[] = await prevRes.json();
 
       const crossMidnightEntries: TimeEntry[] = prevData
         .filter((e) => e.endSlot >= 48)
@@ -63,7 +68,8 @@ export default function TimelinePage() {
 
       setEntries([...crossMidnightEntries, ...currentData]);
     } finally {
-      setLoading(false);
+      setFetching(false);
+      initialLoadDone.current = true;
     }
   }, [date]);
 
@@ -72,10 +78,11 @@ export default function TimelinePage() {
     fetchEntries();
   }, [fetchEntries]);
 
+  // Load master data once (cached for 5 min)
   useEffect(() => {
     Promise.all([
-      fetch("/api/categories").then((r) => r.json()),
-      fetch("/api/genres").then((r) => r.json()),
+      cachedFetch<Category[]>("/api/categories", MASTER_TTL),
+      cachedFetch<Genre[]>("/api/genres", MASTER_TTL),
     ]).then(([cats, gnrs]) => {
       setCategories(cats);
       setGenres(gnrs);
@@ -84,7 +91,7 @@ export default function TimelinePage() {
 
   // Scroll to 9:00 by default
   useEffect(() => {
-    if (loading || !timelineRef.current || scrollDoneRef.current) return;
+    if (fetching || !timelineRef.current || scrollDoneRef.current) return;
     scrollDoneRef.current = true;
     const slot = getCurrentSlotJST();
     const targetSlot = isToday && slot >= 18 ? Math.max(0, slot - 2) : 18;
@@ -97,9 +104,9 @@ export default function TimelinePage() {
       }
     }
     timelineRef.current.scrollTop = targetSlot * 36;
-  }, [date, isToday, loading]);
+  }, [date, isToday, fetching]);
 
-  // Calculate work hours (excluding プライベート)
+  // Work hours (excluding プライベート)
   const workSlots = entries
     .filter((e) => e.category.name !== "プライベート")
     .reduce((sum, e) => sum + (e.endSlot - e.startSlot), 0);
@@ -190,7 +197,7 @@ export default function TimelinePage() {
       }
       setSelectedSlot(null);
       setEditEntry(null);
-      await fetchEntries();
+      await fetchEntries(true);
     } finally {
       setSaving(false);
     }
@@ -202,7 +209,7 @@ export default function TimelinePage() {
       await fetch(`/api/time-entries?id=${id}`, { method: "DELETE" });
       setSelectedSlot(null);
       setEditEntry(null);
-      await fetchEntries();
+      await fetchEntries(true);
     } finally {
       setSaving(false);
     }
@@ -213,8 +220,8 @@ export default function TimelinePage() {
 
   return (
     <div className="flex-1 flex flex-col">
-      {/* Fullscreen overlay for saving or date loading */}
-      {(saving || loading) && <LoadingOverlay message={saving ? "保存中..." : "読み込み中..."} />}
+      {/* Full-screen overlay ONLY for saves */}
+      {saving && <LoadingOverlay />}
 
       {/* Header with daily note */}
       <header className="sticky top-0 bg-white border-b border-slate-200 z-40 px-4">
@@ -245,9 +252,12 @@ export default function TimelinePage() {
                     今日
                   </button>
                 )}
+                {/* Inline fetching indicator */}
+                {fetching && (
+                  <div className="w-3.5 h-3.5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+                )}
               </div>
-              {/* Work hours display */}
-              {!loading && workSlots > 0 && (
+              {workSlots > 0 && (
                 <p className="text-xs text-indigo-600 font-medium">
                   稼働 {workHours}時間{workMinutes > 0 ? `${workMinutes}分` : ""}
                 </p>
@@ -273,17 +283,15 @@ export default function TimelinePage() {
               </button>
             </div>
           </div>
-          {/* Daily Note in header */}
           <div className="pb-2">
             <DailyNoteInput date={date} />
           </div>
         </div>
       </header>
 
-      {/* Search Modal */}
       {showSearch && <SearchPanel onClose={() => setShowSearch(false)} />}
 
-      {/* Timeline - CSS Grid (compact rows) */}
+      {/* Timeline */}
       <div
         ref={timelineRef}
         className="flex-1 overflow-y-auto timeline-scroll px-2 max-w-lg mx-auto w-full"
@@ -296,7 +304,6 @@ export default function TimelinePage() {
             gridTemplateRows: "repeat(48, 2.25rem)",
           }}
         >
-          {/* Time labels + empty slot click targets */}
           {slots.map((slotIndex) => {
             const isCurrent = isToday && slotIndex === currentSlot;
             const isOccupied = occupiedSlots.has(slotIndex);
@@ -326,7 +333,6 @@ export default function TimelinePage() {
             );
           })}
 
-          {/* Entry blocks */}
           {entries.map((entry) => {
             const spanSlots = entry.endSlot - entry.startSlot;
             const col = entryColumns.get(entry.id) ?? -1;
@@ -350,21 +356,15 @@ export default function TimelinePage() {
                   setEditEntry(entry);
                   setSelectedSlot(entry.startSlot);
                 }}
-                className={`relative flex text-left rounded-md overflow-hidden transition-colors hover:brightness-95 active:brightness-90 ${
-                  isOverlap ? "mx-0.5 my-px" : "mx-0.5 my-px"
-                }`}
+                className="relative flex text-left rounded-md overflow-hidden transition-colors hover:brightness-95 active:brightness-90 mx-0.5 my-px"
                 style={style}
               >
-                {/* Color band */}
                 <div
                   className="w-1 flex-shrink-0 rounded-l-md"
                   style={{ backgroundColor: entry.genre.color }}
                 />
-
-                {/* Content */}
                 <div className="flex-1 flex flex-col justify-center px-1.5 py-0.5 min-w-0 overflow-hidden">
                   {spanSlots === 1 ? (
-                    // Compact single-slot: one line
                     <div className="flex items-center gap-1 min-w-0">
                       <span
                         className="text-[9px] px-1 py-px rounded text-white font-medium leading-none flex-shrink-0"
@@ -376,7 +376,6 @@ export default function TimelinePage() {
                       {entry.title && <span className="text-[10px] font-medium truncate">{entry.title}</span>}
                     </div>
                   ) : (
-                    // Multi-slot: stacked
                     <>
                       <div className="flex items-center gap-1 flex-wrap">
                         <span className="text-[10px] text-slate-500 font-medium">{entry.category.name}</span>
@@ -435,7 +434,6 @@ export default function TimelinePage() {
         </button>
       </div>
 
-      {/* Entry Modal */}
       {selectedSlot !== null && (
         <EntryModal
           slotIndex={selectedSlot}
@@ -444,14 +442,10 @@ export default function TimelinePage() {
           editEntry={editEntry}
           onSave={handleSave}
           onDelete={editEntry ? () => handleDelete(editEntry.id) : undefined}
-          onClose={() => {
-            setSelectedSlot(null);
-            setEditEntry(null);
-          }}
+          onClose={() => { setSelectedSlot(null); setEditEntry(null); }}
         />
       )}
 
-      {/* Expense Modal */}
       {showExpenseModal && (
         <ExpenseModal
           date={date}
