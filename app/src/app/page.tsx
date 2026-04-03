@@ -3,7 +3,7 @@ import TimelinePage from "@/components/TimelinePage";
 
 export default function Home() {
   return (
-    <main className="flex flex-col min-h-screen pb-20">
+    <main className="h-screen flex flex-col pb-20 lg:pb-0">
       <TimelinePage />
       <BottomNav />
     </main>
