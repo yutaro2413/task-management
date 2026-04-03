@@ -52,16 +52,22 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   const body = await request.json();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data: Record<string, any> = {
+    startSlot: body.startSlot,
+    endSlot: body.endSlot,
+    categoryId: body.categoryId,
+    genreId: body.genreId,
+    title: body.title || null,
+    detail: body.detail || null,
+  };
+  // 日付変更（D&D移動）に対応
+  if (body.date !== undefined) {
+    data.date = new Date(body.date);
+  }
   const entry = await prisma.timeEntry.update({
     where: { id: body.id },
-    data: {
-      startSlot: body.startSlot,
-      endSlot: body.endSlot,
-      categoryId: body.categoryId,
-      genreId: body.genreId,
-      title: body.title || null,
-      detail: body.detail || null,
-    },
+    data,
     include: { category: true, genre: true },
   });
   return NextResponse.json(entry);

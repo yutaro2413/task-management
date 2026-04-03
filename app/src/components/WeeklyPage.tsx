@@ -11,6 +11,7 @@ type TimeEntry = {
   startSlot: number;
   endSlot: number;
   title?: string | null;
+  detail?: string | null;
   category: { id: string; name: string };
   genre: { id: string; name: string; color: string };
 };
@@ -48,7 +49,17 @@ export default function WeeklyPage() {
   const [view, setView] = useState<ViewMode>("summary");
   const [period, setPeriod] = useState<PeriodMode>("weekly");
   const [fetching, setFetching] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const hasData = useRef(false);
+
+  // ── D&D / long-press state ──────────────────────────────────────────────
+  const [dragEntry, setDragEntry] = useState<TimeEntry | null>(null);
+  const [dropCell, setDropCell] = useState<{ colIdx: number; slot: number } | null>(null);
+  const [touchGhost, setTouchGhost] = useState<{ x: number; y: number; entry: TimeEntry } | null>(null);
+  const calendarScrollRef = useRef<HTMLDivElement>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchInfoRef = useRef<{ entry: TimeEntry; startX: number; startY: number } | null>(null);
+  const touchDragActiveRef = useRef(false);
 
   const weekDates = getWeekDates(baseDate);
   const year = baseDate.getFullYear();
@@ -78,6 +89,123 @@ export default function WeeklyPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // ── D&D helpers ────────────────────────────────────────────────────────
+  /** グリッド要素からスクロール座標でセルを特定する */
+  const getTargetFromPosition = useCallback((clientX: number, clientY: number): { colIdx: number; slot: number } | null => {
+    const scrollEl = calendarScrollRef.current;
+    if (!scrollEl) return null;
+    const gridEl = scrollEl.querySelector("[data-timegrid]") as HTMLElement | null;
+    if (!gridEl) return null;
+    const rect = gridEl.getBoundingClientRect();
+    const rowH = gridEl.offsetHeight / 48;
+    if (rowH === 0) return null;
+    const timeColPx = 56; // 3.5rem (固定)
+    const relX = clientX - rect.left - timeColPx;
+    const relY = clientY - rect.top;
+    if (relX < 0 || relY < 0) return null;
+    const dayW = (rect.width - timeColPx) / 7;
+    const colIdx = Math.floor(relX / dayW);
+    const slot = Math.floor(relY / rowH);
+    if (colIdx < 0 || colIdx > 6 || slot < 0 || slot > 47) return null;
+    return { colIdx, slot };
+  }, []);
+
+  /** エントリを新しい位置に移動して保存 */
+  const executeMove = useCallback(async (entry: TimeEntry, colIdx: number, slot: number) => {
+    const duration = entry.endSlot - entry.startSlot;
+    const newStart = Math.min(slot, 48 - duration);
+    const newEnd = newStart + duration;
+    const newDate = formatDate(weekDates[colIdx]);
+    if (newDate === entry.date.split("T")[0] && newStart === entry.startSlot) return; // 変化なし
+    setIsSaving(true);
+    try {
+      await fetch("/api/time-entries", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: entry.id,
+          date: newDate,
+          startSlot: newStart,
+          endSlot: newEnd,
+          categoryId: entry.category.id,
+          genreId: entry.genre.id,
+          title: entry.title,
+          detail: entry.detail,
+        }),
+      });
+      await fetchData();
+    } finally {
+      setIsSaving(false);
+    }
+  }, [weekDates, fetchData]);
+
+  /** HTML5 D&D: dragover */
+  const handleCalendarDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    if (!dragEntry) return;
+    const target = getTargetFromPosition(e.clientX, e.clientY);
+    setDropCell(target);
+  }, [dragEntry, getTargetFromPosition]);
+
+  /** HTML5 D&D: drop */
+  const handleCalendarDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!dragEntry) return;
+    const target = getTargetFromPosition(e.clientX, e.clientY);
+    if (target) await executeMove(dragEntry, target.colIdx, target.slot);
+    setDragEntry(null);
+    setDropCell(null);
+  }, [dragEntry, getTargetFromPosition, executeMove]);
+
+  /** タッチ: 長押し開始 */
+  const handleEntryTouchStart = useCallback((e: React.TouchEvent, entry: TimeEntry) => {
+    const touch = e.touches[0];
+    touchInfoRef.current = { entry, startX: touch.clientX, startY: touch.clientY };
+    touchDragActiveRef.current = false;
+    longPressTimerRef.current = setTimeout(() => {
+      touchDragActiveRef.current = true;
+      const info = touchInfoRef.current;
+      if (info) {
+        setTouchGhost({ x: info.startX, y: info.startY, entry: info.entry });
+        setDragEntry(info.entry);
+        if (navigator.vibrate) navigator.vibrate(50);
+      }
+    }, 500);
+  }, []);
+
+  /** タッチ: ドラッグ中 */
+  const handleEntryTouchMove = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    const info = touchInfoRef.current;
+    if (!info) return;
+    if (!touchDragActiveRef.current) {
+      const dx = touch.clientX - info.startX;
+      const dy = touch.clientY - info.startY;
+      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+        if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+      }
+      return;
+    }
+    e.preventDefault();
+    setTouchGhost(prev => prev ? { ...prev, x: touch.clientX, y: touch.clientY } : null);
+    const target = getTargetFromPosition(touch.clientX, touch.clientY);
+    setDropCell(target);
+  }, [getTargetFromPosition]);
+
+  /** タッチ: ドロップ */
+  const handleEntryTouchEnd = useCallback(async (e: React.TouchEvent) => {
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    if (touchDragActiveRef.current && dropCell && touchInfoRef.current) {
+      await executeMove(touchInfoRef.current.entry, dropCell.colIdx, dropCell.slot);
+    }
+    touchDragActiveRef.current = false;
+    touchInfoRef.current = null;
+    setTouchGhost(null);
+    setDragEntry(null);
+    setDropCell(null);
+    void e; // suppress unused warning
+  }, [dropCell, executeMove]);
 
   const changePeriod = (delta: number) => {
     const d = new Date(baseDate);
@@ -322,38 +450,54 @@ export default function WeeklyPage() {
       {/* ── PC Weekly Calendar view ── */}
       {view === "calendar" && (
         <div className="hidden lg:flex flex-1 flex-col overflow-hidden">
-          {/* Day header row */}
-          <div
-            className="grid flex-shrink-0 border-b border-slate-200 bg-white"
-            style={{ gridTemplateColumns: `3.5rem repeat(7, 1fr)` }}
-          >
-            <div className="border-r border-slate-100" />
-            {weekDates.map((wd) => {
-              const dateKey = formatDate(wd);
-              const expenseTotal = dailyExpenseTotals.get(dateKey);
-              const days = ["日", "月", "火", "水", "木", "金", "土"];
-              const dow = wd.getDay();
-              const isWeekend = dow === 0 || dow === 6;
-              return (
-                <div key={dateKey} className="border-r border-slate-100 px-1 py-2 text-center">
-                  <p className={`text-xs font-semibold ${isWeekend ? (dow === 0 ? "text-red-500" : "text-blue-500") : "text-slate-700"}`}>
-                    {wd.getMonth() + 1}/{wd.getDate()}({days[dow]})
-                  </p>
-                  {expenseTotal ? (
-                    <p className="text-[10px] text-rose-500 font-medium mt-0.5">
-                      -{expenseTotal >= 10000 ? `${Math.round(expenseTotal / 1000)}k` : expenseTotal.toLocaleString()}円
-                    </p>
-                  ) : (
-                    <p className="text-[10px] text-slate-300 mt-0.5">—</p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          {isSaving && (
+            <div className="absolute inset-0 z-50 bg-white/40 flex items-center justify-center pointer-events-none">
+              <div className="w-5 h-5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+            </div>
+          )}
 
-          {/* Scrollable body */}
-          <div className="flex-1 overflow-y-auto">
+          {/* Single scroll container — header is sticky inside */}
+          <div
+            ref={calendarScrollRef}
+            className="flex-1 overflow-y-auto relative"
+            onDragOver={handleCalendarDragOver}
+            onDrop={handleCalendarDrop}
+            onDragLeave={() => setDropCell(null)}
+            onDragEnd={() => { setDragEntry(null); setDropCell(null); }}
+          >
+            {/* Sticky day header */}
             <div
+              data-calheader
+              className="sticky top-0 z-20 grid bg-white border-b border-slate-200"
+              style={{ gridTemplateColumns: `3.5rem repeat(7, 1fr)` }}
+            >
+              <div className="border-r border-slate-100" />
+              {weekDates.map((wd) => {
+                const dateKey = formatDate(wd);
+                const expenseTotal = dailyExpenseTotals.get(dateKey);
+                const days = ["日", "月", "火", "水", "木", "金", "土"];
+                const dow = wd.getDay();
+                const isWeekend = dow === 0 || dow === 6;
+                return (
+                  <div key={dateKey} className="border-r border-slate-100 px-1 py-2 text-center">
+                    <p className={`text-xs font-semibold ${isWeekend ? (dow === 0 ? "text-red-500" : "text-blue-500") : "text-slate-700"}`}>
+                      {wd.getMonth() + 1}/{wd.getDate()}({days[dow]})
+                    </p>
+                    {expenseTotal ? (
+                      <p className="text-[10px] text-rose-500 font-medium mt-0.5">
+                        -{expenseTotal >= 10000 ? `${Math.round(expenseTotal / 1000)}k` : expenseTotal.toLocaleString()}円
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-slate-300 mt-0.5">—</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Time grid */}
+            <div
+              data-timegrid
               className="grid"
               style={{
                 gridTemplateColumns: `3.5rem repeat(7, 1fr)`,
@@ -391,34 +535,93 @@ export default function WeeklyPage() {
                 ))
               ))}
 
+              {/* Drop preview */}
+              {dragEntry && dropCell && (() => {
+                const duration = dragEntry.endSlot - dragEntry.startSlot;
+                const previewStart = Math.min(dropCell.slot, 48 - duration);
+                const previewEnd = previewStart + duration;
+                return (
+                  <div
+                    className="pointer-events-none z-20 rounded mx-0.5 opacity-60"
+                    style={{
+                      gridRow: `${previewStart + 1} / ${previewEnd + 1}`,
+                      gridColumn: dropCell.colIdx + 2,
+                      backgroundColor: `${dragEntry.genre.color}30`,
+                      border: `2px dashed ${dragEntry.genre.color}`,
+                    }}
+                  />
+                );
+              })()}
+
               {/* Entry blocks */}
               {weekDates.map((wd, colIdx) => {
                 const dateKey = formatDate(wd);
                 const dayEntries = entriesByDate.get(dateKey) || [];
-                return dayEntries.map((entry) => (
-                  <div
-                    key={entry.id}
-                    className="rounded mx-0.5 overflow-hidden cursor-default z-10 pointer-events-none"
-                    style={{
-                      gridRow: `${entry.startSlot + 1} / ${entry.endSlot + 1}`,
-                      gridColumn: colIdx + 2,
-                      backgroundColor: `${entry.genre.color}20`,
-                      borderLeft: `3px solid ${entry.genre.color}`,
-                    }}
-                  >
-                    <div className="px-1 py-px overflow-hidden h-full">
-                      <p
-                        className="text-[9px] font-semibold truncate leading-tight"
-                        style={{ color: entry.genre.color }}
-                      >
-                        {entry.title || entry.category.name}
-                      </p>
+                return dayEntries.map((entry) => {
+                  const isDragging = dragEntry?.id === entry.id;
+                  return (
+                    <div
+                      key={entry.id}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.effectAllowed = "move";
+                        setDragEntry(entry);
+                        setDropCell(null);
+                      }}
+                      onDragEnd={() => { setDragEntry(null); setDropCell(null); }}
+                      onTouchStart={(e) => handleEntryTouchStart(e, entry)}
+                      onTouchMove={handleEntryTouchMove}
+                      onTouchEnd={handleEntryTouchEnd}
+                      className={`rounded mx-0.5 overflow-hidden z-10 cursor-grab active:cursor-grabbing transition-opacity select-none ${
+                        isDragging ? "opacity-30" : "opacity-100"
+                      }`}
+                      style={{
+                        gridRow: `${entry.startSlot + 1} / ${entry.endSlot + 1}`,
+                        gridColumn: colIdx + 2,
+                        backgroundColor: `${entry.genre.color}20`,
+                        borderLeft: `3px solid ${entry.genre.color}`,
+                      }}
+                      title={`${slotToTime(entry.startSlot)}–${slotToTime(entry.endSlot)} ${entry.title || entry.category.name}`}
+                    >
+                      <div className="px-1 py-px overflow-hidden h-full">
+                        <p
+                          className="text-[9px] font-semibold truncate leading-tight"
+                          style={{ color: entry.genre.color }}
+                        >
+                          {entry.title || entry.category.name}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ));
+                  );
+                });
               })}
             </div>
           </div>
+
+          {/* Touch drag ghost */}
+          {touchGhost && (
+            <div
+              className="fixed z-50 pointer-events-none rounded shadow-xl opacity-90 overflow-hidden"
+              style={{
+                left: touchGhost.x - 60,
+                top: touchGhost.y - 24,
+                width: 120,
+                minHeight: 32,
+                backgroundColor: `${touchGhost.entry.genre.color}40`,
+                borderLeft: `3px solid ${touchGhost.entry.genre.color}`,
+                transform: "scale(1.08)",
+              }}
+            >
+              <div className="px-1.5 py-1">
+                <p className="text-[10px] font-semibold truncate" style={{ color: touchGhost.entry.genre.color }}>
+                  {touchGhost.entry.title || touchGhost.entry.category.name}
+                </p>
+                <p className="text-[9px] text-slate-500">
+                  {slotToTime(touchGhost.entry.startSlot)}–{slotToTime(touchGhost.entry.endSlot)}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
