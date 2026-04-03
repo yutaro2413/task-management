@@ -225,43 +225,46 @@ export default function WeeklyPage() {
                 )}
               </div>
 
-              <div className="bg-white rounded-xl p-4 border border-slate-200">
-                <h3 className="text-sm font-semibold text-slate-700 mb-3">カテゴリ別</h3>
-                {showSpinner ? <CardSpinner /> : categorySummary.size === 0 ? (
-                  <p className="text-sm text-slate-400">記録なし</p>
-                ) : (
-                  <div className="space-y-2">
-                    {Array.from(categorySummary.values()).sort((a, b) => b.count - a.count).map((c) => (
-                      <div key={c.name} className="flex items-center gap-2">
-                        <span className="text-sm flex-1">{c.name}</span>
-                        <span className="text-sm font-medium">{c.count * 0.5}h</span>
-                        <div className="w-20 h-2 bg-slate-100 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full bg-indigo-500" style={{ width: `${allSlots > 0 ? (c.count / allSlots) * 100 : 0}%` }} />
+              {/* PC: カテゴリ別 / ジャンル別 を横並び */}
+              <div className="lg:grid lg:grid-cols-2 lg:gap-4 space-y-4 lg:space-y-0">
+                <div className="bg-white rounded-xl p-4 border border-slate-200">
+                  <h3 className="text-sm font-semibold text-slate-700 mb-3">カテゴリ別</h3>
+                  {showSpinner ? <CardSpinner /> : categorySummary.size === 0 ? (
+                    <p className="text-sm text-slate-400">記録なし</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {Array.from(categorySummary.values()).sort((a, b) => b.count - a.count).map((c) => (
+                        <div key={c.name} className="flex items-center gap-2">
+                          <span className="text-sm flex-1 min-w-0 truncate">{c.name}</span>
+                          <span className="text-sm font-medium tabular-nums flex-shrink-0">{c.count * 0.5}h</span>
+                          <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden flex-shrink-0">
+                            <div className="h-full rounded-full bg-indigo-500" style={{ width: `${allSlots > 0 ? (c.count / allSlots) * 100 : 0}%` }} />
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
-              <div className="bg-white rounded-xl p-4 border border-slate-200">
-                <h3 className="text-sm font-semibold text-slate-700 mb-3">ジャンル別</h3>
-                {showSpinner ? <CardSpinner /> : genreSummary.size === 0 ? (
-                  <p className="text-sm text-slate-400">記録なし</p>
-                ) : (
-                  <div className="space-y-2">
-                    {Array.from(genreSummary.values()).sort((a, b) => b.count - a.count).map((g) => (
-                      <div key={g.name} className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} />
-                        <span className="text-sm flex-1">{g.name}</span>
-                        <span className="text-sm font-medium">{g.count * 0.5}h</span>
-                        <div className="w-20 h-2 bg-slate-100 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full" style={{ backgroundColor: g.color, width: `${allSlots > 0 ? (g.count / allSlots) * 100 : 0}%` }} />
+                <div className="bg-white rounded-xl p-4 border border-slate-200">
+                  <h3 className="text-sm font-semibold text-slate-700 mb-3">ジャンル別</h3>
+                  {showSpinner ? <CardSpinner /> : genreSummary.size === 0 ? (
+                    <p className="text-sm text-slate-400">記録なし</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {Array.from(genreSummary.values()).sort((a, b) => b.count - a.count).map((g) => (
+                        <div key={g.name} className="flex items-center gap-2">
+                          <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} />
+                          <span className="text-sm flex-1 min-w-0 truncate">{g.name}</span>
+                          <span className="text-sm font-medium tabular-nums flex-shrink-0">{g.count * 0.5}h</span>
+                          <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden flex-shrink-0">
+                            <div className="h-full rounded-full" style={{ backgroundColor: g.color, width: `${allSlots > 0 ? (g.count / allSlots) * 100 : 0}%` }} />
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {!showSpinner && notes.length > 0 && (
