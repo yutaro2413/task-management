@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { slotToTime, toJSTDateString, getCurrentSlotJST } from "@/lib/utils";
+import { slotToTime, toJSTDateString, getCurrentSlotJST, calcProratedSlots } from "@/lib/utils";
 import { cachedFetch, invalidateCache, MASTER_TTL } from "@/lib/cache";
 import EntryModal from "./EntryModal";
 import ExpenseModal from "./ExpenseModal";
@@ -106,12 +106,14 @@ export default function TimelinePage() {
     timelineRef.current.scrollTop = targetSlot * 36;
   }, [date, isToday, fetching]);
 
-  // Work hours (excluding プライベート)
-  const workSlots = entries
+  // Work hours (excluding プライベート) with overlap proration
+  const proratedSlots = calcProratedSlots(entries);
+  const workSlotsProrated = entries
     .filter((e) => e.category.name !== "プライベート")
-    .reduce((sum, e) => sum + (e.endSlot - e.startSlot), 0);
-  const workHours = Math.floor(workSlots / 2);
-  const workMinutes = (workSlots % 2) * 30;
+    .reduce((sum, e) => sum + (proratedSlots.get(e.id) || 0), 0);
+  const workMinutesTotal = Math.round(workSlotsProrated * 30);
+  const workHours = Math.floor(workMinutesTotal / 60);
+  const workMinutes = workMinutesTotal % 60;
 
   // Build slot -> entries map
   const slotEntriesMap = new Map<number, TimeEntry[]>();
@@ -257,7 +259,7 @@ export default function TimelinePage() {
                   <div className="w-3.5 h-3.5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
                 )}
               </div>
-              {workSlots > 0 && (
+              {workMinutesTotal > 0 && (
                 <p className="text-xs text-indigo-600 font-medium">
                   稼働 {workHours}時間{workMinutes > 0 ? `${workMinutes}分` : ""}
                 </p>

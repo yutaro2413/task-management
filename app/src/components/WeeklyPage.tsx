@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { getWeekDates, getDayLabel, formatDate, slotToTime, getMonthDates, getMonthLabel } from "@/lib/utils";
+import { getWeekDates, getDayLabel, formatDate, slotToTime, getMonthDates, getMonthLabel, calcProratedSlots } from "@/lib/utils";
 import { cachedFetch } from "@/lib/cache";
 
 type TimeEntry = {
@@ -83,11 +83,16 @@ export default function WeeklyPage() {
   // Only show card spinners on initial load (no data yet)
   const showSpinner = fetching && !hasData.current;
 
-  // Summary calculations
-  const workEntries = entries.filter((e) => e.category.name !== "プライベート");
-  const totalWorkSlots = workEntries.reduce((sum, e) => sum + (e.endSlot - e.startSlot), 0);
-  const totalWorkHours = totalWorkSlots * 0.5;
-  const allSlots = entries.reduce((sum, e) => sum + (e.endSlot - e.startSlot), 0);
+  // Summary calculations with overlap proration
+  const proratedSlots = calcProratedSlots(entries);
+
+  const totalWorkSlotsProrated = entries
+    .filter((e) => e.category.name !== "プライベート")
+    .reduce((sum, e) => sum + (proratedSlots.get(e.id) || 0), 0);
+  const totalWorkHours = totalWorkSlotsProrated * 0.5;
+
+  const allSlotsProrated = entries.reduce((sum, e) => sum + (proratedSlots.get(e.id) || 0), 0);
+
   const avgDays = period === "weekly" ? 5 : 20;
   const avgHoursPerDay = avgDays > 0 ? totalWorkHours / avgDays : 0;
   const avgH = Math.floor(avgHoursPerDay);
@@ -95,7 +100,7 @@ export default function WeeklyPage() {
 
   const categorySummary = new Map<string, { name: string; count: number }>();
   entries.forEach((e) => {
-    const slots = e.endSlot - e.startSlot;
+    const slots = proratedSlots.get(e.id) || 0;
     const cKey = e.category.id;
     const existing = categorySummary.get(cKey) || { name: e.category.name, count: 0 };
     existing.count += slots;
@@ -104,7 +109,7 @@ export default function WeeklyPage() {
 
   const genreSummary = new Map<string, { name: string; color: string; count: number }>();
   entries.forEach((e) => {
-    const slots = e.endSlot - e.startSlot;
+    const slots = proratedSlots.get(e.id) || 0;
     const gKey = e.genre.id;
     const existing = genreSummary.get(gKey) || { name: e.genre.name, color: e.genre.color, count: 0 };
     existing.count += slots;
@@ -175,9 +180,8 @@ export default function WeeklyPage() {
                     {period === "weekly" ? "今週" : "今月"}の稼働時間
                     <span className="text-slate-400 ml-1">(プライベート除く)</span>
                   </p>
-                  <p className="text-3xl font-bold text-indigo-600">{totalWorkHours}h</p>
+                  <p className="text-3xl font-bold text-indigo-600">{totalWorkHours.toFixed(1)}h</p>
                   <div className="flex items-center gap-3 mt-1">
-                    <p className="text-xs text-slate-400">{totalWorkSlots}スロット</p>
                     <p className="text-xs text-indigo-500 font-medium">
                       1日平均 {avgH}時間{avgM > 0 ? `${avgM}分` : ""}
                       <span className="text-slate-400 ml-1">({period === "weekly" ? "5" : "20"}日換算)</span>
@@ -196,9 +200,9 @@ export default function WeeklyPage() {
                   {Array.from(categorySummary.values()).sort((a, b) => b.count - a.count).map((c) => (
                     <div key={c.name} className="flex items-center gap-2">
                       <span className="text-sm flex-1">{c.name}</span>
-                      <span className="text-sm font-medium">{c.count * 0.5}h</span>
+                      <span className="text-sm font-medium">{(c.count * 0.5).toFixed(1)}h</span>
                       <div className="w-20 h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full bg-indigo-500" style={{ width: `${allSlots > 0 ? (c.count / allSlots) * 100 : 0}%` }} />
+                        <div className="h-full rounded-full bg-indigo-500" style={{ width: `${allSlotsProrated > 0 ? (c.count / allSlotsProrated) * 100 : 0}%` }} />
                       </div>
                     </div>
                   ))}
@@ -216,9 +220,9 @@ export default function WeeklyPage() {
                     <div key={g.name} className="flex items-center gap-2">
                       <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} />
                       <span className="text-sm flex-1">{g.name}</span>
-                      <span className="text-sm font-medium">{g.count * 0.5}h</span>
+                      <span className="text-sm font-medium">{(g.count * 0.5).toFixed(1)}h</span>
                       <div className="w-20 h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ backgroundColor: g.color, width: `${allSlots > 0 ? (g.count / allSlots) * 100 : 0}%` }} />
+                        <div className="h-full rounded-full" style={{ backgroundColor: g.color, width: `${allSlotsProrated > 0 ? (g.count / allSlotsProrated) * 100 : 0}%` }} />
                       </div>
                     </div>
                   ))}

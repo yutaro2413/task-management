@@ -58,3 +58,31 @@ export function getSlotOptions(): { value: number; label: string }[] {
     label: slotToTime(i),
   }));
 }
+
+// Calculate prorated slots for entries with overlap support
+// Each slot (30 min) is divided equally among overlapping entries
+// e.g. 2 entries at 3:00-3:30 = 0.5 slots each (15 min each)
+type EntryLike = { id: string; startSlot: number; endSlot: number };
+
+export function calcProratedSlots<T extends EntryLike>(entries: T[]): Map<string, number> {
+  // Build slot -> count of entries occupying that slot
+  const slotCounts = new Map<number, number>();
+  entries.forEach((e) => {
+    for (let i = e.startSlot; i < e.endSlot; i++) {
+      slotCounts.set(i, (slotCounts.get(i) || 0) + 1);
+    }
+  });
+
+  // For each entry, sum up 1/count for each slot it occupies
+  const result = new Map<string, number>();
+  entries.forEach((e) => {
+    let total = 0;
+    for (let i = e.startSlot; i < e.endSlot; i++) {
+      const count = slotCounts.get(i) || 1;
+      total += 1 / count;
+    }
+    result.set(e.id, total);
+  });
+
+  return result;
+}
