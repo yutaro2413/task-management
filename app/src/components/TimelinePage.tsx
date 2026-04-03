@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { slotToTime, toJSTDateString, getCurrentSlotJST } from "@/lib/utils";
 import { cachedFetch, invalidateCache, MASTER_TTL } from "@/lib/cache";
+import { useSwipe } from "@/hooks/useSwipe";
 import EntryModal from "./EntryModal";
 import ExpenseModal from "./ExpenseModal";
 import DailyNoteInput from "./DailyNoteInput";
@@ -21,6 +22,156 @@ type TimeEntry = {
   category: Category;
   genre: Genre;
 };
+
+// ─── Sub-component: renders a portion of the timeline grid ───────────────────
+type TimeGridProps = {
+  startSlot: number;
+  endSlot: number;
+  entries: TimeEntry[];
+  occupiedSlots: Set<number>;
+  entryColumns: Map<string, number>;
+  isToday: boolean;
+  currentSlot: number;
+  rowHeightRem: number;
+  onSlotClick: (slotIndex: number) => void;
+  onEntryClick: (entry: TimeEntry) => void;
+  gridRef?: React.RefObject<HTMLDivElement | null>;
+};
+
+function TimeGrid({
+  startSlot,
+  endSlot,
+  entries,
+  occupiedSlots,
+  entryColumns,
+  isToday,
+  currentSlot,
+  rowHeightRem,
+  onSlotClick,
+  onEntryClick,
+  gridRef,
+}: TimeGridProps) {
+  const count = endSlot - startSlot;
+  const slots = Array.from({ length: count }, (_, i) => i + startSlot);
+
+  return (
+    <div
+      ref={gridRef}
+      data-grid
+      className="grid relative"
+      style={{
+        gridTemplateColumns: "3rem 1fr",
+        gridTemplateRows: `repeat(${count}, ${rowHeightRem}rem)`,
+      }}
+    >
+      {slots.map((slotIndex) => {
+        const localRow = slotIndex - startSlot + 1;
+        const isCurrent = isToday && slotIndex === currentSlot;
+        const isOccupied = occupiedSlots.has(slotIndex);
+        return (
+          <div key={`row-${slotIndex}`} className="contents">
+            <div
+              data-slot={slotIndex}
+              className={`flex items-center justify-center text-[10px] font-mono border-b border-slate-100 ${
+                isCurrent ? "bg-indigo-50" : ""
+              } ${slotIndex % 2 === 0 ? "text-slate-600 font-semibold" : "text-slate-400"}`}
+              style={{ gridRow: localRow, gridColumn: 1 }}
+            >
+              {slotToTime(slotIndex)}
+            </div>
+            {!isOccupied && (
+              <button
+                onClick={() => onSlotClick(slotIndex)}
+                className={`flex items-center pl-2 border-b border-slate-100 transition-colors text-left ${
+                  isCurrent ? "bg-indigo-50 hover:bg-indigo-100" : "hover:bg-slate-50 active:bg-slate-100"
+                }`}
+                style={{ gridRow: localRow, gridColumn: 2 }}
+              >
+                <span className="text-slate-300 text-xs">-</span>
+              </button>
+            )}
+          </div>
+        );
+      })}
+
+      {entries.map((entry) => {
+        const effectiveStart = Math.max(entry.startSlot, startSlot);
+        const effectiveEnd = Math.min(entry.endSlot, endSlot);
+        if (effectiveStart >= effectiveEnd) return null;
+
+        const localStartRow = effectiveStart - startSlot + 1;
+        const localEndRow = effectiveEnd - startSlot + 1;
+        const spanSlots = entry.endSlot - entry.startSlot;
+        const col = entryColumns.get(entry.id) ?? -1;
+        const isOverlap = col >= 0;
+
+        const style: React.CSSProperties = {
+          gridRow: `${localStartRow} / ${localEndRow}`,
+          gridColumn: 2,
+          backgroundColor: `${entry.genre.color}15`,
+        };
+        if (isOverlap) {
+          style.width = "50%";
+          style.marginLeft = col === 1 ? "50%" : "0";
+        }
+
+        return (
+          <button
+            key={`${entry.id}-${startSlot}`}
+            onClick={() => onEntryClick(entry)}
+            className="relative flex text-left rounded-md overflow-hidden transition-colors hover:brightness-95 active:brightness-90 mx-0.5 my-px"
+            style={style}
+          >
+            <div
+              className="w-1 flex-shrink-0 rounded-l-md"
+              style={{ backgroundColor: entry.genre.color }}
+            />
+            <div className="flex-1 flex flex-col justify-center px-1.5 py-0.5 min-w-0 overflow-hidden">
+              {spanSlots === 1 ? (
+                <div className="flex items-center gap-1 min-w-0">
+                  <span
+                    className="text-[9px] px-1 py-px rounded text-white font-medium leading-none flex-shrink-0"
+                    style={{ backgroundColor: entry.genre.color }}
+                  >
+                    {entry.genre.name}
+                  </span>
+                  <span className="text-[10px] text-slate-500 flex-shrink-0">{entry.category.name}</span>
+                  {entry.title && <span className="text-[10px] font-medium truncate">{entry.title}</span>}
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span className="text-[10px] text-slate-500 font-medium">{entry.category.name}</span>
+                    <span
+                      className="text-[10px] px-1 py-px rounded-full text-white font-medium leading-none"
+                      style={{ backgroundColor: entry.genre.color }}
+                    >
+                      {entry.genre.name}
+                    </span>
+                    {!isOverlap && (
+                      <span className="text-[10px] text-slate-400">
+                        {slotToTime(entry.startSlot)}-{slotToTime(entry.endSlot)}
+                      </span>
+                    )}
+                  </div>
+                  {entry.title && (
+                    <p className={`font-medium truncate ${spanSlots > 2 && !isOverlap ? "text-xs" : "text-[10px]"}`}>
+                      {entry.title}
+                    </p>
+                  )}
+                  {entry.detail && spanSlots >= 4 && !isOverlap && (
+                    <p className="text-[10px] text-slate-400 truncate">{entry.detail}</p>
+                  )}
+                </>
+              )}
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function TimelinePage() {
   const [date, setDate] = useState(() => toJSTDateString());
@@ -78,7 +229,6 @@ export default function TimelinePage() {
     fetchEntries();
   }, [fetchEntries]);
 
-  // Load master data once (cached for 5 min)
   useEffect(() => {
     Promise.all([
       cachedFetch<Category[]>("/api/categories", MASTER_TTL),
@@ -89,7 +239,7 @@ export default function TimelinePage() {
     });
   }, []);
 
-  // Scroll to 9:00 by default
+  // Auto-scroll mobile timeline to current/9am slot
   useEffect(() => {
     if (fetching || !timelineRef.current || scrollDoneRef.current) return;
     scrollDoneRef.current = true;
@@ -129,9 +279,7 @@ export default function TimelinePage() {
 
   const occupiedSlots = new Set<number>();
   entries.forEach((e) => {
-    for (let i = e.startSlot; i < e.endSlot; i++) {
-      occupiedSlots.add(i);
-    }
+    for (let i = e.startSlot; i < e.endSlot; i++) occupiedSlots.add(i);
   });
 
   // Assign columns for overlapping entries
@@ -142,16 +290,12 @@ export default function TimelinePage() {
       const list = slotEntriesMap.get(i) || [];
       if (list.length > 1) { hasOverlap = true; break; }
     }
-    if (!hasOverlap && !entryColumns.has(entry.id)) {
-      entryColumns.set(entry.id, -1);
-    }
+    if (!hasOverlap && !entryColumns.has(entry.id)) entryColumns.set(entry.id, -1);
   });
   for (const [, list] of slotEntriesMap) {
     if (list.length <= 1) continue;
     list.forEach((entry, idx) => {
-      if (!entryColumns.has(entry.id)) {
-        entryColumns.set(entry.id, idx);
-      }
+      if (!entryColumns.has(entry.id)) entryColumns.set(entry.id, idx);
     });
   }
 
@@ -164,6 +308,11 @@ export default function TimelinePage() {
     setDate(`${y}-${m}-${day}`);
   };
 
+  const swipeHandlers = useSwipe(
+    () => changeDate(1),   // swipe left → next day
+    () => changeDate(-1),  // swipe right → prev day
+  );
+
   const handleSlotClick = (slotIndex: number) => {
     const list = slotEntriesMap.get(slotIndex);
     if (list && list.length > 0) {
@@ -174,6 +323,13 @@ export default function TimelinePage() {
       setEditEntry(null);
       setSelectedSlot(slotIndex);
     }
+    setShowExpenseModal(false);
+  };
+
+  const handleEntryClick = (entry: TimeEntry) => {
+    setEditEntry(entry);
+    setSelectedSlot(entry.startSlot);
+    setShowExpenseModal(false);
   };
 
   const handleSave = async (data: {
@@ -219,17 +375,28 @@ export default function TimelinePage() {
     }
   };
 
-  const slots = Array.from({ length: 48 }, (_, i) => i);
+  const closePanel = () => {
+    setSelectedSlot(null);
+    setEditEntry(null);
+    setShowExpenseModal(false);
+  };
+
   const currentSlot = getCurrentSlotJST();
 
+  const panelHasContent = selectedSlot !== null || showExpenseModal;
+  const panelTitle = showExpenseModal
+    ? "家計簿を追加"
+    : editEntry
+    ? "記録を編集"
+    : "記録を追加";
+
   return (
-    <div className="flex-1 flex flex-col">
-      {/* Full-screen overlay ONLY for saves */}
+    <div className="flex-1 flex flex-col overflow-hidden">
       {saving && <LoadingOverlay />}
 
-      {/* Header with daily note */}
+      {/* Header */}
       <header className="sticky top-0 bg-white border-b border-slate-200 z-40 px-4">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-lg mx-auto lg:max-w-none">
           <div className="flex items-center justify-between py-2">
             <button
               onClick={() => changeDate(-1)}
@@ -256,7 +423,6 @@ export default function TimelinePage() {
                     今日
                   </button>
                 )}
-                {/* Inline fetching indicator */}
                 {fetching && (
                   <div className="w-3.5 h-3.5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
                 )}
@@ -295,125 +461,138 @@ export default function TimelinePage() {
 
       {showSearch && <SearchPanel onClose={() => setShowSearch(false)} />}
 
-      {/* Timeline */}
-      <div
-        ref={timelineRef}
-        className="flex-1 overflow-y-auto timeline-scroll px-2 max-w-lg mx-auto w-full"
-      >
+      {/* Body */}
+      <div className="flex-1 flex overflow-hidden">
+
+        {/* ── Mobile: single scrollable column ── */}
         <div
-          data-grid
-          className="grid relative"
-          style={{
-            gridTemplateColumns: "3rem 1fr",
-            gridTemplateRows: "repeat(48, 2.25rem)",
-          }}
+          ref={timelineRef}
+          className="flex-1 overflow-y-auto timeline-scroll px-2 max-w-lg mx-auto w-full lg:hidden"
+          {...swipeHandlers}
         >
-          {slots.map((slotIndex) => {
-            const isCurrent = isToday && slotIndex === currentSlot;
-            const isOccupied = occupiedSlots.has(slotIndex);
-            return (
-              <div key={`row-${slotIndex}`} className="contents">
-                <div
-                  data-slot={slotIndex}
-                  className={`flex items-center justify-center text-[10px] font-mono border-b border-slate-100 ${
-                    isCurrent ? "bg-indigo-50" : ""
-                  } ${slotIndex % 2 === 0 ? "text-slate-600 font-semibold" : "text-slate-400"}`}
-                  style={{ gridRow: slotIndex + 1, gridColumn: 1 }}
+          <TimeGrid
+            startSlot={0}
+            endSlot={48}
+            entries={entries}
+            occupiedSlots={occupiedSlots}
+            entryColumns={entryColumns}
+            isToday={isToday}
+            currentSlot={currentSlot}
+            rowHeightRem={2.25}
+            onSlotClick={handleSlotClick}
+            onEntryClick={handleEntryClick}
+          />
+        </div>
+
+        {/* ── PC: AM/PM side-by-side + right panel ── */}
+        <div className="hidden lg:flex flex-1 overflow-hidden" {...swipeHandlers}>
+          {/* AM column 00:00–12:00 */}
+          <div className="flex-1 overflow-y-auto border-r border-slate-100 px-1">
+            <div className="text-center text-[10px] font-semibold text-slate-400 py-1 border-b border-slate-100">
+              午前
+            </div>
+            <TimeGrid
+              startSlot={0}
+              endSlot={24}
+              entries={entries}
+              occupiedSlots={occupiedSlots}
+              entryColumns={entryColumns}
+              isToday={isToday}
+              currentSlot={currentSlot}
+              rowHeightRem={1.875}
+              onSlotClick={handleSlotClick}
+              onEntryClick={handleEntryClick}
+            />
+          </div>
+
+          {/* PM column 12:00–24:00 */}
+          <div className="flex-1 overflow-y-auto border-r border-slate-100 px-1">
+            <div className="text-center text-[10px] font-semibold text-slate-400 py-1 border-b border-slate-100">
+              午後
+            </div>
+            <TimeGrid
+              startSlot={24}
+              endSlot={48}
+              entries={entries}
+              occupiedSlots={occupiedSlots}
+              entryColumns={entryColumns}
+              isToday={isToday}
+              currentSlot={currentSlot}
+              rowHeightRem={1.875}
+              onSlotClick={handleSlotClick}
+              onEntryClick={handleEntryClick}
+            />
+          </div>
+
+          {/* Right panel */}
+          <div className="w-80 flex-shrink-0 border-l border-slate-200 bg-white flex flex-col overflow-hidden">
+            {/* Panel header */}
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
+              <h3 className="text-sm font-semibold text-slate-700">
+                {panelHasContent ? panelTitle : "詳細"}
+              </h3>
+              {panelHasContent && (
+                <button onClick={closePanel} className="p-1 rounded-lg hover:bg-slate-100">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {/* Panel content */}
+            {selectedSlot !== null && (
+              <EntryModal
+                slotIndex={selectedSlot}
+                categories={categories}
+                genres={genres}
+                editEntry={editEntry}
+                onSave={handleSave}
+                onDelete={editEntry ? () => handleDelete(editEntry.id) : undefined}
+                onClose={closePanel}
+                panelMode
+              />
+            )}
+            {showExpenseModal && (
+              <ExpenseModal
+                date={date}
+                onSave={() => { setShowExpenseModal(false); }}
+                onClose={() => setShowExpenseModal(false)}
+                panelMode
+              />
+            )}
+            {!panelHasContent && (
+              <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6">
+                <p className="text-xs text-slate-400 text-center">
+                  タイムラインをクリックして<br />記録を追加
+                </p>
+                <button
+                  onClick={() => {
+                    setEditEntry(null);
+                    setSelectedSlot(isToday ? currentSlot : 18);
+                    setShowExpenseModal(false);
+                  }}
+                  className="w-full py-2.5 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700"
                 >
-                  {slotToTime(slotIndex)}
-                </div>
-                {!isOccupied && (
-                  <button
-                    onClick={() => handleSlotClick(slotIndex)}
-                    className={`flex items-center pl-2 border-b border-slate-100 transition-colors text-left ${
-                      isCurrent ? "bg-indigo-50 hover:bg-indigo-100" : "hover:bg-slate-50 active:bg-slate-100"
-                    }`}
-                    style={{ gridRow: slotIndex + 1, gridColumn: 2 }}
-                  >
-                    <span className="text-slate-300 text-xs">-</span>
-                  </button>
-                )}
+                  ＋ 記録を追加
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedSlot(null);
+                    setShowExpenseModal(true);
+                  }}
+                  className="w-full py-2.5 rounded-lg text-sm font-medium bg-rose-500 text-white hover:bg-rose-600"
+                >
+                  ¥ 家計簿を追加
+                </button>
               </div>
-            );
-          })}
-
-          {entries.map((entry) => {
-            const spanSlots = entry.endSlot - entry.startSlot;
-            const col = entryColumns.get(entry.id) ?? -1;
-            const isOverlap = col >= 0;
-
-            const style: React.CSSProperties = {
-              gridRow: `${entry.startSlot + 1} / ${entry.endSlot + 1}`,
-              gridColumn: 2,
-              backgroundColor: `${entry.genre.color}15`,
-            };
-
-            if (isOverlap) {
-              style.width = "50%";
-              style.marginLeft = col === 1 ? "50%" : "0";
-            }
-
-            return (
-              <button
-                key={entry.id}
-                onClick={() => {
-                  setEditEntry(entry);
-                  setSelectedSlot(entry.startSlot);
-                }}
-                className="relative flex text-left rounded-md overflow-hidden transition-colors hover:brightness-95 active:brightness-90 mx-0.5 my-px"
-                style={style}
-              >
-                <div
-                  className="w-1 flex-shrink-0 rounded-l-md"
-                  style={{ backgroundColor: entry.genre.color }}
-                />
-                <div className="flex-1 flex flex-col justify-center px-1.5 py-0.5 min-w-0 overflow-hidden">
-                  {spanSlots === 1 ? (
-                    <div className="flex items-center gap-1 min-w-0">
-                      <span
-                        className="text-[9px] px-1 py-px rounded text-white font-medium leading-none flex-shrink-0"
-                        style={{ backgroundColor: entry.genre.color }}
-                      >
-                        {entry.genre.name}
-                      </span>
-                      <span className="text-[10px] text-slate-500 flex-shrink-0">{entry.category.name}</span>
-                      {entry.title && <span className="text-[10px] font-medium truncate">{entry.title}</span>}
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex items-center gap-1 flex-wrap">
-                        <span className="text-[10px] text-slate-500 font-medium">{entry.category.name}</span>
-                        <span
-                          className="text-[10px] px-1 py-px rounded-full text-white font-medium leading-none"
-                          style={{ backgroundColor: entry.genre.color }}
-                        >
-                          {entry.genre.name}
-                        </span>
-                        {!isOverlap && (
-                          <span className="text-[10px] text-slate-400">
-                            {slotToTime(entry.startSlot)}-{slotToTime(entry.endSlot)}
-                          </span>
-                        )}
-                      </div>
-                      {entry.title && (
-                        <p className={`font-medium truncate ${spanSlots > 2 && !isOverlap ? "text-xs" : "text-[10px]"}`}>
-                          {entry.title}
-                        </p>
-                      )}
-                      {entry.detail && spanSlots >= 4 && !isOverlap && (
-                        <p className="text-[10px] text-slate-400 truncate">{entry.detail}</p>
-                      )}
-                    </>
-                  )}
-                </div>
-              </button>
-            );
-          })}
+            )}
+          </div>
         </div>
       </div>
 
-      {/* FABs */}
-      <div className="fixed bottom-20 right-4 z-40 flex flex-col gap-3">
+      {/* FABs — mobile only */}
+      <div className="fixed bottom-16 right-4 z-40 flex flex-col gap-3 lg:hidden">
         <button
           onClick={() => {
             setEditEntry(null);
@@ -438,25 +617,27 @@ export default function TimelinePage() {
         </button>
       </div>
 
-      {selectedSlot !== null && (
-        <EntryModal
-          slotIndex={selectedSlot}
-          categories={categories}
-          genres={genres}
-          editEntry={editEntry}
-          onSave={handleSave}
-          onDelete={editEntry ? () => handleDelete(editEntry.id) : undefined}
-          onClose={() => { setSelectedSlot(null); setEditEntry(null); }}
-        />
-      )}
-
-      {showExpenseModal && (
-        <ExpenseModal
-          date={date}
-          onSave={() => setShowExpenseModal(false)}
-          onClose={() => setShowExpenseModal(false)}
-        />
-      )}
+      {/* Mobile modals */}
+      <div className="lg:hidden">
+        {selectedSlot !== null && (
+          <EntryModal
+            slotIndex={selectedSlot}
+            categories={categories}
+            genres={genres}
+            editEntry={editEntry}
+            onSave={handleSave}
+            onDelete={editEntry ? () => handleDelete(editEntry.id) : undefined}
+            onClose={() => { setSelectedSlot(null); setEditEntry(null); }}
+          />
+        )}
+        {showExpenseModal && (
+          <ExpenseModal
+            date={date}
+            onSave={() => setShowExpenseModal(false)}
+            onClose={() => setShowExpenseModal(false)}
+          />
+        )}
+      </div>
     </div>
   );
 }

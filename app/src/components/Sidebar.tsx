@@ -38,30 +38,27 @@ const icons: Record<string, React.ReactNode> = {
   ),
 };
 
-export default function BottomNav() {
+export default function Sidebar() {
   const pathname = usePathname();
-
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 safe-area-bottom lg:hidden">
-      <div className="flex justify-around items-center h-12 max-w-lg mx-auto">
-        {navItems.map((item) => {
-          const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors ${
-                isActive
-                  ? "text-indigo-600"
-                  : "text-slate-400 hover:text-slate-600"
-              }`}
-            >
-              {icons[item.icon]}
-              <span className="text-xs font-medium">{item.label}</span>
-            </Link>
-          );
-        })}
-      </div>
+    <nav className="hidden lg:flex fixed left-0 top-0 h-full w-16 bg-white border-r border-slate-200 z-50 flex-col items-center py-6 gap-1">
+      {navItems.map((item) => {
+        const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={`flex flex-col items-center gap-1 p-2 rounded-xl w-12 transition-colors ${
+              isActive
+                ? "bg-indigo-50 text-indigo-600"
+                : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            {icons[item.icon]}
+            <span className="text-[9px] font-medium leading-none">{item.label}</span>
+          </Link>
+        );
+      })}
     </nav>
   );
 }
