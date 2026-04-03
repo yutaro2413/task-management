@@ -106,10 +106,14 @@ export default function TimelinePage() {
     timelineRef.current.scrollTop = targetSlot * 36;
   }, [date, isToday, fetching]);
 
-  // Work hours (excluding プライベート)
-  const workSlots = entries
+  // Work hours (excluding プライベート) — deduplicate overlapping slots
+  const workSlotSet = new Set<number>();
+  entries
     .filter((e) => e.category.name !== "プライベート")
-    .reduce((sum, e) => sum + (e.endSlot - e.startSlot), 0);
+    .forEach((e) => {
+      for (let i = e.startSlot; i < e.endSlot; i++) workSlotSet.add(i);
+    });
+  const workSlots = workSlotSet.size;
   const workHours = Math.floor(workSlots / 2);
   const workMinutes = (workSlots % 2) * 30;
 
