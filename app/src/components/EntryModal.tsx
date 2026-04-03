@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { slotToTime, getSlotOptions } from "@/lib/utils";
+import { slotToTime, slotToTimeLabel, getSlotOptions, getEndSlotOptions } from "@/lib/utils";
 
 type Category = { id: string; name: string };
 type Genre = { id: string; name: string; color: string };
@@ -52,13 +52,14 @@ export default function EntryModal({
 
   const canSave = categoryId && genreId && startSlot < endSlot;
   const slotOptions = getSlotOptions();
+  const endSlotOptions = getEndSlotOptions(startSlot);
 
   const formContent = (
     <>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-bold">
-          {slotToTime(startSlot)} - {slotToTime(endSlot)}
+          {slotToTime(startSlot)} - {slotToTimeLabel(endSlot)}
         </h2>
         <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-100">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -90,11 +91,9 @@ export default function EntryModal({
             onChange={(e) => setEndSlot(Number(e.target.value))}
             className="flex-1 px-2 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            {slotOptions
-              .filter((opt) => opt.value > startSlot)
-              .map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
+            {endSlotOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
           </select>
         </div>
       </div>

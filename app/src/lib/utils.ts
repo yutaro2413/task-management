@@ -58,3 +58,19 @@ export function getSlotOptions(): { value: number; label: string }[] {
     label: slotToTime(i),
   }));
 }
+
+/** Display label: slots ≥ 48 are shown as "翌HH:MM" (cross-midnight) */
+export function slotToTimeLabel(slotIndex: number): string {
+  if (slotIndex >= 48) return `翌${slotToTime(slotIndex - 48)}`;
+  return slotToTime(slotIndex);
+}
+
+/** End-slot options from startSlot+1 up to 翌04:00 (slot 56), labeled with "翌" prefix for cross-midnight */
+export function getEndSlotOptions(startSlot: number): { value: number; label: string }[] {
+  const maxEnd = 56; // 翌04:00
+  const options: { value: number; label: string }[] = [];
+  for (let slot = startSlot + 1; slot <= maxEnd; slot++) {
+    options.push({ value: slot, label: slotToTimeLabel(slot) });
+  }
+  return options;
+}

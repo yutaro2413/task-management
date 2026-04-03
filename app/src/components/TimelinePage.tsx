@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { slotToTime, toJSTDateString, getCurrentSlotJST } from "@/lib/utils";
+import { slotToTime, slotToTimeLabel, toJSTDateString, getCurrentSlotJST } from "@/lib/utils";
 import { cachedFetch, invalidateCache, MASTER_TTL } from "@/lib/cache";
 import { useSwipe } from "@/hooks/useSwipe";
 import EntryModal from "./EntryModal";
@@ -35,6 +35,7 @@ type TimeGridProps = {
   rowHeightRem: number;
   onSlotClick: (slotIndex: number) => void;
   onEntryClick: (entry: TimeEntry) => void;
+  onNewEntry: (slotIndex: number) => void;
   gridRef?: React.RefObject<HTMLDivElement | null>;
 };
 
@@ -49,6 +50,7 @@ function TimeGrid({
   rowHeightRem,
   onSlotClick,
   onEntryClick,
+  onNewEntry,
   gridRef,
 }: TimeGridProps) {
   const count = endSlot - startSlot;
@@ -60,7 +62,7 @@ function TimeGrid({
       data-grid
       className="grid relative"
       style={{
-        gridTemplateColumns: "3rem 1fr",
+        gridTemplateColumns: "3rem 1fr 0.875rem",
         gridTemplateRows: `repeat(${count}, ${rowHeightRem}rem)`,
       }}
     >
@@ -90,6 +92,15 @@ function TimeGrid({
                 <span className="text-slate-300 text-xs">-</span>
               </button>
             )}
+            {/* Right-side strip: always visible, click to add new entry at this slot */}
+            <button
+              onClick={(e) => { e.stopPropagation(); onNewEntry(slotIndex); }}
+              title="ここから新規登録"
+              className={`border-b border-slate-100 border-l border-l-slate-100 transition-colors ${
+                isCurrent ? "bg-indigo-50 hover:bg-indigo-200" : "bg-slate-50 hover:bg-indigo-100"
+              }`}
+              style={{ gridRow: localRow, gridColumn: 3 }}
+            />
           </div>
         );
       })}
@@ -150,7 +161,7 @@ function TimeGrid({
                     </span>
                     {!isOverlap && (
                       <span className="text-[10px] text-slate-400">
-                        {slotToTime(entry.startSlot)}-{slotToTime(entry.endSlot)}
+                        {slotToTime(entry.startSlot)}-{slotToTimeLabel(entry.endSlot)}
                       </span>
                     )}
                   </div>
@@ -386,6 +397,12 @@ export default function TimelinePage() {
     }
   };
 
+  const handleNewAtSlot = (slotIndex: number) => {
+    setEditEntry(null);
+    setSelectedSlot(slotIndex);
+    setShowExpenseModal(false);
+  };
+
   const closePanel = () => {
     setSelectedSlot(null);
     setEditEntry(null);
@@ -492,6 +509,7 @@ export default function TimelinePage() {
             rowHeightRem={2.25}
             onSlotClick={handleSlotClick}
             onEntryClick={handleEntryClick}
+            onNewEntry={handleNewAtSlot}
           />
         </div>
 
@@ -513,6 +531,7 @@ export default function TimelinePage() {
               rowHeightRem={1.875}
               onSlotClick={handleSlotClick}
               onEntryClick={handleEntryClick}
+              onNewEntry={handleNewAtSlot}
             />
           </div>
 
@@ -532,6 +551,7 @@ export default function TimelinePage() {
               rowHeightRem={1.875}
               onSlotClick={handleSlotClick}
               onEntryClick={handleEntryClick}
+              onNewEntry={handleNewAtSlot}
             />
           </div>
 
