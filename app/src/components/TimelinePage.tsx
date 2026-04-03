@@ -190,24 +190,31 @@ export default function TimelinePage() {
 
   const isToday = date === toJSTDateString();
 
-  const fetchEntries = useCallback(async (bustCache = false) => {
+  // 最新リクエスト対象日付を追跡し、古いレスポンスを破棄する
+  const latestFetchDateRef = useRef(date);
+
+  const fetchEntries = useCallback(async (targetDate: string, bustCache = false) => {
+    latestFetchDateRef.current = targetDate;
     setFetching(true);
     try {
       const prevDate = (() => {
-        const d = new Date(date + "T00:00:00");
+        const d = new Date(targetDate + "T00:00:00");
         d.setDate(d.getDate() - 1);
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       })();
 
       if (bustCache) {
-        invalidateCache(`time-entries?date=${date}`);
+        invalidateCache(`time-entries?date=${targetDate}`);
         invalidateCache(`time-entries?date=${prevDate}`);
       }
 
       const [currentData, prevData] = await Promise.all([
-        cachedFetch<TimeEntry[]>(`/api/time-entries?date=${date}`),
+        cachedFetch<TimeEntry[]>(`/api/time-entries?date=${targetDate}`),
         cachedFetch<TimeEntry[]>(`/api/time-entries?date=${prevDate}`),
       ]);
+
+      // 日付を高速変更した場合、古いレスポンスは無視する
+      if (latestFetchDateRef.current !== targetDate) return;
 
       const crossMidnightEntries: TimeEntry[] = prevData
         .filter((e) => e.endSlot >= 48)
@@ -219,15 +226,19 @@ export default function TimelinePage() {
 
       setEntries([...crossMidnightEntries, ...currentData]);
     } finally {
-      setFetching(false);
-      initialLoadDone.current = true;
+      if (latestFetchDateRef.current === targetDate) {
+        setFetching(false);
+        initialLoadDone.current = true;
+      }
     }
-  }, [date]);
+  }, []);
 
+  // 150ms デバウンスで高速連打によるリクエスト爆発を防ぐ
   useEffect(() => {
     scrollDoneRef.current = false;
-    fetchEntries();
-  }, [fetchEntries]);
+    const timer = setTimeout(() => fetchEntries(date), 150);
+    return () => clearTimeout(timer);
+  }, [date, fetchEntries]);
 
   useEffect(() => {
     Promise.all([
@@ -357,7 +368,7 @@ export default function TimelinePage() {
       }
       setSelectedSlot(null);
       setEditEntry(null);
-      await fetchEntries(true);
+      await fetchEntries(date, true);
     } finally {
       setSaving(false);
     }
@@ -369,7 +380,7 @@ export default function TimelinePage() {
       await fetch(`/api/time-entries?id=${id}`, { method: "DELETE" });
       setSelectedSlot(null);
       setEditEntry(null);
-      await fetchEntries(true);
+      await fetchEntries(date, true);
     } finally {
       setSaving(false);
     }

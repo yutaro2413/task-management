@@ -14,14 +14,19 @@ export async function GET(request: NextRequest) {
 
   const startDate = searchParams.get("startDate");
   const endDate = searchParams.get("endDate");
+  const keyword = searchParams.get("keyword");
   const where: Record<string, unknown> = {};
   if (startDate && endDate) {
     where.date = { gte: new Date(startDate), lte: new Date(endDate) };
+  }
+  if (keyword) {
+    where.content = { contains: keyword, mode: "insensitive" };
   }
 
   const notes = await prisma.dailyNote.findMany({
     where,
     orderBy: { date: "desc" },
+    take: 100,
   });
   return NextResponse.json(notes);
 }
