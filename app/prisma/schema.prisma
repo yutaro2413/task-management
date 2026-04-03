@@ -57,7 +57,8 @@ model ExpenseCategory {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  expenses Expense[]
+  expenses      Expense[]
+  fixedExpenses FixedExpense[]
 }
 
 // 家計簿
@@ -68,6 +69,22 @@ model Expense {
   type       String   @default("expense") // "expense" or "income"
   categoryId String?
   memo       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  category ExpenseCategory? @relation(fields: [categoryId], references: [id])
+}
+
+// 固定費
+model FixedExpense {
+  id         String   @id @default(cuid())
+  title      String
+  amount     Int
+  type       String   @default("expense") // "expense" or "income"
+  categoryId String?
+  day        Int      @default(1) // 毎月の引落日
+  active     Boolean  @default(true)
+  sortOrder  Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

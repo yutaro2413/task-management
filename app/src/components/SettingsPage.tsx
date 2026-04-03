@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import ExpenseIcon, { EXPENSE_ICON_OPTIONS } from "./ExpenseIcon";
 
 type Category = { id: string; name: string };
@@ -128,6 +129,22 @@ export default function SettingsPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 max-w-lg mx-auto w-full space-y-6">
+        {/* Fixed Expenses Link */}
+        <Link
+          href="/fixed-expenses"
+          className="flex items-center justify-between bg-white rounded-xl border border-slate-200 px-4 py-3.5 hover:bg-slate-50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <svg className="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path d="M9 14l6-6M4 2v20l3-2 3 2 3-2 3 2 3-2 3 2V2l-3 2-3-2-3 2-3-2-3 2-3-2z" />
+            </svg>
+            <span className="text-sm font-semibold">固定費設定</span>
+          </div>
+          <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path d="M9 5l7 7-7 7" />
+          </svg>
+        </Link>
+
         {/* Categories */}
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="px-4 py-3 bg-slate-50 border-b border-slate-100"><h2 className="text-sm font-semibold">カテゴリ</h2></div>
