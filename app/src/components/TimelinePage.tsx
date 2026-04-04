@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { slotToTime, slotToTimeLabel, toJSTDateString, getCurrentSlotJST, getWeekDates, formatDate, getDayLabel } from "@/lib/utils";
+import { slotToTime, slotToTimeLabel, toJSTDateString, getCurrentSlotJST, getWeekDates, formatDate, getDayLabel, toJSTDateKey } from "@/lib/utils";
 import { cachedFetch, invalidateCache, MASTER_TTL } from "@/lib/cache";
 import { useSwipe } from "@/hooks/useSwipe";
 import EntryModal from "./EntryModal";
@@ -286,7 +286,7 @@ export default function TimelinePage() {
     const data = await cachedFetch<TimeEntry[]>(`/api/time-entries?startDate=${weekStart}&endDate=${weekEnd}`);
     const map = new Map<string, TimeEntry[]>();
     data.forEach((e) => {
-      const key = e.date?.split("T")[0] ?? "";
+      const key = e.date ? toJSTDateKey(e.date) : "";
       map.set(key, [...(map.get(key) || []), e]);
     });
     setWeekEntriesMap(map);

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+function parseJSTDate(dateStr: string): Date {
+  return new Date(dateStr + "T00:00:00+09:00");
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const date = searchParams.get("date");
@@ -9,9 +13,9 @@ export async function GET(request: NextRequest) {
 
   const where: Record<string, unknown> = {};
   if (date) {
-    where.date = new Date(date);
+    where.date = parseJSTDate(date);
   } else if (startDate && endDate) {
-    where.date = { gte: new Date(startDate), lte: new Date(endDate) };
+    where.date = { gte: parseJSTDate(startDate), lte: parseJSTDate(endDate) };
   }
 
   const expenses = await prisma.expense.findMany({
@@ -26,7 +30,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const expense = await prisma.expense.create({
     data: {
-      date: new Date(body.date),
+      date: parseJSTDate(body.date),
       amount: body.amount,
       type: body.type || "expense",
       categoryId: body.categoryId || null,
