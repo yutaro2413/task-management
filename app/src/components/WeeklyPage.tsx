@@ -457,16 +457,18 @@ export default function WeeklyPage() {
                       {dayEntries.length === 0 ? (
                         <p className="px-3 py-3 text-xs text-slate-400">記録なし</p>
                       ) : (
-                        <div className="divide-y divide-slate-50">
-                          {dayEntries.map((e) => (
-                            <div key={e.id} className="px-3 py-2 flex items-center gap-1.5 min-w-0">
-                              <span className="text-xs text-slate-400 font-mono flex-shrink-0 whitespace-nowrap">{slotToTime(e.startSlot)}-{slotToTime(e.endSlot)}</span>
-                              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: e.genre.color }} />
-                              <span className="text-xs text-slate-500 flex-shrink-0 max-w-[5rem] truncate">{e.category.name}</span>
-                              <span className="text-sm flex-1 truncate min-w-0">{e.title || e.genre.name}</span>
-                            </div>
-                          ))}
-                        </div>
+                        <table className="w-full">
+                          <tbody>
+                            {dayEntries.map((e) => (
+                              <tr key={e.id} className="border-b border-slate-50 last:border-b-0">
+                                <td className="py-2 pl-3 pr-2 text-xs text-slate-400 font-mono whitespace-nowrap align-middle">{slotToTime(e.startSlot)}-{slotToTime(e.endSlot)}</td>
+                                <td className="py-2 pr-1 align-middle"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: e.genre.color }} /></td>
+                                <td className="py-2 pr-2 text-xs text-slate-500 whitespace-nowrap align-middle">{e.category.name}</td>
+                                <td className="py-2 pr-3 text-sm truncate max-w-0 align-middle">{e.title || e.genre.name}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       )}
                     </div>
                   );
