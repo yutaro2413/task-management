@@ -429,11 +429,11 @@ export default function WeeklyPage() {
                       ) : (
                         <div className="divide-y divide-slate-50">
                           {dayEntries.map((e) => (
-                            <div key={e.id} className="px-3 py-2 flex items-center gap-2">
-                              <span className="text-xs text-slate-400 font-mono w-24 flex-shrink-0">{slotToTime(e.startSlot)}-{slotToTime(e.endSlot)}</span>
+                            <div key={e.id} className="px-3 py-2 flex items-center gap-1.5 min-w-0">
+                              <span className="text-xs text-slate-400 font-mono flex-shrink-0 whitespace-nowrap">{slotToTime(e.startSlot)}-{slotToTime(e.endSlot)}</span>
                               <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: e.genre.color }} />
-                              <span className="text-xs text-slate-500">{e.category.name}</span>
-                              <span className="text-sm flex-1 truncate">{e.title || e.genre.name}</span>
+                              <span className="text-xs text-slate-500 flex-shrink-0 max-w-[5rem] truncate">{e.category.name}</span>
+                              <span className="text-sm flex-1 truncate min-w-0">{e.title || e.genre.name}</span>
                             </div>
                           ))}
                         </div>
