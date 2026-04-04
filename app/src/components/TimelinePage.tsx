@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { slotToTime, slotToTimeLabel, toJSTDateString, getCurrentSlotJST } from "@/lib/utils";
+import { slotToTime, slotToTimeLabel, toJSTDateString, getCurrentSlotJST, getWeekDates, formatDate, getDayLabel } from "@/lib/utils";
 import { cachedFetch, invalidateCache, MASTER_TTL } from "@/lib/cache";
 import { useSwipe } from "@/hooks/useSwipe";
 import EntryModal from "./EntryModal";
@@ -197,12 +197,18 @@ export default function TimelinePage() {
   const [saving, setSaving] = useState(false);
   const [isPanelDirty, setIsPanelDirty] = useState(false);
   const [showDirtyWarning, setShowDirtyWarning] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
+  const [weekEntriesMap, setWeekEntriesMap] = useState<Map<string, TimeEntry[]>>(new Map());
   const timelineRef = useRef<HTMLDivElement>(null);
+  const landscapeScrollRef = useRef<HTMLDivElement>(null);
   const scrollDoneRef = useRef(false);
   const initialLoadDone = useRef(false);
   const dirtyWarnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isToday = date === toJSTDateString();
+  const weekDates = getWeekDates(new Date(date + "T00:00:00"));
+  const weekStart = formatDate(weekDates[0]);
+  const weekEnd = formatDate(weekDates[6]);
 
   // 最新リクエスト対象日付を追跡し、古いレスポンスを破棄する
   const latestFetchDateRef = useRef(date);
@@ -263,6 +269,43 @@ export default function TimelinePage() {
       setGenres(gnrs);
     });
   }, []);
+
+  // Landscape detection
+  useEffect(() => {
+    const mq = window.matchMedia("(orientation: landscape)");
+    setIsLandscape(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsLandscape(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  // Fetch week entries for landscape view
+  const fetchWeekEntries = useCallback(async (bustCache = false) => {
+    const cacheKey = `time-entries?startDate=${weekStart}&endDate=${weekEnd}`;
+    if (bustCache) invalidateCache(cacheKey);
+    const data = await cachedFetch<TimeEntry[]>(`/api/time-entries?startDate=${weekStart}&endDate=${weekEnd}`);
+    const map = new Map<string, TimeEntry[]>();
+    data.forEach((e) => {
+      const key = e.date?.split("T")[0] ?? "";
+      map.set(key, [...(map.get(key) || []), e]);
+    });
+    setWeekEntriesMap(map);
+  }, [weekStart, weekEnd]);
+
+  useEffect(() => {
+    if (isLandscape) fetchWeekEntries();
+  }, [isLandscape, fetchWeekEntries]);
+
+  // Auto-scroll landscape grid to current time / 9am
+  useEffect(() => {
+    if (!isLandscape || !landscapeScrollRef.current) return;
+    const grid = landscapeScrollRef.current.querySelector("[data-weekgrid]") as HTMLElement | null;
+    if (!grid) return;
+    const slot = getCurrentSlotJST();
+    const targetSlot = isToday ? Math.max(0, slot - 2) : 18;
+    const pxPerSlot = grid.clientHeight / 48;
+    landscapeScrollRef.current.scrollTop = targetSlot * pxPerSlot;
+  }, [isLandscape, weekEntriesMap, isToday]);
 
   // Auto-scroll mobile timeline to current/9am slot
   useEffect(() => {
@@ -326,7 +369,7 @@ export default function TimelinePage() {
 
   const changeDate = (delta: number) => {
     const d = new Date(date + "T00:00:00");
-    d.setDate(d.getDate() + delta);
+    d.setDate(d.getDate() + (isLandscape ? delta * 7 : delta));
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
@@ -393,6 +436,7 @@ export default function TimelinePage() {
       setIsPanelDirty(false);
       setShowDirtyWarning(false);
       await fetchEntries(date, true);
+      if (isLandscape) await fetchWeekEntries(true);
     } finally {
       setSaving(false);
     }
@@ -407,6 +451,7 @@ export default function TimelinePage() {
       setIsPanelDirty(false);
       setShowDirtyWarning(false);
       await fetchEntries(date, true);
+      if (isLandscape) await fetchWeekEntries(true);
     } finally {
       setSaving(false);
     }
@@ -455,11 +500,13 @@ export default function TimelinePage() {
             <div className="text-center">
               <div className="flex items-center gap-2 justify-center">
                 <span className="text-base font-bold">
-                  {new Date(date + "T00:00:00").toLocaleDateString("ja-JP", {
-                    month: "long",
-                    day: "numeric",
-                    weekday: "short",
-                  })}
+                  {isLandscape
+                    ? `${getDayLabel(weekDates[0])} - ${getDayLabel(weekDates[6])}`
+                    : new Date(date + "T00:00:00").toLocaleDateString("ja-JP", {
+                        month: "long",
+                        day: "numeric",
+                        weekday: "short",
+                      })}
                 </span>
                 {!isToday && (
                   <button
@@ -510,26 +557,154 @@ export default function TimelinePage() {
       {/* Body */}
       <div className="flex-1 flex overflow-hidden">
 
-        {/* ── Mobile: single scrollable column ── */}
-        <div
-          ref={timelineRef}
-          className="flex-1 overflow-y-auto timeline-scroll px-2 max-w-lg mx-auto w-full lg:hidden"
-          {...swipeHandlers}
-        >
-          <TimeGrid
-            startSlot={0}
-            endSlot={48}
-            entries={entries}
-            occupiedSlots={occupiedSlots}
-            entryColumns={entryColumns}
-            isToday={isToday}
-            currentSlot={currentSlot}
-            rowHeightRem={2.25}
-            onSlotClick={handleSlotClick}
-            onEntryClick={handleEntryClick}
-            onNewEntry={handleNewAtSlot}
-          />
-        </div>
+        {/* ── Mobile portrait: single scrollable column ── */}
+        {!isLandscape && (
+          <div
+            ref={timelineRef}
+            className="flex-1 overflow-y-auto timeline-scroll px-2 max-w-lg mx-auto w-full lg:hidden"
+            {...swipeHandlers}
+          >
+            <TimeGrid
+              startSlot={0}
+              endSlot={48}
+              entries={entries}
+              occupiedSlots={occupiedSlots}
+              entryColumns={entryColumns}
+              isToday={isToday}
+              currentSlot={currentSlot}
+              rowHeightRem={2.25}
+              onSlotClick={handleSlotClick}
+              onEntryClick={handleEntryClick}
+              onNewEntry={handleNewAtSlot}
+            />
+          </div>
+        )}
+
+        {/* ── Mobile landscape: 7-day week view ── */}
+        {isLandscape && (
+          <div ref={landscapeScrollRef} className="flex-1 overflow-y-auto lg:hidden" {...swipeHandlers}>
+            {/* Sticky day headers */}
+            <div
+              className="sticky top-0 z-20 grid bg-white border-b border-slate-200"
+              style={{ gridTemplateColumns: "2rem repeat(7, 1fr)" }}
+            >
+              <div className="border-r border-slate-100" />
+              {weekDates.map((wd) => {
+                const dk = formatDate(wd);
+                const isTodayCol = dk === toJSTDateString();
+                const dow = wd.getDay();
+                return (
+                  <div
+                    key={dk}
+                    className={`text-center py-1 border-r border-slate-100 text-[10px] font-semibold leading-tight ${
+                      isTodayCol ? "text-indigo-600 bg-indigo-50" : dow === 0 ? "text-red-500" : dow === 6 ? "text-blue-500" : "text-slate-600"
+                    }`}
+                  >
+                    {wd.getMonth() + 1}/{wd.getDate()}
+                    <br />
+                    {["日","月","火","水","木","金","土"][dow]}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Time grid */}
+            <div
+              data-weekgrid
+              className="grid relative"
+              style={{
+                gridTemplateColumns: "2rem repeat(7, 1fr)",
+                gridTemplateRows: "repeat(48, 1.25rem)",
+              }}
+              onClick={(ev) => {
+                const grid = ev.currentTarget;
+                const rect = grid.getBoundingClientRect();
+                const x = ev.clientX - rect.left;
+                const y = ev.clientY - rect.top;
+                const timeColPx = 32;
+                if (x < timeColPx) return;
+                const dayW = (rect.width - timeColPx) / 7;
+                const colIdx = Math.min(6, Math.floor((x - timeColPx) / dayW));
+                const rowH = grid.clientHeight / 48;
+                const slot = Math.min(47, Math.floor(y / rowH));
+                const dk = formatDate(weekDates[colIdx]);
+                setDate(dk);
+                setEditEntry(null);
+                setSelectedSlot(slot);
+              }}
+            >
+              {/* Hour labels */}
+              {Array.from({ length: 24 }, (_, h) => (
+                <div
+                  key={`h${h}`}
+                  className="flex items-start justify-center text-[8px] font-mono text-slate-400 border-b border-slate-100"
+                  style={{ gridRow: `${h * 2 + 1} / ${h * 2 + 3}`, gridColumn: 1 }}
+                >
+                  {h}
+                </div>
+              ))}
+
+              {/* Grid lines */}
+              {weekDates.map((_, colIdx) =>
+                Array.from({ length: 48 }, (_, rowIdx) => (
+                  <div
+                    key={`c${colIdx}r${rowIdx}`}
+                    className={`border-r border-slate-100 ${rowIdx % 2 === 0 ? "border-b border-b-slate-100" : "border-b border-b-slate-50"}`}
+                    style={{ gridRow: rowIdx + 1, gridColumn: colIdx + 2 }}
+                  />
+                ))
+              )}
+
+              {/* Current time indicator */}
+              {weekDates.map((wd, colIdx) => {
+                const dk = formatDate(wd);
+                if (dk !== toJSTDateString()) return null;
+                return (
+                  <div
+                    key="now"
+                    className="bg-indigo-500 z-20 pointer-events-none"
+                    style={{
+                      gridRow: currentSlot + 1,
+                      gridColumn: colIdx + 2,
+                      height: "2px",
+                      alignSelf: "center",
+                    }}
+                  />
+                );
+              })}
+
+              {/* Entry blocks */}
+              {weekDates.map((wd, colIdx) => {
+                const dk = formatDate(wd);
+                const dayEntries = weekEntriesMap.get(dk) || [];
+                return dayEntries.map((entry) => (
+                  <button
+                    key={entry.id}
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      setDate(dk);
+                      handleEntryClick(entry);
+                    }}
+                    className="rounded-sm overflow-hidden z-10 text-left mx-px"
+                    style={{
+                      gridRow: `${entry.startSlot + 1} / ${entry.endSlot + 1}`,
+                      gridColumn: colIdx + 2,
+                      backgroundColor: `${entry.genre.color}20`,
+                      borderLeft: `2px solid ${entry.genre.color}`,
+                    }}
+                  >
+                    <p
+                      className="text-[7px] font-medium truncate px-0.5 leading-tight"
+                      style={{ color: entry.genre.color }}
+                    >
+                      {entry.title || entry.genre.name}
+                    </p>
+                  </button>
+                ));
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ── PC: AM/PM side-by-side + right panel ── */}
         <div className="hidden lg:flex flex-1 overflow-hidden" {...swipeHandlers}>
