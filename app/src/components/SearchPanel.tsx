@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { slotToTime } from "@/lib/utils";
+import { slotToTime, toJSTDateKey } from "@/lib/utils";
 
 type Category = { id: string; name: string };
 type Genre = { id: string; name: string; color: string };
@@ -169,7 +169,7 @@ export default function SearchPanel({ onClose }: { onClose: () => void }) {
                     {entryResults.slice(0, 50).map((e) => (
                       <div key={e.id} className="flex items-center gap-2 py-2.5">
                         <span className="text-xs text-slate-400 w-14 flex-shrink-0">
-                          {new Date(e.date.split("T")[0] + "T00:00:00").toLocaleDateString("ja-JP", {
+                          {new Date(toJSTDateKey(e.date) + "T00:00:00").toLocaleDateString("ja-JP", {
                             month: "numeric",
                             day: "numeric",
                           })}
@@ -238,7 +238,7 @@ export default function SearchPanel({ onClose }: { onClose: () => void }) {
                     {noteResults.map((n) => (
                       <div key={n.date} className="py-3">
                         <p className="text-xs text-slate-400 mb-1">
-                          {new Date(n.date.split("T")[0] + "T00:00:00").toLocaleDateString("ja-JP", {
+                          {new Date(toJSTDateKey(n.date) + "T00:00:00").toLocaleDateString("ja-JP", {
                             year: "numeric",
                             month: "long",
                             day: "numeric",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { getWeekDates, getDayLabel, formatDate, slotToTime, getMonthDates, getMonthLabel } from "@/lib/utils";
+import { getWeekDates, getDayLabel, formatDate, slotToTime, getMonthDates, getMonthLabel, toJSTDateKey } from "@/lib/utils";
 import { cachedFetch } from "@/lib/cache";
 import { useSwipe } from "@/hooks/useSwipe";
 
@@ -119,7 +119,7 @@ export default function WeeklyPage() {
     const newStart = Math.min(slot, 48 - duration);
     const newEnd = newStart + duration;
     const newDate = formatDate(weekDates[colIdx]);
-    if (newDate === entry.date.split("T")[0] && newStart === entry.startSlot) return; // 変化なし
+    if (newDate === toJSTDateKey(entry.date) && newStart === entry.startSlot) return; // 変化なし
     setIsSaving(true);
     try {
       await fetch("/api/time-entries", {
@@ -260,7 +260,7 @@ export default function WeeklyPage() {
 
   const entriesByDate = new Map<string, TimeEntry[]>();
   entries.forEach((e) => {
-    const dateKey = e.date.split("T")[0];
+    const dateKey = toJSTDateKey(e.date);
     const list = entriesByDate.get(dateKey) || [];
     list.push(e);
     entriesByDate.set(dateKey, list);
@@ -270,7 +270,7 @@ export default function WeeklyPage() {
   const dailyExpenseTotals = new Map<string, number>();
   expenses.forEach((e) => {
     if (e.type !== "expense") return;
-    const dateKey = e.date.split("T")[0];
+    const dateKey = toJSTDateKey(e.date);
     dailyExpenseTotals.set(dateKey, (dailyExpenseTotals.get(dateKey) || 0) + e.amount);
   });
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { formatDate, toJSTDateString } from "@/lib/utils";
+import { formatDate, toJSTDateString, toJSTDateKey } from "@/lib/utils";
 import { cachedFetch, invalidateCache, MASTER_TTL } from "@/lib/cache";
 import { useSwipe } from "@/hooks/useSwipe";
 import ExpenseModal from "./ExpenseModal";
@@ -89,7 +89,7 @@ export default function ExpensesPage() {
 
   const dailyTotals = new Map<string, { income: number; expense: number }>();
   expenses.forEach((e) => {
-    const dateKey = e.date.split("T")[0];
+    const dateKey = toJSTDateKey(e.date);
     const totals = dailyTotals.get(dateKey) || { income: 0, expense: 0 };
     if (e.type === "income") totals.income += e.amount;
     else totals.expense += e.amount;
@@ -114,7 +114,7 @@ export default function ExpensesPage() {
   for (let d = 1; d <= daysInMonth; d++) calendarDays.push(d);
   while (calendarDays.length % 7 !== 0) calendarDays.push(null);
 
-  const selectedExpenses = selectedDate ? expenses.filter((e) => e.date.split("T")[0] === selectedDate) : [];
+  const selectedExpenses = selectedDate ? expenses.filter((e) => toJSTDateKey(e.date) === selectedDate) : [];
   const selectedDateTotal = selectedDate ? dailyTotals.get(selectedDate) : null;
 
   // ── Shared calendar + summary section ──────────────────────────────────────
