@@ -49,6 +49,8 @@ export default function WeeklyPage() {
   const [view, setView] = useState<ViewMode>("summary");
   const [period, setPeriod] = useState<PeriodMode>("weekly");
   const [fetching, setFetching] = useState(false);
+  const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null);
+  const [filterGenreId, setFilterGenreId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const hasData = useRef(false);
 
@@ -361,14 +363,14 @@ export default function WeeklyPage() {
                     <p className="text-sm text-slate-400">記録なし</p>
                   ) : (
                     <div className="space-y-2">
-                      {Array.from(categorySummary.values()).sort((a, b) => b.count - a.count).map((c) => (
-                        <div key={c.name} className="flex items-center gap-2">
+                      {Array.from(categorySummary.entries()).sort((a, b) => b[1].count - a[1].count).map(([cId, c]) => (
+                        <button key={cId} className="flex items-center gap-2 w-full text-left hover:bg-slate-50 rounded -mx-1 px-1 py-0.5 transition-colors" onClick={() => { setFilterCategoryId(cId); setFilterGenreId(null); setView("timeline"); }}>
                           <span className="text-sm flex-1 min-w-0 truncate">{c.name}</span>
                           <span className="text-sm font-medium tabular-nums flex-shrink-0">{c.count * 0.5}h</span>
                           <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden flex-shrink-0">
                             <div className="h-full rounded-full bg-indigo-500" style={{ width: `${allSlots > 0 ? (c.count / allSlots) * 100 : 0}%` }} />
                           </div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}
@@ -380,15 +382,15 @@ export default function WeeklyPage() {
                     <p className="text-sm text-slate-400">記録なし</p>
                   ) : (
                     <div className="space-y-2">
-                      {Array.from(genreSummary.values()).sort((a, b) => b.count - a.count).map((g) => (
-                        <div key={g.name} className="flex items-center gap-2">
+                      {Array.from(genreSummary.entries()).sort((a, b) => b[1].count - a[1].count).map(([gId, g]) => (
+                        <button key={gId} className="flex items-center gap-2 w-full text-left hover:bg-slate-50 rounded -mx-1 px-1 py-0.5 transition-colors" onClick={() => { setFilterGenreId(gId); setFilterCategoryId(null); setView("timeline"); }}>
                           <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} />
                           <span className="text-sm flex-1 min-w-0 truncate">{g.name}</span>
                           <span className="text-sm font-medium tabular-nums flex-shrink-0">{g.count * 0.5}h</span>
                           <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden flex-shrink-0">
                             <div className="h-full rounded-full" style={{ backgroundColor: g.color, width: `${allSlots > 0 ? (g.count / allSlots) * 100 : 0}%` }} />
                           </div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}
@@ -413,12 +415,40 @@ export default function WeeklyPage() {
             </div>
           ) : (
             <div className="space-y-4">
+              {/* Filter UI */}
+              <div className="flex gap-2">
+                <select
+                  value={filterCategoryId ?? ""}
+                  onChange={(e) => setFilterCategoryId(e.target.value || null)}
+                  className="flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-700"
+                >
+                  <option value="">カテゴリ: すべて</option>
+                  {Array.from(categorySummary.entries()).sort((a, b) => b[1].count - a[1].count).map(([cId, c]) => (
+                    <option key={cId} value={cId}>{c.name}</option>
+                  ))}
+                </select>
+                <select
+                  value={filterGenreId ?? ""}
+                  onChange={(e) => setFilterGenreId(e.target.value || null)}
+                  className="flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-700"
+                >
+                  <option value="">ジャンル: すべて</option>
+                  {Array.from(genreSummary.entries()).sort((a, b) => b[1].count - a[1].count).map(([gId, g]) => (
+                    <option key={gId} value={gId}>{g.name}</option>
+                  ))}
+                </select>
+              </div>
               {showSpinner ? (
                 <div className="bg-white rounded-xl p-4 border border-slate-200"><CardSpinner /></div>
               ) : (
                 timelineDates.map((wd) => {
                   const dateKey = formatDate(wd);
-                  const dayEntries = entriesByDate.get(dateKey) || [];
+                  const allDayEntries = entriesByDate.get(dateKey) || [];
+                  const dayEntries = allDayEntries.filter((e) => {
+                    if (filterCategoryId && e.category.id !== filterCategoryId) return false;
+                    if (filterGenreId && e.genre.id !== filterGenreId) return false;
+                    return true;
+                  });
                   return (
                     <div key={dateKey} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                       <div className="px-3 py-2 bg-slate-50 border-b border-slate-100">
