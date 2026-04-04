@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-/** Parse "YYYY-MM-DD" as JST midnight to avoid UTC-offset issues with @db.Date */
-function parseJSTDate(dateStr: string): Date {
-  return new Date(dateStr + "T00:00:00+09:00");
-}
-
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const date = searchParams.get("date");
@@ -17,9 +12,9 @@ export async function GET(request: NextRequest) {
 
   const where: Record<string, unknown> = {};
   if (date) {
-    where.date = parseJSTDate(date);
+    where.date = new Date(date);
   } else if (startDate && endDate) {
-    where.date = { gte: parseJSTDate(startDate), lte: parseJSTDate(endDate) };
+    where.date = { gte: new Date(startDate), lte: new Date(endDate) };
   }
   if (categoryId) where.categoryId = categoryId;
   if (genreId) where.genreId = genreId;
@@ -42,7 +37,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const entry = await prisma.timeEntry.create({
     data: {
-      date: parseJSTDate(body.date),
+      date: new Date(body.date),
       startSlot: body.startSlot,
       endSlot: body.endSlot,
       categoryId: body.categoryId,
@@ -68,7 +63,7 @@ export async function PUT(request: NextRequest) {
   };
   // 日付変更（D&D移動）に対応
   if (body.date !== undefined) {
-    data.date = parseJSTDate(body.date);
+    data.date = new Date(body.date);
   }
   const entry = await prisma.timeEntry.update({
     where: { id: body.id },
