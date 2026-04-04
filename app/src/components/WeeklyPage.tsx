@@ -415,29 +415,40 @@ export default function WeeklyPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Filter UI */}
-              <div className="flex gap-2">
-                <select
-                  value={filterCategoryId ?? ""}
-                  onChange={(e) => setFilterCategoryId(e.target.value || null)}
-                  className="flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-700"
-                >
-                  <option value="">カテゴリ: すべて</option>
-                  {Array.from(categorySummary.entries()).sort((a, b) => b[1].count - a[1].count).map(([cId, c]) => (
-                    <option key={cId} value={cId}>{c.name}</option>
-                  ))}
-                </select>
-                <select
-                  value={filterGenreId ?? ""}
-                  onChange={(e) => setFilterGenreId(e.target.value || null)}
-                  className="flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-700"
-                >
-                  <option value="">ジャンル: すべて</option>
-                  {Array.from(genreSummary.entries()).sort((a, b) => b[1].count - a[1].count).map(([gId, g]) => (
-                    <option key={gId} value={gId}>{g.name}</option>
-                  ))}
-                </select>
-              </div>
+              {/* Filter UI + total */}
+              {(() => {
+                const filteredEntries = entries.filter((e) => {
+                  if (filterCategoryId && e.category.id !== filterCategoryId) return false;
+                  if (filterGenreId && e.genre.id !== filterGenreId) return false;
+                  return true;
+                });
+                const totalH = filteredEntries.reduce((s, e) => s + (e.endSlot - e.startSlot), 0) * 0.5;
+                return (
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={filterCategoryId ?? ""}
+                      onChange={(e) => setFilterCategoryId(e.target.value || null)}
+                      className="flex-1 min-w-0 text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-700"
+                    >
+                      <option value="">カテゴリ: すべて</option>
+                      {Array.from(categorySummary.entries()).sort((a, b) => b[1].count - a[1].count).map(([cId, c]) => (
+                        <option key={cId} value={cId}>{c.name}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={filterGenreId ?? ""}
+                      onChange={(e) => setFilterGenreId(e.target.value || null)}
+                      className="flex-1 min-w-0 text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-700"
+                    >
+                      <option value="">ジャンル: すべて</option>
+                      {Array.from(genreSummary.entries()).sort((a, b) => b[1].count - a[1].count).map(([gId, g]) => (
+                        <option key={gId} value={gId}>{g.name}</option>
+                      ))}
+                    </select>
+                    <span className="text-sm font-bold text-indigo-600 flex-shrink-0 whitespace-nowrap">{totalH}h</span>
+                  </div>
+                );
+              })()}
               {showSpinner ? (
                 <div className="bg-white rounded-xl p-4 border border-slate-200"><CardSpinner /></div>
               ) : (
@@ -449,10 +460,12 @@ export default function WeeklyPage() {
                     if (filterGenreId && e.genre.id !== filterGenreId) return false;
                     return true;
                   });
+                  const dayTotalH = dayEntries.reduce((s, e) => s + (e.endSlot - e.startSlot), 0) * 0.5;
                   return (
                     <div key={dateKey} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                      <div className="px-3 py-2 bg-slate-50 border-b border-slate-100">
+                      <div className="px-3 py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
                         <p className="text-sm font-semibold">{getDayLabel(wd)}</p>
+                        {dayTotalH > 0 && <span className="text-xs font-medium text-indigo-500">{dayTotalH}h</span>}
                       </div>
                       {dayEntries.length === 0 ? (
                         <p className="px-3 py-3 text-xs text-slate-400">記録なし</p>
