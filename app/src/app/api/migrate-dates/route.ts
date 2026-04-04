@@ -20,33 +20,33 @@ export async function POST(request: NextRequest) {
       ? `+ INTERVAL '${days} days'`
       : `- INTERVAL '${Math.abs(days)} days'`;
 
-    // Build a single raw SQL transaction string
-    const sqlParts: string[] = ["BEGIN;"];
+    const results: string[] = [];
 
+    // Step 1: Drop DailyNote unique constraint if needed
     if (tables.includes("DailyNote")) {
-      sqlParts.push(`ALTER TABLE "DailyNote" DROP CONSTRAINT IF EXISTS "DailyNote_date_key";`);
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE "DailyNote" DROP CONSTRAINT IF EXISTS "DailyNote_date_key"`
+      );
+      results.push("dropped DailyNote_date_key constraint");
     }
 
+    // Step 2: Update each table
     for (const table of tables) {
-      sqlParts.push(`UPDATE "${table}" SET date = date ${interval};`);
+      const count = await prisma.$executeRawUnsafe(
+        `UPDATE "${table}" SET date = date ${interval}`
+      );
+      results.push(`updated ${table}: ${count} rows`);
     }
 
+    // Step 3: Re-add DailyNote unique constraint
     if (tables.includes("DailyNote")) {
-      sqlParts.push(`ALTER TABLE "DailyNote" ADD CONSTRAINT "DailyNote_date_key" UNIQUE (date);`);
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE "DailyNote" ADD CONSTRAINT "DailyNote_date_key" UNIQUE (date)`
+      );
+      results.push("re-added DailyNote_date_key constraint");
     }
 
-    sqlParts.push("COMMIT;");
-
-    // Execute as a single raw SQL block
-    const sql = sqlParts.join("\n");
-    await prisma.$executeRawUnsafe(sql);
-
-    return NextResponse.json({
-      success: true,
-      days,
-      tables,
-      sql,
-    });
+    return NextResponse.json({ success: true, days, tables, results });
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
