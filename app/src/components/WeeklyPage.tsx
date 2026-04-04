@@ -51,6 +51,10 @@ export default function WeeklyPage() {
   const [fetching, setFetching] = useState(false);
   const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null);
   const [filterGenreId, setFilterGenreId] = useState<string | null>(null);
+  const [editingNote, setEditingNote] = useState<DailyNote | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
+  const noteTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [isSaving, setIsSaving] = useState(false);
   const hasData = useRef(false);
 
@@ -401,14 +405,25 @@ export default function WeeklyPage() {
                 <div className="bg-white rounded-xl p-4 border border-slate-200">
                   <h3 className="text-sm font-semibold text-slate-700 mb-3">日記</h3>
                   <div className="space-y-2">
-                    {notes.map((n) => (
-                      <div key={n.date} className="flex gap-2">
-                        <span className="text-xs text-slate-400 w-12 flex-shrink-0">
-                          {new Date(n.date + "T00:00:00").toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" })}
-                        </span>
-                        <p className="text-sm text-slate-700">{n.content}</p>
-                      </div>
-                    ))}
+                    {notes.map((n) => {
+                      const noteDate = toJSTDateKey(n.date);
+                      const label = new Date(noteDate + "T00:00:00").toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" });
+                      return (
+                        <div key={n.date} className="flex gap-2 group">
+                          <span className="text-xs text-slate-400 w-10 flex-shrink-0 pt-0.5">{label}</span>
+                          <p className="text-sm text-slate-700 flex-1 min-w-0">{n.content}</p>
+                          <button
+                            onClick={() => { setEditingNote(n); setNoteDraft(n.content); setTimeout(() => noteTextareaRef.current?.focus(), 50); }}
+                            className="text-slate-300 hover:text-indigo-500 flex-shrink-0 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity p-0.5"
+                            title="編集"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -665,6 +680,80 @@ export default function WeeklyPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* 日記編集モーダル */}
+      {editingNote && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop px-4"
+          onClick={() => { setEditingNote(null); setNoteDraft(""); }}
+        >
+          <div className="bg-white rounded-2xl w-full max-w-lg p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base font-bold">日記を編集</h3>
+              <span className="text-xs text-slate-400">
+                {new Date(toJSTDateKey(editingNote.date) + "T00:00:00").toLocaleDateString("ja-JP", {
+                  year: "numeric", month: "long", day: "numeric", weekday: "short",
+                })}
+              </span>
+            </div>
+            <textarea
+              ref={noteTextareaRef}
+              value={noteDraft}
+              onChange={(e) => setNoteDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  const trimmed = noteDraft.trim();
+                  if (trimmed === editingNote.content) { setEditingNote(null); return; }
+                  setNoteSaving(true);
+                  fetch("/api/daily-notes", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ date: toJSTDateKey(editingNote.date), content: trimmed }),
+                  }).then(() => {
+                    setNotes((prev) => prev.map((n) => n.date === editingNote.date ? { ...n, content: trimmed } : n));
+                    setEditingNote(null);
+                  }).finally(() => setNoteSaving(false));
+                }
+                if (e.key === "Escape") { setEditingNote(null); setNoteDraft(""); }
+              }}
+              rows={8}
+              className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+            />
+            <p className="text-[10px] text-slate-400 mt-1 mb-3">Ctrl+Enter で保存 / Esc でキャンセル</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setEditingNote(null); setNoteDraft(""); }}
+                className="flex-1 py-2.5 rounded-lg text-sm text-slate-600 border border-slate-200 hover:bg-slate-50"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={async () => {
+                  const trimmed = noteDraft.trim();
+                  if (trimmed === editingNote.content) { setEditingNote(null); return; }
+                  setNoteSaving(true);
+                  try {
+                    await fetch("/api/daily-notes", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ date: toJSTDateKey(editingNote.date), content: trimmed }),
+                    });
+                    setNotes((prev) => prev.map((n) => n.date === editingNote.date ? { ...n, content: trimmed } : n));
+                    setEditingNote(null);
+                  } finally {
+                    setNoteSaving(false);
+                  }
+                }}
+                disabled={noteSaving}
+                className="flex-1 py-2.5 rounded-lg text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60"
+              >
+                {noteSaving ? "保存中..." : "保存"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
