@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { getWeekDates, getDayLabel, formatDate, slotToTime, getMonthDates, getMonthLabel, toJSTDateKey } from "@/lib/utils";
+import { getWeekDates, getDayLabel, formatDate, slotToTime, getMonthDates, getMonthLabel, toJSTDateKey, toJSTDateString } from "@/lib/utils";
 import { cachedFetch } from "@/lib/cache";
 import { useSwipe } from "@/hooks/useSwipe";
 
@@ -42,7 +42,7 @@ function CardSpinner() {
 const CAL_ROW_REM = 1.875;
 
 export default function WeeklyPage() {
-  const [baseDate, setBaseDate] = useState(new Date());
+  const [baseDate, setBaseDate] = useState(() => new Date(toJSTDateString() + "T00:00:00"));
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [notes, setNotes] = useState<DailyNote[]>([]);
   const [expenses, setExpenses] = useState<SimpleExpense[]>([]);
@@ -407,10 +407,18 @@ export default function WeeklyPage() {
                   <div className="space-y-2">
                     {notes.map((n) => {
                       const noteDate = toJSTDateKey(n.date);
-                      const label = new Date(noteDate + "T00:00:00").toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" });
+                      const d = new Date(noteDate + "T00:00:00");
+                      const dow = d.getDay();
+                      const days = ["日","月","火","水","木","金","土"];
+                      const label = `${d.getMonth() + 1}/${d.getDate()}`;
+                      const dowColor = dow === 0 ? "text-red-500" : dow === 6 ? "text-blue-500" : "text-slate-400";
                       return (
                         <div key={n.date} className="flex gap-2 group">
-                          <span className="text-xs text-slate-400 w-10 flex-shrink-0 pt-0.5">{label}</span>
+                          <span className="text-xs flex-shrink-0 pt-0.5 w-10 text-center">
+                            <span className="text-slate-400">{label}</span>
+                            <br />
+                            <span className={dowColor}>{days[dow]}</span>
+                          </span>
                           <p className="text-sm text-slate-700 flex-1 min-w-0">{n.content}</p>
                           <button
                             onClick={() => { setEditingNote(n); setNoteDraft(n.content); setTimeout(() => noteTextareaRef.current?.focus(), 50); }}
