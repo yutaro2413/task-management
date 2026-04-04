@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-function parseJSTDate(dateStr: string): Date {
-  return new Date(dateStr + "T00:00:00+09:00");
-}
-
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const date = searchParams.get("date");
 
   if (date) {
     const note = await prisma.dailyNote.findUnique({
-      where: { date: parseJSTDate(date) },
+      where: { date: new Date(date) },
     });
     return NextResponse.json(note);
   }
@@ -21,7 +17,7 @@ export async function GET(request: NextRequest) {
   const keyword = searchParams.get("keyword");
   const where: Record<string, unknown> = {};
   if (startDate && endDate) {
-    where.date = { gte: parseJSTDate(startDate), lte: parseJSTDate(endDate) };
+    where.date = { gte: new Date(startDate), lte: new Date(endDate) };
   }
   if (keyword) {
     where.content = { contains: keyword, mode: "insensitive" };
@@ -38,9 +34,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const body = await request.json();
   const note = await prisma.dailyNote.upsert({
-    where: { date: parseJSTDate(body.date) },
+    where: { date: new Date(body.date) },
     update: { content: body.content },
-    create: { date: parseJSTDate(body.date), content: body.content },
+    create: { date: new Date(body.date), content: body.content },
   });
   return NextResponse.json(note, { status: 201 });
 }

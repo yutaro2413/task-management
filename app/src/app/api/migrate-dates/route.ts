@@ -3,13 +3,12 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST() {
   try {
-    // Shift all dates back by 1 day using raw SQL
-    // This fixes the UTC→JST migration: old records were stored as UTC midnight,
-    // but now the app interprets dates as JST, causing a 1-day forward shift.
+    // Undo previous migration: shift all dates FORWARD by 1 day
+    // Restores dates to their original UTC midnight values
     const results = await Promise.all([
-      prisma.$executeRawUnsafe(`UPDATE "TimeEntry" SET date = date - INTERVAL '1 day'`),
-      prisma.$executeRawUnsafe(`UPDATE "Expense" SET date = date - INTERVAL '1 day'`),
-      prisma.$executeRawUnsafe(`UPDATE "DailyNote" SET date = date - INTERVAL '1 day'`),
+      prisma.$executeRawUnsafe(`UPDATE "TimeEntry" SET date = date + INTERVAL '1 day'`),
+      prisma.$executeRawUnsafe(`UPDATE "Expense" SET date = date + INTERVAL '1 day'`),
+      prisma.$executeRawUnsafe(`UPDATE "DailyNote" SET date = date + INTERVAL '1 day'`),
     ]);
 
     return NextResponse.json({
