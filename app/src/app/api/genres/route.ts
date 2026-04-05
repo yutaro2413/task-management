@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
     data: {
       name: body.name,
       color: body.color || "#6366f1",
+      type: body.type || "経費",
       sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
     },
   });
@@ -35,7 +36,7 @@ export async function PUT(request: NextRequest) {
 
   const genre = await prisma.genre.update({
     where: { id: body.id },
-    data: { name: body.name, color: body.color },
+    data: { name: body.name, color: body.color, type: body.type },
   });
   return NextResponse.json(genre);
 }
