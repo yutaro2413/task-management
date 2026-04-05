@@ -269,7 +269,7 @@ export default function WeeklyPage() {
   const investHours = investSlots * 0.5;
   const costHours = costSlots * 0.5;
   const lossHours = lossSlots * 0.5;
-  const totalInvCostSlots = investSlots + costSlots + lossSlots;
+  const totalInvCostSlots = investSlots + costSlots;
   const investPct = totalInvCostSlots > 0 ? Math.round((investSlots / totalInvCostSlots) * 100) : 0;
 
   const entriesByDate = new Map<string, TimeEntry[]>();
@@ -373,7 +373,7 @@ export default function WeeklyPage() {
               <div className="bg-white rounded-xl p-4 border border-slate-200">
                 {showSpinner ? <CardSpinner /> : (
                   <>
-                    <p className="text-xs text-slate-500 mb-2">投資 / 経費 / 付随</p>
+                    <p className="text-xs text-slate-500 mb-2">投資 / 経費</p>
                     <div className="flex items-end gap-4 mb-2">
                       <button className="text-left hover:opacity-70 transition-opacity" onClick={() => { setFilterType("投資"); setFilterCategoryId(null); setFilterGenreId(null); setView("timeline"); }}>
                         <p className="text-xs text-blue-500 font-medium">投資</p>
@@ -383,17 +383,15 @@ export default function WeeklyPage() {
                         <p className="text-xs text-slate-400 font-medium">経費</p>
                         <p className="text-xl font-bold text-slate-500">{costHours}h</p>
                       </button>
-                      <button className="text-left hover:opacity-70 transition-opacity" onClick={() => { setFilterType("付随"); setFilterCategoryId(null); setFilterGenreId(null); setView("timeline"); }}>
-                        <p className="text-xs text-red-400 font-medium">付随</p>
-                        <p className="text-xl font-bold text-red-500">{lossHours}h</p>
-                      </button>
                       <p className="text-xs text-slate-400 ml-auto">投資率 <span className="text-sm font-bold text-blue-600">{investPct}%</span></p>
                     </div>
                     <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex">
-                      <div className="h-full bg-blue-500 rounded-l-full transition-all" style={{ width: `${totalInvCostSlots > 0 ? (investSlots / totalInvCostSlots) * 100 : 0}%` }} />
-                      <div className="h-full bg-red-400 transition-all" style={{ width: `${totalInvCostSlots > 0 ? (lossSlots / totalInvCostSlots) * 100 : 0}%` }} />
+                      <div className="h-full bg-blue-500 rounded-l-full transition-all" style={{ width: `${investPct}%` }} />
                       <div className="h-full bg-slate-300 flex-1" />
                     </div>
+                    {lossSlots > 0 && (
+                      <p className="text-[10px] text-slate-400 mt-1.5">(付随 {lossHours}h) ※投資率の算出に含まず</p>
+                    )}
                   </>
                 )}
               </div>
