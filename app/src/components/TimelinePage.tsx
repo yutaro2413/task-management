@@ -272,7 +272,7 @@ export default function TimelinePage() {
 
   // Landscape detection
   useEffect(() => {
-    const mq = window.matchMedia("(orientation: landscape)");
+    const mq = window.matchMedia("(orientation: landscape) and (max-width: 1023px)");
     setIsLandscape(mq.matches);
     const handler = (e: MediaQueryListEvent) => setIsLandscape(e.matches);
     mq.addEventListener("change", handler);
