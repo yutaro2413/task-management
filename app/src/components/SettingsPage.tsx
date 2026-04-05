@@ -20,7 +20,7 @@ export default function SettingsPage() {
   const [newCatName, setNewCatName] = useState("");
   const [newGenreName, setNewGenreName] = useState("");
   const [newGenreColor, setNewGenreColor] = useState("#6366f1");
-  const [newGenreType, setNewGenreType] = useState<"投資" | "経費" | "ロス">("経費");
+  const [newGenreType, setNewGenreType] = useState<"投資" | "経費" | "付随">("経費");
   const [newExpCatName, setNewExpCatName] = useState("");
   const [newExpCatColor, setNewExpCatColor] = useState("#6b7280");
   const [newExpCatIcon, setNewExpCatIcon] = useState("default");
@@ -191,7 +191,7 @@ export default function SettingsPage() {
                     <div className="flex gap-1">
                       <button onClick={() => setEditingGenre({ ...editingGenre, type: "投資" })} className={`px-3 py-1 rounded-full text-xs font-medium border ${editingGenre.type === "投資" ? "bg-blue-100 text-blue-700 border-blue-300" : "bg-white text-slate-400 border-slate-200"}`}>投資</button>
                       <button onClick={() => setEditingGenre({ ...editingGenre, type: "経費" })} className={`px-3 py-1 rounded-full text-xs font-medium border ${editingGenre.type === "経費" ? "bg-slate-200 text-slate-700 border-slate-300" : "bg-white text-slate-400 border-slate-200"}`}>経費</button>
-                      <button onClick={() => setEditingGenre({ ...editingGenre, type: "ロス" })} className={`px-3 py-1 rounded-full text-xs font-medium border ${editingGenre.type === "ロス" ? "bg-red-100 text-red-700 border-red-300" : "bg-white text-slate-400 border-slate-200"}`}>ロス</button>
+                      <button onClick={() => setEditingGenre({ ...editingGenre, type: "付随" })} className={`px-3 py-1 rounded-full text-xs font-medium border ${editingGenre.type === "付随" ? "bg-red-100 text-red-700 border-red-300" : "bg-white text-slate-400 border-slate-200"}`}>付随</button>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {COLORS.map((c) => (
@@ -209,7 +209,7 @@ export default function SettingsPage() {
                       <ArrowButtons index={i} total={genres.length} onMove={moveGenreOrder} />
                       <span className="w-4 h-4 rounded-full" style={{ backgroundColor: genre.color }} />
                       <span className="text-sm">{genre.name}</span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${genre.type === "投資" ? "bg-blue-100 text-blue-600" : genre.type === "ロス" ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-500"}`}>{genre.type || "経費"}</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${genre.type === "投資" ? "bg-blue-100 text-blue-600" : genre.type === "付随" ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-500"}`}>{genre.type || "経費"}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <button onClick={() => setEditingGenre(genre)} className="text-xs text-indigo-600">編集</button>
@@ -228,7 +228,7 @@ export default function SettingsPage() {
             <div className="flex gap-1">
               <button onClick={() => setNewGenreType("投資")} className={`px-3 py-1 rounded-full text-xs font-medium border ${newGenreType === "投資" ? "bg-blue-100 text-blue-700 border-blue-300" : "bg-white text-slate-400 border-slate-200"}`}>投資</button>
               <button onClick={() => setNewGenreType("経費")} className={`px-3 py-1 rounded-full text-xs font-medium border ${newGenreType === "経費" ? "bg-slate-200 text-slate-700 border-slate-300" : "bg-white text-slate-400 border-slate-200"}`}>経費</button>
-              <button onClick={() => setNewGenreType("ロス")} className={`px-3 py-1 rounded-full text-xs font-medium border ${newGenreType === "ロス" ? "bg-red-100 text-red-700 border-red-300" : "bg-white text-slate-400 border-slate-200"}`}>ロス</button>
+              <button onClick={() => setNewGenreType("付随")} className={`px-3 py-1 rounded-full text-xs font-medium border ${newGenreType === "付随" ? "bg-red-100 text-red-700 border-red-300" : "bg-white text-slate-400 border-slate-200"}`}>付随</button>
             </div>
             <div className="flex flex-wrap gap-1.5">
               {COLORS.map((c) => (

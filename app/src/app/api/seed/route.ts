@@ -30,7 +30,7 @@ export async function POST() {
         { name: "ルーティン", color: "#6b7280", type: "経費", sortOrder: 7 },
         { name: "その他(経)", color: "#9ca3af", type: "経費", sortOrder: 8 },
         { name: "その他(投)", color: "#eab308", type: "投資", sortOrder: 9 },
-        { name: "移動", color: "#f59e0b", type: "ロス", sortOrder: 10 },
+        { name: "移動", color: "#f59e0b", type: "付随", sortOrder: 10 },
       ],
     });
   }
