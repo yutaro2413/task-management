@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import ExpenseIcon, { EXPENSE_ICON_OPTIONS } from "./ExpenseIcon";
 
-type Category = { id: string; name: string };
+type Category = { id: string; name: string; excludeFromSummary: boolean };
 type Genre = { id: string; name: string; color: string; type: string };
 type ExpenseCategory = { id: string; name: string; color: string; icon: string };
 
@@ -163,8 +163,18 @@ export default function SettingsPage() {
                     <div className="flex items-center gap-2">
                       <ArrowButtons index={i} total={categories.length} onMove={moveCatOrder} />
                       <span className="text-sm">{cat.name}</span>
+                      {cat.excludeFromSummary && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-600 font-medium">サマリ除外</span>}
                     </div>
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={async () => {
+                          await fetch("/api/categories", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: cat.id, name: cat.name, excludeFromSummary: !cat.excludeFromSummary }) });
+                          fetchData();
+                        }}
+                        className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${cat.excludeFromSummary ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-white text-slate-400 border-slate-200"}`}
+                      >
+                        {cat.excludeFromSummary ? "サマリ除外中" : "サマリ含む"}
+                      </button>
                       <button onClick={() => setEditingCat(cat)} className="text-xs text-indigo-600">編集</button>
                       <button onClick={() => deleteCategory(cat.id)} className="text-xs text-red-500">削除</button>
                     </div>
