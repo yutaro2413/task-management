@@ -388,7 +388,11 @@ export default function TimelinePage() {
   };
 
   const handleSlotClick = (slotIndex: number) => {
-    if (isPanelDirty) { triggerDirtyWarning(); return; }
+    if (isPanelDirty) {
+      if (!window.confirm("変更が保存されていません。破棄して切り替えますか？")) return;
+      setIsPanelDirty(false);
+      setShowDirtyWarning(false);
+    }
     const list = slotEntriesMap.get(slotIndex);
     if (list && list.length > 0) {
       const existing = list[0];
@@ -402,7 +406,11 @@ export default function TimelinePage() {
   };
 
   const handleEntryClick = (entry: TimeEntry) => {
-    if (isPanelDirty) { triggerDirtyWarning(); return; }
+    if (isPanelDirty) {
+      if (!window.confirm("変更が保存されていません。破棄して切り替えますか？")) return;
+      setIsPanelDirty(false);
+      setShowDirtyWarning(false);
+    }
     setEditEntry(entry);
     setSelectedSlot(entry.startSlot);
     setShowExpenseModal(false);
@@ -458,7 +466,11 @@ export default function TimelinePage() {
   };
 
   const handleNewAtSlot = (slotIndex: number) => {
-    if (isPanelDirty) { triggerDirtyWarning(); return; }
+    if (isPanelDirty) {
+      if (!window.confirm("変更が保存されていません。破棄して切り替えますか？")) return;
+      setIsPanelDirty(false);
+      setShowDirtyWarning(false);
+    }
     setEditEntry(null);
     setSelectedSlot(slotIndex);
     setShowExpenseModal(false);
@@ -777,6 +789,7 @@ export default function TimelinePage() {
             {/* Panel content */}
             {selectedSlot !== null && (
               <EntryModal
+                key={`${selectedSlot}-${editEntry?.id ?? 'new'}`}
                 slotIndex={selectedSlot}
                 categories={categories}
                 genres={genres}
@@ -856,6 +869,7 @@ export default function TimelinePage() {
       <div className="lg:hidden">
         {selectedSlot !== null && (
           <EntryModal
+            key={`${selectedSlot}-${editEntry?.id ?? 'new'}`}
             slotIndex={selectedSlot}
             categories={categories}
             genres={genres}
