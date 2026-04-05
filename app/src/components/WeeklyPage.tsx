@@ -51,6 +51,7 @@ export default function WeeklyPage() {
   const [fetching, setFetching] = useState(false);
   const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null);
   const [filterGenreId, setFilterGenreId] = useState<string | null>(null);
+  const [filterType, setFilterType] = useState<string | null>(null); // "投資" | "経費" | "ロス" | null
   const [editingNote, setEditingNote] = useState<DailyNote | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [noteSaving, setNoteSaving] = useState(false);
@@ -263,10 +264,12 @@ export default function WeeklyPage() {
   });
 
   const investSlots = entries.reduce((sum, e) => sum + (e.genre.type === "投資" ? (e.endSlot - e.startSlot) : 0), 0);
-  const costSlots = entries.reduce((sum, e) => sum + (e.genre.type !== "投資" ? (e.endSlot - e.startSlot) : 0), 0);
+  const costSlots = entries.reduce((sum, e) => sum + (e.genre.type === "経費" ? (e.endSlot - e.startSlot) : 0), 0);
+  const lossSlots = entries.reduce((sum, e) => sum + (e.genre.type === "ロス" ? (e.endSlot - e.startSlot) : 0), 0);
   const investHours = investSlots * 0.5;
   const costHours = costSlots * 0.5;
-  const totalInvCostSlots = investSlots + costSlots;
+  const lossHours = lossSlots * 0.5;
+  const totalInvCostSlots = investSlots + costSlots + lossSlots;
   const investPct = totalInvCostSlots > 0 ? Math.round((investSlots / totalInvCostSlots) * 100) : 0;
 
   const entriesByDate = new Map<string, TimeEntry[]>();
@@ -370,7 +373,7 @@ export default function WeeklyPage() {
               <div className="bg-white rounded-xl p-4 border border-slate-200">
                 {showSpinner ? <CardSpinner /> : (
                   <>
-                    <p className="text-xs text-slate-500 mb-2">投資 / 経費</p>
+                    <p className="text-xs text-slate-500 mb-2">投資 / 経費 / ロス</p>
                     <div className="flex items-end gap-4 mb-2">
                       <div>
                         <p className="text-xs text-blue-500 font-medium">投資</p>
@@ -380,10 +383,15 @@ export default function WeeklyPage() {
                         <p className="text-xs text-slate-400 font-medium">経費</p>
                         <p className="text-xl font-bold text-slate-500">{costHours}h</p>
                       </div>
+                      <div>
+                        <p className="text-xs text-red-400 font-medium">ロス</p>
+                        <p className="text-xl font-bold text-red-500">{lossHours}h</p>
+                      </div>
                       <p className="text-xs text-slate-400 ml-auto">投資率 <span className="text-sm font-bold text-blue-600">{investPct}%</span></p>
                     </div>
                     <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex">
-                      <div className="h-full bg-blue-500 rounded-l-full transition-all" style={{ width: `${investPct}%` }} />
+                      <div className="h-full bg-blue-500 rounded-l-full transition-all" style={{ width: `${totalInvCostSlots > 0 ? (investSlots / totalInvCostSlots) * 100 : 0}%` }} />
+                      <div className="h-full bg-red-400 transition-all" style={{ width: `${totalInvCostSlots > 0 ? (lossSlots / totalInvCostSlots) * 100 : 0}%` }} />
                       <div className="h-full bg-slate-300 flex-1" />
                     </div>
                   </>
@@ -421,7 +429,7 @@ export default function WeeklyPage() {
                         <button key={gId} className="flex items-center gap-2 w-full text-left hover:bg-slate-50 rounded -mx-1 px-1 py-0.5 transition-colors" onClick={() => { setFilterGenreId(gId); setFilterCategoryId(null); setView("timeline"); }}>
                           <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} />
                           <span className="text-sm flex-1 min-w-0 truncate">{g.name}</span>
-                          <span className={`text-[10px] px-1 py-0 rounded-full flex-shrink-0 ${g.type === "投資" ? "bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-500"}`}>{g.type || "経費"}</span>
+                          <span className={`text-[10px] px-1 py-0 rounded-full flex-shrink-0 ${g.type === "投資" ? "bg-blue-100 text-blue-600" : g.type === "ロス" ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-500"}`}>{g.type || "経費"}</span>
                           <span className="text-sm font-medium tabular-nums flex-shrink-0">{g.count * 0.5}h</span>
                           <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden flex-shrink-0">
                             <div className="h-full rounded-full" style={{ backgroundColor: g.color, width: `${allSlots > 0 ? (g.count / allSlots) * 100 : 0}%` }} />
@@ -473,34 +481,46 @@ export default function WeeklyPage() {
               {/* Filter UI + total */}
               {(() => {
                 const filteredEntries = entries.filter((e) => {
+                  if (filterType && e.genre.type !== filterType) return false;
                   if (filterCategoryId && e.category.id !== filterCategoryId) return false;
                   if (filterGenreId && e.genre.id !== filterGenreId) return false;
                   return true;
                 });
                 const totalH = filteredEntries.reduce((s, e) => s + (e.endSlot - e.startSlot), 0) * 0.5;
                 return (
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={filterCategoryId ?? ""}
-                      onChange={(e) => setFilterCategoryId(e.target.value || null)}
-                      className="flex-1 min-w-0 text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-700"
-                    >
-                      <option value="">カテゴリ: すべて</option>
-                      {Array.from(categorySummary.entries()).sort((a, b) => b[1].count - a[1].count).map(([cId, c]) => (
-                        <option key={cId} value={cId}>{c.name}</option>
-                      ))}
-                    </select>
-                    <select
-                      value={filterGenreId ?? ""}
-                      onChange={(e) => setFilterGenreId(e.target.value || null)}
-                      className="flex-1 min-w-0 text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-700"
-                    >
-                      <option value="">ジャンル: すべて</option>
-                      {Array.from(genreSummary.entries()).sort((a, b) => b[1].count - a[1].count).map(([gId, g]) => (
-                        <option key={gId} value={gId}>{g.name}</option>
-                      ))}
-                    </select>
-                    <span className="text-sm font-bold text-indigo-600 flex-shrink-0 whitespace-nowrap">{totalH}h</span>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5">
+                      {(["すべて", "投資", "経費", "ロス"] as const).map((t) => {
+                        const val = t === "すべて" ? null : t;
+                        const active = filterType === val;
+                        return (
+                          <button key={t} onClick={() => setFilterType(val)} className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${active ? (t === "投資" ? "bg-blue-100 text-blue-700 border-blue-300" : t === "ロス" ? "bg-red-100 text-red-700 border-red-300" : t === "経費" ? "bg-slate-200 text-slate-700 border-slate-300" : "bg-indigo-100 text-indigo-700 border-indigo-300") : "bg-white text-slate-400 border-slate-200"}`}>{t}</button>
+                        );
+                      })}
+                      <span className="text-sm font-bold text-indigo-600 flex-shrink-0 whitespace-nowrap ml-auto">{totalH}h</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={filterCategoryId ?? ""}
+                        onChange={(e) => setFilterCategoryId(e.target.value || null)}
+                        className="flex-1 min-w-0 text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-700"
+                      >
+                        <option value="">カテゴリ: すべて</option>
+                        {Array.from(categorySummary.entries()).sort((a, b) => b[1].count - a[1].count).map(([cId, c]) => (
+                          <option key={cId} value={cId}>{c.name}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={filterGenreId ?? ""}
+                        onChange={(e) => setFilterGenreId(e.target.value || null)}
+                        className="flex-1 min-w-0 text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-700"
+                      >
+                        <option value="">ジャンル: すべて</option>
+                        {Array.from(genreSummary.entries()).sort((a, b) => b[1].count - a[1].count).map(([gId, g]) => (
+                          <option key={gId} value={gId}>{g.name}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 );
               })()}
@@ -511,6 +531,7 @@ export default function WeeklyPage() {
                   const dateKey = formatDate(wd);
                   const allDayEntries = entriesByDate.get(dateKey) || [];
                   const dayEntries = allDayEntries.filter((e) => {
+                    if (filterType && e.genre.type !== filterType) return false;
                     if (filterCategoryId && e.category.id !== filterCategoryId) return false;
                     if (filterGenreId && e.genre.id !== filterGenreId) return false;
                     return true;
