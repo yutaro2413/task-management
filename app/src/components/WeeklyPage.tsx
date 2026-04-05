@@ -51,6 +51,7 @@ export default function WeeklyPage() {
   const [fetching, setFetching] = useState(false);
   const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null);
   const [filterGenreId, setFilterGenreId] = useState<string | null>(null);
+  const [filterType, setFilterType] = useState<string | null>(null); // "投資" | "経費" | null
   const [editingNote, setEditingNote] = useState<DailyNote | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [noteSaving, setNoteSaving] = useState(false);
@@ -372,14 +373,14 @@ export default function WeeklyPage() {
                   <>
                     <p className="text-xs text-slate-500 mb-2">投資 / 経費</p>
                     <div className="flex items-end gap-4 mb-2">
-                      <div>
+                      <button className="text-left hover:opacity-70 transition-opacity" onClick={() => { setFilterType("投資"); setFilterCategoryId(null); setFilterGenreId(null); setView("timeline"); }}>
                         <p className="text-xs text-blue-500 font-medium">投資</p>
                         <p className="text-xl font-bold text-blue-600">{investHours}h</p>
-                      </div>
-                      <div>
+                      </button>
+                      <button className="text-left hover:opacity-70 transition-opacity" onClick={() => { setFilterType("経費"); setFilterCategoryId(null); setFilterGenreId(null); setView("timeline"); }}>
                         <p className="text-xs text-slate-400 font-medium">経費</p>
                         <p className="text-xl font-bold text-slate-500">{costHours}h</p>
-                      </div>
+                      </button>
                       <p className="text-xs text-slate-400 ml-auto">投資率 <span className="text-sm font-bold text-blue-600">{investPct}%</span></p>
                     </div>
                     <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex">
@@ -473,34 +474,46 @@ export default function WeeklyPage() {
               {/* Filter UI + total */}
               {(() => {
                 const filteredEntries = entries.filter((e) => {
+                  if (filterType && e.genre.type !== filterType) return false;
                   if (filterCategoryId && e.category.id !== filterCategoryId) return false;
                   if (filterGenreId && e.genre.id !== filterGenreId) return false;
                   return true;
                 });
                 const totalH = filteredEntries.reduce((s, e) => s + (e.endSlot - e.startSlot), 0) * 0.5;
                 return (
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={filterCategoryId ?? ""}
-                      onChange={(e) => setFilterCategoryId(e.target.value || null)}
-                      className="flex-1 min-w-0 text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-700"
-                    >
-                      <option value="">カテゴリ: すべて</option>
-                      {Array.from(categorySummary.entries()).sort((a, b) => b[1].count - a[1].count).map(([cId, c]) => (
-                        <option key={cId} value={cId}>{c.name}</option>
-                      ))}
-                    </select>
-                    <select
-                      value={filterGenreId ?? ""}
-                      onChange={(e) => setFilterGenreId(e.target.value || null)}
-                      className="flex-1 min-w-0 text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-700"
-                    >
-                      <option value="">ジャンル: すべて</option>
-                      {Array.from(genreSummary.entries()).sort((a, b) => b[1].count - a[1].count).map(([gId, g]) => (
-                        <option key={gId} value={gId}>{g.name}</option>
-                      ))}
-                    </select>
-                    <span className="text-sm font-bold text-indigo-600 flex-shrink-0 whitespace-nowrap">{totalH}h</span>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5">
+                      {(["すべて", "投資", "経費"] as const).map((t) => {
+                        const val = t === "すべて" ? null : t;
+                        const active = filterType === val;
+                        return (
+                          <button key={t} onClick={() => setFilterType(val)} className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${active ? (t === "投資" ? "bg-blue-100 text-blue-700 border-blue-300" : t === "経費" ? "bg-slate-200 text-slate-700 border-slate-300" : "bg-indigo-100 text-indigo-700 border-indigo-300") : "bg-white text-slate-400 border-slate-200"}`}>{t}</button>
+                        );
+                      })}
+                      <span className="text-sm font-bold text-indigo-600 flex-shrink-0 whitespace-nowrap ml-auto">{totalH}h</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={filterCategoryId ?? ""}
+                        onChange={(e) => setFilterCategoryId(e.target.value || null)}
+                        className="flex-1 min-w-0 text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-700"
+                      >
+                        <option value="">カテゴリ: すべて</option>
+                        {Array.from(categorySummary.entries()).sort((a, b) => b[1].count - a[1].count).map(([cId, c]) => (
+                          <option key={cId} value={cId}>{c.name}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={filterGenreId ?? ""}
+                        onChange={(e) => setFilterGenreId(e.target.value || null)}
+                        className="flex-1 min-w-0 text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-700"
+                      >
+                        <option value="">ジャンル: すべて</option>
+                        {Array.from(genreSummary.entries()).sort((a, b) => b[1].count - a[1].count).map(([gId, g]) => (
+                          <option key={gId} value={gId}>{g.name}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 );
               })()}
@@ -511,6 +524,7 @@ export default function WeeklyPage() {
                   const dateKey = formatDate(wd);
                   const allDayEntries = entriesByDate.get(dateKey) || [];
                   const dayEntries = allDayEntries.filter((e) => {
+                    if (filterType && e.genre.type !== filterType) return false;
                     if (filterCategoryId && e.category.id !== filterCategoryId) return false;
                     if (filterGenreId && e.genre.id !== filterGenreId) return false;
                     return true;
