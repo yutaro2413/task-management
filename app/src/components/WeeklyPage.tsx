@@ -375,18 +375,18 @@ export default function WeeklyPage() {
                   <>
                     <p className="text-xs text-slate-500 mb-2">投資 / 経費 / 付随</p>
                     <div className="flex items-end gap-4 mb-2">
-                      <div>
+                      <button className="text-left hover:opacity-70 transition-opacity" onClick={() => { setFilterType("投資"); setFilterCategoryId(null); setFilterGenreId(null); setView("timeline"); }}>
                         <p className="text-xs text-blue-500 font-medium">投資</p>
                         <p className="text-xl font-bold text-blue-600">{investHours}h</p>
-                      </div>
-                      <div>
+                      </button>
+                      <button className="text-left hover:opacity-70 transition-opacity" onClick={() => { setFilterType("経費"); setFilterCategoryId(null); setFilterGenreId(null); setView("timeline"); }}>
                         <p className="text-xs text-slate-400 font-medium">経費</p>
                         <p className="text-xl font-bold text-slate-500">{costHours}h</p>
-                      </div>
-                      <div>
+                      </button>
+                      <button className="text-left hover:opacity-70 transition-opacity" onClick={() => { setFilterType("付随"); setFilterCategoryId(null); setFilterGenreId(null); setView("timeline"); }}>
                         <p className="text-xs text-red-400 font-medium">付随</p>
                         <p className="text-xl font-bold text-red-500">{lossHours}h</p>
-                      </div>
+                      </button>
                       <p className="text-xs text-slate-400 ml-auto">投資率 <span className="text-sm font-bold text-blue-600">{investPct}%</span></p>
                     </div>
                     <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex">
