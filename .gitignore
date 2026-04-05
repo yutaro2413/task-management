@@ -10,6 +10,9 @@ desktop.ini
 *.swo
 *~
 
+# Next.js build output
+.next/
+
 # 一時ファイル
 *.tmp
 *.log
