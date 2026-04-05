@@ -34,7 +34,10 @@ export async function PUT(request: NextRequest) {
 
   const category = await prisma.category.update({
     where: { id: body.id },
-    data: { name: body.name },
+    data: {
+      name: body.name,
+      ...(typeof body.excludeFromSummary === "boolean" && { excludeFromSummary: body.excludeFromSummary }),
+    },
   });
   return NextResponse.json(category);
 }

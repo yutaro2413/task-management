@@ -10,7 +10,7 @@ import DailyNoteInput from "./DailyNoteInput";
 import SearchPanel from "./SearchPanel";
 import LoadingOverlay from "./LoadingOverlay";
 
-type Category = { id: string; name: string };
+type Category = { id: string; name: string; excludeFromSummary: boolean };
 type Genre = { id: string; name: string; color: string; type: string };
 type TimeEntry = {
   id: string;
@@ -324,10 +324,10 @@ export default function TimelinePage() {
     timelineRef.current.scrollTop = targetSlot * 36;
   }, [date, isToday, fetching]);
 
-  // Work hours (excluding プライベート) — deduplicate overlapping slots
+  // Work hours (excluding summary-excluded categories) — deduplicate overlapping slots
   const workSlotSet = new Set<number>();
   entries
-    .filter((e) => e.category.name !== "プライベート")
+    .filter((e) => !e.category.excludeFromSummary)
     .forEach((e) => {
       for (let i = e.startSlot; i < e.endSlot; i++) workSlotSet.add(i);
     });

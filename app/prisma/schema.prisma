@@ -9,11 +9,12 @@ datasource db {
 
 // カテゴリ (事業A, 事業B, 全体, プライベート)
 model Category {
-  id        String   @id @default(cuid())
-  name      String
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  name               String
+  excludeFromSummary Boolean  @default(false)
+  sortOrder          Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   timeEntries TimeEntry[]
 }

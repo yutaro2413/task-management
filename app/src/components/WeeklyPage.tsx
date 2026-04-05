@@ -12,7 +12,7 @@ type TimeEntry = {
   endSlot: number;
   title?: string | null;
   detail?: string | null;
-  category: { id: string; name: string };
+  category: { id: string; name: string; excludeFromSummary: boolean };
   genre: { id: string; name: string; color: string; type: string };
 };
 
@@ -236,7 +236,7 @@ export default function WeeklyPage() {
   const showSpinner = fetching && !hasData.current;
 
   // Summary calculations
-  const workEntries = entries.filter((e) => e.category.name !== "プライベート");
+  const workEntries = entries.filter((e) => !e.category.excludeFromSummary);
   const totalWorkSlots = workEntries.reduce((sum, e) => sum + (e.endSlot - e.startSlot), 0);
   const totalWorkHours = totalWorkSlots * 0.5;
   const allSlots = entries.reduce((sum, e) => sum + (e.endSlot - e.startSlot), 0);
@@ -355,7 +355,7 @@ export default function WeeklyPage() {
                   <>
                     <p className="text-xs text-slate-500">
                       {period === "weekly" ? "今週" : "今月"}の稼働時間
-                      <span className="text-slate-400 ml-1">(プライベート除く)</span>
+                      <span className="text-slate-400 ml-1">(サマリ除外カテゴリ除く)</span>
                     </p>
                     <p className="text-3xl font-bold text-indigo-600">{totalWorkHours}h</p>
                     <div className="flex items-center gap-3 mt-1">
