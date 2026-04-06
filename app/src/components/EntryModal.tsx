@@ -8,6 +8,7 @@ type Genre = { id: string; name: string; color: string; type: string };
 
 type Props = {
   slotIndex: number;
+  date?: string;
   categories: Category[];
   genres: Genre[];
   editEntry?: {
@@ -36,6 +37,7 @@ type Props = {
 
 export default function EntryModal({
   slotIndex,
+  date,
   categories,
   genres,
   editEntry,
@@ -89,9 +91,12 @@ export default function EntryModal({
     <>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold">
-          {slotToTime(startSlot)} - {slotToTimeLabel(endSlot)}
-        </h2>
+        <div>
+          {date && <p className="text-[11px] text-slate-400 font-medium">{new Date(date + "T00:00:00").toLocaleDateString("ja-JP", { month: "short", day: "numeric", weekday: "short" })}</p>}
+          <h2 className="text-lg font-bold">
+            {slotToTime(startSlot)} - {slotToTimeLabel(endSlot)}
+          </h2>
+        </div>
         <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-100">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path d="M6 18L18 6M6 6l12 12" />

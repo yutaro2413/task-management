@@ -791,6 +791,7 @@ export default function TimelinePage() {
               <EntryModal
                 key={`${selectedSlot}-${editEntry?.id ?? 'new'}`}
                 slotIndex={selectedSlot}
+                date={date}
                 categories={categories}
                 genres={genres}
                 editEntry={editEntry}
@@ -871,6 +872,7 @@ export default function TimelinePage() {
           <EntryModal
             key={`${selectedSlot}-${editEntry?.id ?? 'new'}`}
             slotIndex={selectedSlot}
+            date={date}
             categories={categories}
             genres={genres}
             editEntry={editEntry}
