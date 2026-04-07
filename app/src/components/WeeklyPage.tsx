@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getWeekDates, getDayLabel, formatDate, slotToTime, getMonthDates, getMonthLabel, toJSTDateKey, toJSTDateString } from "@/lib/utils";
-import { cachedFetch } from "@/lib/cache";
+import { cachedFetch, invalidateCache } from "@/lib/cache";
 import { useSwipe } from "@/hooks/useSwipe";
+import EntryModal from "./EntryModal";
 
 type TimeEntry = {
   id: string;
@@ -58,6 +59,9 @@ export default function WeeklyPage() {
   const noteTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [editingTimeEntry, setEditingTimeEntry] = useState<TimeEntry | null>(null);
+  const [masterCategories, setMasterCategories] = useState<{ id: string; name: string }[]>([]);
+  const [masterGenres, setMasterGenres] = useState<{ id: string; name: string; color: string; type: string }[]>([]);
   const hasData = useRef(false);
 
   // ── D&D / long-press state ──────────────────────────────────────────────
@@ -97,6 +101,17 @@ export default function WeeklyPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Fetch master data for edit modal
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/categories").then((r) => r.json()),
+      fetch("/api/genres").then((r) => r.json()),
+    ]).then(([cats, gnrs]) => {
+      setMasterCategories(cats);
+      setMasterGenres(gnrs);
+    });
+  }, []);
 
   // ── D&D helpers ────────────────────────────────────────────────────────
   /** グリッド要素からスクロール座標でセルを特定する */
@@ -214,6 +229,26 @@ export default function WeeklyPage() {
     setDropCell(null);
     void e; // suppress unused warning
   }, [dropCell, executeMove]);
+
+  // ── Edit entry from timeline ──
+  const handleTimelineSave = async (data: { categoryId: string; genreId: string; startSlot: number; endSlot: number; title?: string; detail?: string }) => {
+    if (!editingTimeEntry) return;
+    await fetch("/api/time-entries", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: editingTimeEntry.id, date: toJSTDateKey(editingTimeEntry.date), ...data }),
+    });
+    setEditingTimeEntry(null);
+    invalidateCache(`time-entries?startDate=${startDate}&endDate=${endDate}`);
+    fetchData();
+  };
+  const handleTimelineDelete = async () => {
+    if (!editingTimeEntry) return;
+    await fetch(`/api/time-entries?id=${editingTimeEntry.id}`, { method: "DELETE" });
+    setEditingTimeEntry(null);
+    invalidateCache(`time-entries?startDate=${startDate}&endDate=${endDate}`);
+    fetchData();
+  };
 
   const changePeriod = (delta: number) => {
     const d = new Date(baseDate);
@@ -567,12 +602,12 @@ export default function WeeklyPage() {
                       ) : (
                         <div className="divide-y divide-slate-50">
                           {dayEntries.map((e) => (
-                            <div key={e.id} className="px-3 py-1.5 flex items-center gap-1">
+                            <button key={e.id} onClick={() => setEditingTimeEntry(e)} className="w-full px-3 py-1.5 flex items-center gap-1 hover:bg-slate-50 active:bg-slate-100 transition-colors text-left">
                               <span className="text-xs text-slate-400 font-mono w-[5.75rem] flex-shrink-0">{slotToTime(e.startSlot)}-{slotToTime(e.endSlot)}</span>
                               <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: e.genre.color }} />
                               <span className="text-xs text-slate-500 flex-shrink-0">{e.category.name}</span>
                               <span className="text-sm flex-1 truncate min-w-0">{e.title || e.genre.name}</span>
-                            </div>
+                            </button>
                           ))}
                         </div>
                       )}
@@ -835,6 +870,21 @@ export default function WeeklyPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Edit entry modal */}
+      {editingTimeEntry && (
+        <EntryModal
+          key={editingTimeEntry.id}
+          slotIndex={editingTimeEntry.startSlot}
+          date={toJSTDateKey(editingTimeEntry.date)}
+          categories={masterCategories}
+          genres={masterGenres}
+          editEntry={editingTimeEntry}
+          onSave={handleTimelineSave}
+          onDelete={() => handleTimelineDelete()}
+          onClose={() => setEditingTimeEntry(null)}
+        />
       )}
     </div>
   );
