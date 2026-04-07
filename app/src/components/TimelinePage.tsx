@@ -325,11 +325,12 @@ export default function TimelinePage() {
   }, [date, isToday, fetching]);
 
   // Work hours (excluding summary-excluded categories) — deduplicate overlapping slots
+  // Only count slots 0-47 (current day); slots >=48 belong to next day
   const workSlotSet = new Set<number>();
   entries
     .filter((e) => !e.category.excludeFromSummary)
     .forEach((e) => {
-      for (let i = e.startSlot; i < e.endSlot; i++) workSlotSet.add(i);
+      for (let i = e.startSlot; i < Math.min(e.endSlot, 48); i++) workSlotSet.add(i);
     });
   const workSlots = workSlotSet.size;
   const workHours = Math.floor(workSlots / 2);

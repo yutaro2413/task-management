@@ -534,7 +534,9 @@ export default function WeeklyPage() {
                     if (filterGenreId && e.genre.id !== filterGenreId) return false;
                     return true;
                   });
-                  const dayTotalH = dayEntries.reduce((s, e) => s + (e.endSlot - e.startSlot), 0) * 0.5;
+                  const daySlotSet = new Set<number>();
+                  dayEntries.forEach((e) => { for (let i = e.startSlot; i < e.endSlot; i++) daySlotSet.add(i); });
+                  const dayTotalH = daySlotSet.size * 0.5;
                   return (
                     <div key={dateKey} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                       <div className="px-3 py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
