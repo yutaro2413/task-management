@@ -57,6 +57,7 @@ export default function WeeklyPage() {
   const [noteSaving, setNoteSaving] = useState(false);
   const noteTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const hasData = useRef(false);
 
   // ── D&D / long-press state ──────────────────────────────────────────────
@@ -313,7 +314,25 @@ export default function WeeklyPage() {
             </svg>
           </button>
           <div className="flex items-center gap-2">
-            <p className="text-sm font-bold">{periodLabel}</p>
+            {showDatePicker ? (
+              <input
+                type="date"
+                value={formatDate(baseDate)}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setBaseDate(new Date(e.target.value + "T00:00:00"));
+                    setShowDatePicker(false);
+                  }
+                }}
+                onBlur={() => setShowDatePicker(false)}
+                autoFocus
+                className="text-sm font-bold border border-indigo-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            ) : (
+              <button onClick={() => setShowDatePicker(true)} className="text-sm font-bold hover:text-indigo-600 transition-colors">
+                {periodLabel}
+              </button>
+            )}
             {fetching && (
               <div className="w-3.5 h-3.5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
             )}

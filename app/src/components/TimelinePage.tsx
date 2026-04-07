@@ -7,6 +7,7 @@ import { useSwipe } from "@/hooks/useSwipe";
 import EntryModal from "./EntryModal";
 import ExpenseModal from "./ExpenseModal";
 import DailyNoteInput from "./DailyNoteInput";
+import MasterEditModal from "./MasterEditModal";
 import SearchPanel from "./SearchPanel";
 import LoadingOverlay from "./LoadingOverlay";
 
@@ -193,6 +194,8 @@ export default function TimelinePage() {
   const [editEntry, setEditEntry] = useState<TimeEntry | null>(null);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showMasterEdit, setShowMasterEdit] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isPanelDirty, setIsPanelDirty] = useState(false);
@@ -512,16 +515,27 @@ export default function TimelinePage() {
             </button>
             <div className="text-center">
               <div className="flex items-center gap-2 justify-center">
-                <span className="text-base font-bold">
-                  {isLandscape
-                    ? `${getDayLabel(weekDates[0])} - ${getDayLabel(weekDates[6])}`
-                    : new Date(date + "T00:00:00").toLocaleDateString("ja-JP", {
-                        month: "long",
-                        day: "numeric",
-                        weekday: "short",
-                      })}
-                </span>
-                {!isToday && (
+                {showDatePicker ? (
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => { if (e.target.value) { setDate(e.target.value); setShowDatePicker(false); } }}
+                    onBlur={() => setShowDatePicker(false)}
+                    autoFocus
+                    className="text-sm font-bold border border-indigo-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                ) : (
+                  <button onClick={() => setShowDatePicker(true)} className="text-base font-bold hover:text-indigo-600 transition-colors">
+                    {isLandscape
+                      ? `${getDayLabel(weekDates[0])} - ${getDayLabel(weekDates[6])}`
+                      : new Date(date + "T00:00:00").toLocaleDateString("ja-JP", {
+                          month: "long",
+                          day: "numeric",
+                          weekday: "short",
+                        })}
+                  </button>
+                )}
+                {!isToday && !showDatePicker && (
                   <button
                     onClick={() => setDate(toJSTDateString())}
                     className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-medium"
@@ -539,7 +553,16 @@ export default function TimelinePage() {
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={() => setShowMasterEdit(true)}
+                className="p-2 rounded-lg hover:bg-slate-100"
+                title="ジャンル・カテゴリ編集"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                </svg>
+              </button>
               <button
                 onClick={() => setShowSearch(!showSearch)}
                 className="p-2 rounded-lg hover:bg-slate-100"
@@ -566,6 +589,7 @@ export default function TimelinePage() {
       </header>
 
       {showSearch && <SearchPanel onClose={() => setShowSearch(false)} />}
+      {showMasterEdit && <MasterEditModal onClose={() => { setShowMasterEdit(false); fetchEntries(date, true); }} />}
 
       {/* Body */}
       <div className="flex-1 flex overflow-hidden">
