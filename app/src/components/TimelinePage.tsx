@@ -7,7 +7,6 @@ import { useSwipe } from "@/hooks/useSwipe";
 import EntryModal from "./EntryModal";
 import ExpenseModal from "./ExpenseModal";
 import DailyNoteInput from "./DailyNoteInput";
-import MasterEditModal from "./MasterEditModal";
 import SearchPanel from "./SearchPanel";
 import LoadingOverlay from "./LoadingOverlay";
 
@@ -194,7 +193,6 @@ export default function TimelinePage() {
   const [editEntry, setEditEntry] = useState<TimeEntry | null>(null);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
-  const [showMasterEdit, setShowMasterEdit] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -553,16 +551,7 @@ export default function TimelinePage() {
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-0.5">
-              <button
-                onClick={() => setShowMasterEdit(true)}
-                className="p-2 rounded-lg hover:bg-slate-100"
-                title="ジャンル・カテゴリ編集"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                </svg>
-              </button>
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => setShowSearch(!showSearch)}
                 className="p-2 rounded-lg hover:bg-slate-100"
@@ -589,7 +578,6 @@ export default function TimelinePage() {
       </header>
 
       {showSearch && <SearchPanel onClose={() => setShowSearch(false)} />}
-      {showMasterEdit && <MasterEditModal onClose={() => { setShowMasterEdit(false); fetchEntries(date, true); }} />}
 
       {/* Body */}
       <div className="flex-1 flex overflow-hidden">
