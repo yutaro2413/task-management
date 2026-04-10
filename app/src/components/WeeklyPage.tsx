@@ -42,6 +42,46 @@ function CardSpinner() {
 // Slot height in rem for the Outlook-style weekly calendar
 const CAL_ROW_REM = 1.875;
 
+/**
+ * 重なりエントリを列に割り当てる。
+ * 推移的に重なるエントリをクラスタ化し、クラスタ内で空いている列を見つけて配置する。
+ * 返り値: entryId → { col, total } （colは0始まり、totalはクラスタ内の列数）
+ */
+function computeEntryLayout(entries: TimeEntry[]): Map<string, { col: number; total: number }> {
+  const result = new Map<string, { col: number; total: number }>();
+  const sorted = [...entries].sort((a, b) => a.startSlot - b.startSlot || a.endSlot - b.endSlot);
+
+  let cluster: TimeEntry[] = [];
+  let clusterMaxEnd = -1;
+
+  const flush = () => {
+    if (cluster.length === 0) return;
+    const lanes: number[] = []; // 各列の末尾終了スロット
+    const cols: number[] = [];
+    for (const e of cluster) {
+      let col = -1;
+      for (let i = 0; i < lanes.length; i++) {
+        if (lanes[i] <= e.startSlot) { col = i; break; }
+      }
+      if (col === -1) { col = lanes.length; lanes.push(0); }
+      lanes[col] = e.endSlot;
+      cols.push(col);
+    }
+    const total = lanes.length;
+    cluster.forEach((e, i) => result.set(e.id, { col: cols[i], total }));
+    cluster = [];
+    clusterMaxEnd = -1;
+  };
+
+  for (const e of sorted) {
+    if (e.startSlot >= clusterMaxEnd) flush();
+    cluster.push(e);
+    clusterMaxEnd = Math.max(clusterMaxEnd, e.endSlot);
+  }
+  flush();
+  return result;
+}
+
 export default function WeeklyPage() {
   const [baseDate, setBaseDate] = useState(() => new Date(toJSTDateString() + "T00:00:00"));
   const [entries, setEntries] = useState<TimeEntry[]>([]);
@@ -60,6 +100,7 @@ export default function WeeklyPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [editingTimeEntry, setEditingTimeEntry] = useState<TimeEntry | null>(null);
+  const [newEntryContext, setNewEntryContext] = useState<{ date: string; startSlot: number } | null>(null);
   const [masterCategories, setMasterCategories] = useState<{ id: string; name: string }[]>([]);
   const [masterGenres, setMasterGenres] = useState<{ id: string; name: string; color: string; type: string }[]>([]);
   const hasData = useRef(false);
@@ -246,6 +287,19 @@ export default function WeeklyPage() {
     if (!editingTimeEntry) return;
     await fetch(`/api/time-entries?id=${editingTimeEntry.id}`, { method: "DELETE" });
     setEditingTimeEntry(null);
+    invalidateCache(`time-entries?startDate=${startDate}&endDate=${endDate}`);
+    fetchData();
+  };
+
+  // ── Create entry from calendar ──
+  const handleCreateSave = async (data: { categoryId: string; genreId: string; startSlot: number; endSlot: number; title?: string; detail?: string }) => {
+    if (!newEntryContext) return;
+    await fetch("/api/time-entries", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date: newEntryContext.date, ...data }),
+    });
+    setNewEntryContext(null);
     invalidateCache(`time-entries?startDate=${startDate}&endDate=${endDate}`);
     fetchData();
   };
@@ -697,16 +751,20 @@ export default function WeeklyPage() {
                 />
               ))}
 
-              {/* Day columns: grid lines */}
-              {weekDates.map((_, colIdx) => (
-                Array.from({ length: 48 }, (_, rowIdx) => (
-                  <div
+              {/* Day columns: grid lines (click to create new entry) */}
+              {weekDates.map((wd, colIdx) => {
+                const dateKey = formatDate(wd);
+                return Array.from({ length: 48 }, (_, rowIdx) => (
+                  <button
+                    type="button"
                     key={`cell-${colIdx}-${rowIdx}`}
-                    className={`border-r border-slate-100 ${rowIdx % 2 === 0 ? "border-b border-slate-100" : "border-b border-slate-50"}`}
+                    onClick={() => setNewEntryContext({ date: dateKey, startSlot: rowIdx })}
+                    className={`border-r border-slate-100 hover:bg-indigo-50/50 transition-colors cursor-pointer ${rowIdx % 2 === 0 ? "border-b border-slate-100" : "border-b border-slate-50"}`}
                     style={{ gridRow: rowIdx + 1, gridColumn: colIdx + 2 }}
+                    aria-label={`${dateKey} ${slotToTime(rowIdx)} に新規作成`}
                   />
-                ))
-              ))}
+                ));
+              })}
 
               {/* Drop preview */}
               {dragEntry && dropCell && (() => {
@@ -730,12 +788,22 @@ export default function WeeklyPage() {
               {weekDates.map((wd, colIdx) => {
                 const dateKey = formatDate(wd);
                 const dayEntries = entriesByDate.get(dateKey) || [];
+                const layout = computeEntryLayout(dayEntries);
                 return dayEntries.map((entry) => {
                   const isDragging = dragEntry?.id === entry.id;
+                  const lane = layout.get(entry.id) || { col: 0, total: 1 };
+                  const widthPct = 100 / lane.total;
+                  const leftPct = lane.col * widthPct;
                   return (
                     <div
                       key={entry.id}
                       draggable
+                      onClick={(e) => {
+                        // ドラッグ後のクリックは無視
+                        if (dragEntry) return;
+                        e.stopPropagation();
+                        setEditingTimeEntry(entry);
+                      }}
                       onDragStart={(e) => {
                         e.dataTransfer.effectAllowed = "move";
                         setDragEntry(entry);
@@ -745,7 +813,7 @@ export default function WeeklyPage() {
                       onTouchStart={(e) => handleEntryTouchStart(e, entry)}
                       onTouchMove={handleEntryTouchMove}
                       onTouchEnd={handleEntryTouchEnd}
-                      className={`rounded mx-0.5 overflow-hidden z-10 cursor-grab active:cursor-grabbing transition-opacity select-none ${
+                      className={`rounded overflow-hidden z-10 cursor-pointer active:cursor-grabbing transition-opacity select-none ${
                         isDragging ? "opacity-30" : "opacity-100"
                       }`}
                       style={{
@@ -753,6 +821,8 @@ export default function WeeklyPage() {
                         gridColumn: colIdx + 2,
                         backgroundColor: `${entry.genre.color}20`,
                         borderLeft: `3px solid ${entry.genre.color}`,
+                        width: `calc(${widthPct}% - 2px)`,
+                        marginLeft: `calc(${leftPct}% + 1px)`,
                       }}
                       title={`${slotToTime(entry.startSlot)}–${slotToTime(entry.endSlot)} ${entry.title || entry.category.name}`}
                     >
@@ -884,6 +954,19 @@ export default function WeeklyPage() {
           onSave={handleTimelineSave}
           onDelete={() => handleTimelineDelete()}
           onClose={() => setEditingTimeEntry(null)}
+        />
+      )}
+
+      {/* New entry modal (from calendar view) */}
+      {newEntryContext && (
+        <EntryModal
+          key={`new-${newEntryContext.date}-${newEntryContext.startSlot}`}
+          slotIndex={newEntryContext.startSlot}
+          date={newEntryContext.date}
+          categories={masterCategories}
+          genres={masterGenres}
+          onSave={handleCreateSave}
+          onClose={() => setNewEntryContext(null)}
         />
       )}
     </div>
