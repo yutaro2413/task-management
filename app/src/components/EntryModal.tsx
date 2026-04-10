@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { slotToTime, slotToTimeLabel, getSlotOptions, getEndSlotOptions } from "@/lib/utils";
 
 type Category = { id: string; name: string };
@@ -56,22 +56,23 @@ export default function EntryModal({
   const [showDetail, setShowDetail] = useState(!!editEntry?.detail);
 
   // マウント時の初期値を記憶して dirty 判定に使う
-  const initialRef = useRef({
+  // useState の lazy init で一度だけ計算し、以降は不変。
+  const [initial] = useState(() => ({
     categoryId: editEntry?.category.id || "",
     genreId: editEntry?.genre.id || "",
     startSlot: editEntry?.startSlot ?? slotIndex,
     endSlot: editEntry?.endSlot ?? Math.min(slotIndex + 1, 48),
     title: editEntry?.title || "",
     detail: editEntry?.detail || "",
-  });
+  }));
 
   const isDirty =
-    categoryId !== initialRef.current.categoryId ||
-    genreId !== initialRef.current.genreId ||
-    startSlot !== initialRef.current.startSlot ||
-    endSlot !== initialRef.current.endSlot ||
-    title.trim() !== initialRef.current.title.trim() ||
-    detail.trim() !== initialRef.current.detail.trim();
+    categoryId !== initial.categoryId ||
+    genreId !== initial.genreId ||
+    startSlot !== initial.startSlot ||
+    endSlot !== initial.endSlot ||
+    title.trim() !== initial.title.trim() ||
+    detail.trim() !== initial.detail.trim();
 
   // 親に dirty 状態を通知
   useEffect(() => {

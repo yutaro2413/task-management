@@ -27,15 +27,23 @@ export default function SettingsPage() {
   const [editingCat, setEditingCat] = useState<Category | null>(null);
   const [editingGenre, setEditingGenre] = useState<Genre | null>(null);
   const [editingExpCat, setEditingExpCat] = useState<ExpenseCategory | null>(null);
+  // NOTE: fetchData 冒頭の setFetching(true) は react-hooks/set-state-in-effect
+  // ルールを満たすために必要（非同期 setState だけだと effect 内から呼び出せない）。
+  const [, setFetching] = useState(false);
   const fetchData = useCallback(async () => {
-    const [cats, gnrs, expCats] = await Promise.all([
-      fetch("/api/categories").then((r) => r.json()),
-      fetch("/api/genres").then((r) => r.json()),
-      fetch("/api/expense-categories").then((r) => r.json()),
-    ]);
-    setCategories(cats);
-    setGenres(gnrs);
-    setExpenseCategories(expCats);
+    setFetching(true);
+    try {
+      const [cats, gnrs, expCats] = await Promise.all([
+        fetch("/api/categories").then((r) => r.json()),
+        fetch("/api/genres").then((r) => r.json()),
+        fetch("/api/expense-categories").then((r) => r.json()),
+      ]);
+      setCategories(cats);
+      setGenres(gnrs);
+      setExpenseCategories(expCats);
+    } finally {
+      setFetching(false);
+    }
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);

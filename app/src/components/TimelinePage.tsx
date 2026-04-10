@@ -197,14 +197,12 @@ export default function TimelinePage() {
   const [fetching, setFetching] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isPanelDirty, setIsPanelDirty] = useState(false);
-  const [showDirtyWarning, setShowDirtyWarning] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
   const [weekEntriesMap, setWeekEntriesMap] = useState<Map<string, TimeEntry[]>>(new Map());
   const timelineRef = useRef<HTMLDivElement>(null);
   const landscapeScrollRef = useRef<HTMLDivElement>(null);
   const scrollDoneRef = useRef(false);
   const initialLoadDone = useRef(false);
-  const dirtyWarnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isToday = date === toJSTDateString();
   const weekDates = getWeekDates(new Date(date + "T00:00:00"));
@@ -383,17 +381,10 @@ export default function TimelinePage() {
     () => changeDate(-1),  // swipe right → prev day
   );
 
-  const triggerDirtyWarning = () => {
-    setShowDirtyWarning(true);
-    if (dirtyWarnTimerRef.current) clearTimeout(dirtyWarnTimerRef.current);
-    dirtyWarnTimerRef.current = setTimeout(() => setShowDirtyWarning(false), 2500);
-  };
-
   const handleSlotClick = (slotIndex: number) => {
     if (isPanelDirty) {
       if (!window.confirm("変更が保存されていません。破棄して切り替えますか？")) return;
       setIsPanelDirty(false);
-      setShowDirtyWarning(false);
     }
     const list = slotEntriesMap.get(slotIndex);
     if (list && list.length > 0) {
@@ -411,7 +402,6 @@ export default function TimelinePage() {
     if (isPanelDirty) {
       if (!window.confirm("変更が保存されていません。破棄して切り替えますか？")) return;
       setIsPanelDirty(false);
-      setShowDirtyWarning(false);
     }
     setEditEntry(entry);
     setSelectedSlot(entry.startSlot);
@@ -444,7 +434,6 @@ export default function TimelinePage() {
       setSelectedSlot(null);
       setEditEntry(null);
       setIsPanelDirty(false);
-      setShowDirtyWarning(false);
       await fetchEntries(date, true);
       if (isLandscape) await fetchWeekEntries(true);
     } finally {
@@ -459,7 +448,6 @@ export default function TimelinePage() {
       setSelectedSlot(null);
       setEditEntry(null);
       setIsPanelDirty(false);
-      setShowDirtyWarning(false);
       await fetchEntries(date, true);
       if (isLandscape) await fetchWeekEntries(true);
     } finally {
@@ -471,7 +459,6 @@ export default function TimelinePage() {
     if (isPanelDirty) {
       if (!window.confirm("変更が保存されていません。破棄して切り替えますか？")) return;
       setIsPanelDirty(false);
-      setShowDirtyWarning(false);
     }
     setEditEntry(null);
     setSelectedSlot(slotIndex);
@@ -483,7 +470,6 @@ export default function TimelinePage() {
     setEditEntry(null);
     setShowExpenseModal(false);
     setIsPanelDirty(false);
-    setShowDirtyWarning(false);
   };
 
   const currentSlot = getCurrentSlotJST();
@@ -788,16 +774,6 @@ export default function TimelinePage() {
                 </button>
               )}
             </div>
-
-            {/* 未保存警告バナー */}
-            {showDirtyWarning && (
-              <div className="mx-3 mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2 flex-shrink-0">
-                <svg className="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                </svg>
-                <p className="text-xs text-amber-700 font-medium">変更を保存してください</p>
-              </div>
-            )}
 
             {/* Panel content */}
             {selectedSlot !== null && (
