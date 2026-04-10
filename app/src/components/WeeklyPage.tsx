@@ -824,14 +824,28 @@ export default function WeeklyPage() {
                         width: `calc(${widthPct}% - 2px)`,
                         marginLeft: `calc(${leftPct}% + 1px)`,
                       }}
-                      title={`${slotToTime(entry.startSlot)}–${slotToTime(entry.endSlot)} ${entry.title || entry.category.name}`}
+                      title={`${slotToTime(entry.startSlot)}–${slotToTime(entry.endSlot)} [${entry.genre.type || "経費"}] ${entry.category.name} / ${entry.genre.name}${entry.title ? ` — ${entry.title}` : ""}`}
                     >
-                      <div className="px-1 py-px overflow-hidden h-full">
+                      <div className="px-1 py-px overflow-hidden h-full leading-none">
                         <p
                           className="text-[9px] font-semibold truncate leading-tight"
                           style={{ color: entry.genre.color }}
                         >
-                          {entry.title || entry.category.name}
+                          {entry.title || entry.genre.name}
+                        </p>
+                        <p className="text-[8px] text-slate-500 truncate leading-tight mt-0.5">
+                          <span
+                            className={`inline-block px-0.5 rounded-sm mr-0.5 font-semibold ${
+                              entry.genre.type === "投資"
+                                ? "bg-blue-100 text-blue-600"
+                                : entry.genre.type === "付随"
+                                ? "bg-red-100 text-red-600"
+                                : "bg-slate-200 text-slate-600"
+                            }`}
+                          >
+                            {(entry.genre.type || "経")[0]}
+                          </span>
+                          {entry.category.name}・{entry.genre.name}
                         </p>
                       </div>
                     </div>
