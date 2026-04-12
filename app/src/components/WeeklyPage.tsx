@@ -198,11 +198,12 @@ export default function WeeklyPage() {
           detail: entry.detail,
         }),
       });
+      invalidateCache(`time-entries?startDate=${startDate}&endDate=${endDate}`);
       await fetchData();
     } finally {
       setIsSaving(false);
     }
-  }, [weekDates, fetchData]);
+  }, [weekDates, fetchData, startDate, endDate]);
 
   /** HTML5 D&D: dragover */
   const handleCalendarDragOver = useCallback((e: React.DragEvent) => {
@@ -755,13 +756,16 @@ export default function WeeklyPage() {
               {weekDates.map((wd, colIdx) => {
                 const dateKey = formatDate(wd);
                 return Array.from({ length: 48 }, (_, rowIdx) => (
-                  <button
-                    type="button"
+                  <div
                     key={`cell-${colIdx}-${rowIdx}`}
-                    onClick={() => setNewEntryContext({ date: dateKey, startSlot: rowIdx })}
+                    onClick={() => {
+                      // ドラッグ直後のクリックは無視
+                      if (dragEntry) return;
+                      setNewEntryContext({ date: dateKey, startSlot: rowIdx });
+                    }}
                     className={`border-r border-slate-100 hover:bg-indigo-50/50 transition-colors cursor-pointer ${rowIdx % 2 === 0 ? "border-b border-slate-100" : "border-b border-slate-50"}`}
                     style={{ gridRow: rowIdx + 1, gridColumn: colIdx + 2 }}
-                    aria-label={`${dateKey} ${slotToTime(rowIdx)} に新規作成`}
+                    title={`${dateKey} ${slotToTime(rowIdx)} に新規作成`}
                   />
                 ));
               })}
