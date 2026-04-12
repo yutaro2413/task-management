@@ -32,6 +32,7 @@ export default function ExpensesPage() {
   const [fixedExpenses, setFixedExpenses] = useState<FixedExpense[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showInput, setShowInput] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [fetching, setFetching] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showFixed, setShowFixed] = useState(false);
@@ -216,7 +217,14 @@ export default function ExpensesPage() {
       ) : (
         <div className="space-y-1">
           {selectedExpenses.map((e) => (
-            <div key={e.id} className="flex items-center justify-between py-2.5 border-b border-slate-100">
+            <button
+              key={e.id}
+              onClick={() => {
+                setEditingExpense(e);
+                setShowInput(false);
+              }}
+              className="w-full flex items-center justify-between py-2.5 border-b border-slate-100 hover:bg-slate-50 active:bg-slate-100 transition-colors text-left"
+            >
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 {e.category && <ExpenseIcon icon={e.category.icon} color={e.category.color} size={20} />}
                 <div className="min-w-0">
@@ -226,11 +234,9 @@ export default function ExpensesPage() {
               </div>
               <div className="flex items-center gap-2">
                 <span className={`text-sm font-bold ${e.type === "income" ? "text-green-600" : "text-slate-800"}`}>{e.amount.toLocaleString()}円</span>
-                <button onClick={() => handleDelete(e.id)} className="text-slate-300 hover:text-red-500 p-1">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
+                <svg className="w-4 h-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M9 5l7 7-7 7" /></svg>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       )}
@@ -343,7 +349,7 @@ export default function ExpensesPage() {
         </button>
       </div>
 
-      {/* Mobile modal */}
+      {/* Mobile modal — create */}
       {showInput && (
         <div className="lg:hidden">
           <ExpenseModal
@@ -352,6 +358,21 @@ export default function ExpensesPage() {
             onClose={() => setShowInput(false)}
           />
         </div>
+      )}
+
+      {/* Edit modal — both mobile and PC */}
+      {editingExpense && (
+        <ExpenseModal
+          key={editingExpense.id}
+          date={toJSTDateKey(editingExpense.date)}
+          editExpense={{ ...editingExpense, date: toJSTDateKey(editingExpense.date) }}
+          onSave={() => { setEditingExpense(null); fetchExpenses(true); }}
+          onDelete={async () => {
+            await handleDelete(editingExpense.id);
+            setEditingExpense(null);
+          }}
+          onClose={() => setEditingExpense(null)}
+        />
       )}
     </div>
   );
