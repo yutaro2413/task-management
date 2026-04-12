@@ -6,22 +6,37 @@ import LoadingOverlay from "./LoadingOverlay";
 
 type ExpenseCategory = { id: string; name: string; color: string; icon: string };
 
+type EditExpense = {
+  id: string;
+  date: string;
+  amount: number;
+  type: string;
+  memo: string | null;
+  category: { id: string; name: string; color: string; icon: string } | null;
+};
+
 type Props = {
   date: string;
+  editExpense?: EditExpense | null;
   onSave: () => void;
+  onDelete?: () => void;
   onClose: () => void;
   /** PC right-panel mode: renders inline without backdrop */
   panelMode?: boolean;
 };
 
-export default function ExpenseModal({ date, onSave, onClose, panelMode = false }: Props) {
-  const [expenseDate, setExpenseDate] = useState(date);
-  const [amount, setAmount] = useState("");
-  const [type, setType] = useState<"expense" | "income">("expense");
-  const [categoryId, setCategoryId] = useState("");
-  const [memo, setMemo] = useState("");
+export default function ExpenseModal({ date, editExpense, onSave, onDelete, onClose, panelMode = false }: Props) {
+  const [expenseDate, setExpenseDate] = useState(editExpense ? editExpense.date : date);
+  const [amount, setAmount] = useState(editExpense ? String(editExpense.amount) : "");
+  const [type, setType] = useState<"expense" | "income">(
+    (editExpense?.type as "expense" | "income") || "expense"
+  );
+  const [categoryId, setCategoryId] = useState(editExpense?.category?.id || "");
+  const [memo, setMemo] = useState(editExpense?.memo || "");
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [saving, setSaving] = useState(false);
+
+  const isEdit = !!editExpense;
 
   useEffect(() => {
     fetch("/api/expense-categories")
@@ -29,26 +44,42 @@ export default function ExpenseModal({ date, onSave, onClose, panelMode = false 
       .then(setCategories);
   }, []);
 
-  // Sync date if parent changes it (e.g. date navigation)
+  // Sync date if parent changes it (only in create mode)
   useEffect(() => {
-    setExpenseDate(date);
-  }, [date]);
+    if (!isEdit) setExpenseDate(date);
+  }, [date, isEdit]);
 
   const handleSave = async () => {
-    if (!amount || isNaN(Number(amount))) return;
+    const num = Number(amount);
+    if (!amount || isNaN(num) || num <= 0) return;
     setSaving(true);
     try {
-      await fetch("/api/expenses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          date: expenseDate,
-          amount: Number(amount),
-          type,
-          categoryId: categoryId || null,
-          memo: memo.trim() || null,
-        }),
-      });
+      if (isEdit) {
+        await fetch("/api/expenses", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: editExpense!.id,
+            date: expenseDate,
+            amount: num,
+            type,
+            categoryId: categoryId || null,
+            memo: memo.trim() || null,
+          }),
+        });
+      } else {
+        await fetch("/api/expenses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            date: expenseDate,
+            amount: num,
+            type,
+            categoryId: categoryId || null,
+            memo: memo.trim() || null,
+          }),
+        });
+      }
       onSave();
     } finally {
       setSaving(false);
@@ -126,18 +157,22 @@ export default function ExpenseModal({ date, onSave, onClose, panelMode = false 
           />
         </div>
 
-        {/* Amount */}
+        {/* Amount — text input with numeric keyboard, no spinner arrows */}
         <div className="flex items-center bg-slate-50 rounded-lg px-3 py-2">
           <span className={`text-xs font-bold w-10 ${type === "expense" ? "text-rose-500" : "text-green-500"}`}>
             {type === "expense" ? "支出" : "収入"}
           </span>
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "" || /^\d+$/.test(v)) setAmount(v);
+            }}
             placeholder="0"
             className="flex-1 text-lg font-bold bg-transparent focus:outline-none text-right"
-            inputMode="numeric"
           />
           <span className="text-sm text-slate-500 ml-1">円</span>
         </div>
@@ -165,18 +200,28 @@ export default function ExpenseModal({ date, onSave, onClose, panelMode = false 
           </div>
         )}
 
-        {/* Save button */}
-        <button
-          onClick={handleSave}
-          disabled={!amount || isNaN(Number(amount))}
-          className={`w-full py-3 rounded-lg text-sm font-bold text-white transition-colors ${
-            type === "expense"
-              ? "bg-rose-500 hover:bg-rose-600 disabled:bg-slate-300"
-              : "bg-green-500 hover:bg-green-600 disabled:bg-slate-300"
-          } disabled:cursor-not-allowed`}
-        >
-          {type === "expense" ? "支出" : "収入"}を入力する
-        </button>
+        {/* Action buttons */}
+        <div className="flex gap-2">
+          {isEdit && onDelete && (
+            <button
+              onClick={onDelete}
+              className="px-4 py-3 rounded-lg text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100"
+            >
+              削除
+            </button>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={!amount || isNaN(Number(amount)) || Number(amount) <= 0}
+            className={`flex-1 py-3 rounded-lg text-sm font-bold text-white transition-colors ${
+              type === "expense"
+                ? "bg-rose-500 hover:bg-rose-600 disabled:bg-slate-300"
+                : "bg-green-500 hover:bg-green-600 disabled:bg-slate-300"
+            } disabled:cursor-not-allowed`}
+          >
+            {isEdit ? "更新" : type === "expense" ? "支出を入力する" : "収入を入力する"}
+          </button>
+        </div>
       </div>
     </>
   );

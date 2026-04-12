@@ -264,12 +264,16 @@ export default function FixedExpensesPage() {
               <div className="flex items-center bg-slate-50 rounded-lg px-3 py-2">
                 <span className="text-xs text-slate-500 w-16 flex-shrink-0">金額</span>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "" || /^\d+$/.test(v)) setAmount(v);
+                  }}
                   placeholder="0"
                   className="flex-1 text-lg font-bold bg-transparent focus:outline-none text-right"
-                  inputMode="numeric"
                 />
                 <span className="text-sm text-slate-500 ml-1">円</span>
               </div>
