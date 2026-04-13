@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { slotToTime, toJSTDateKey } from "@/lib/utils";
 
 type Category = { id: string; name: string };
-type Genre = { id: string; name: string; color: string; type: string };
+type Genre = { id: string; name: string; color: string; type: string; subType: string };
 type TimeEntry = {
   id: string;
   date: string;

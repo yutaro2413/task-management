@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { slotToTime, slotToTimeLabel, getSlotOptions, getEndSlotOptions } from "@/lib/utils";
 
 type Category = { id: string; name: string };
-type Genre = { id: string; name: string; color: string; type: string };
+type Genre = { id: string; name: string; color: string; type: string; subType: string };
 
 type Props = {
   slotIndex: number;

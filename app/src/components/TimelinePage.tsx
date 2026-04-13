@@ -11,7 +11,7 @@ import SearchPanel from "./SearchPanel";
 import LoadingOverlay from "./LoadingOverlay";
 
 type Category = { id: string; name: string; excludeFromSummary: boolean };
-type Genre = { id: string; name: string; color: string; type: string };
+type Genre = { id: string; name: string; color: string; type: string; subType: string };
 type TimeEntry = {
   id: string;
   date?: string;
