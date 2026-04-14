@@ -14,7 +14,7 @@ type TimeEntry = {
   title?: string | null;
   detail?: string | null;
   category: { id: string; name: string; excludeFromSummary: boolean };
-  genre: { id: string; name: string; color: string; type: string };
+  genre: { id: string; name: string; color: string; type: string; subType: string };
 };
 
 type DailyNote = {
@@ -102,7 +102,7 @@ export default function WeeklyPage() {
   const [editingTimeEntry, setEditingTimeEntry] = useState<TimeEntry | null>(null);
   const [newEntryContext, setNewEntryContext] = useState<{ date: string; startSlot: number } | null>(null);
   const [masterCategories, setMasterCategories] = useState<{ id: string; name: string }[]>([]);
-  const [masterGenres, setMasterGenres] = useState<{ id: string; name: string; color: string; type: string }[]>([]);
+  const [masterGenres, setMasterGenres] = useState<{ id: string; name: string; color: string; type: string; subType: string }[]>([]);
   const hasData = useRef(false);
 
   // ── D&D / long-press state ──────────────────────────────────────────────
@@ -345,11 +345,11 @@ export default function WeeklyPage() {
     categorySummary.set(cKey, existing);
   });
 
-  const genreSummary = new Map<string, { name: string; color: string; type: string; count: number }>();
+  const genreSummary = new Map<string, { name: string; color: string; type: string; subType: string; count: number }>();
   entries.forEach((e) => {
     const slots = e.endSlot - e.startSlot;
     const gKey = e.genre.id;
-    const existing = genreSummary.get(gKey) || { name: e.genre.name, color: e.genre.color, type: e.genre.type, count: 0 };
+    const existing = genreSummary.get(gKey) || { name: e.genre.name, color: e.genre.color, type: e.genre.type, subType: e.genre.subType, count: 0 };
     existing.count += slots;
     genreSummary.set(gKey, existing);
   });
@@ -362,6 +362,12 @@ export default function WeeklyPage() {
   const lossHours = lossSlots * 0.5;
   const totalInvCostSlots = investSlots + costSlots;
   const investPct = totalInvCostSlots > 0 ? Math.round((investSlots / totalInvCostSlots) * 100) : 0;
+
+  // 性質ベースの集計（付随は除外）
+  const investNatureSlots = entries.reduce((sum, e) => sum + (e.genre.subType === "投資的" ? (e.endSlot - e.startSlot) : 0), 0);
+  const costNatureSlots = entries.reduce((sum, e) => sum + (e.genre.subType === "経費的" ? (e.endSlot - e.startSlot) : 0), 0);
+  const totalNatureSlots = investNatureSlots + costNatureSlots;
+  const investNaturePct = totalNatureSlots > 0 ? Math.round((investNatureSlots / totalNatureSlots) * 100) : 0;
 
   const entriesByDate = new Map<string, TimeEntry[]>();
   entries.forEach((e) => {
@@ -492,15 +498,31 @@ export default function WeeklyPage() {
                         <p className="text-xs text-slate-400 font-medium">経費</p>
                         <p className="text-xl font-bold text-slate-500">{costHours}h</p>
                       </button>
-                      <p className="text-xs text-slate-400 ml-auto">投資率 <span className="text-sm font-bold text-blue-600">{investPct}%</span></p>
+                      <div className="ml-auto text-right">
+                        <p className="text-xs text-slate-400">投資率 <span className="text-sm font-bold text-blue-600">{investPct}%</span></p>
+                        {totalNatureSlots > 0 && investNaturePct !== investPct && (
+                          <p className="text-[10px] text-slate-400">(性質 <span className="font-bold text-blue-500">{investNaturePct}%</span>)</p>
+                        )}
+                      </div>
                     </div>
                     <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex">
                       <div className="h-full bg-blue-500 rounded-l-full transition-all" style={{ width: `${investPct}%` }} />
                       <div className="h-full bg-slate-300 flex-1" />
                     </div>
-                    {lossSlots > 0 && (
-                      <p className="text-[10px] text-slate-400 mt-1.5">(付随 {lossHours}h) ※投資率の算出に含まず</p>
+                    {totalNatureSlots > 0 && investNaturePct !== investPct && (
+                      <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden flex mt-1">
+                        <div className="h-full bg-blue-300 rounded-l-full transition-all" style={{ width: `${investNaturePct}%` }} />
+                        <div className="h-full bg-amber-200 flex-1" />
+                      </div>
                     )}
+                    <div className="flex items-center gap-2 mt-1.5">
+                      {lossSlots > 0 && (
+                        <p className="text-[10px] text-slate-400">(付随 {lossHours}h) ※投資率の算出に含まず</p>
+                      )}
+                      {totalNatureSlots > 0 && investNaturePct !== investPct && (
+                        <p className="text-[10px] text-slate-400 ml-auto">(投資的 {investNatureSlots * 0.5}h / 経費的 {costNatureSlots * 0.5}h)</p>
+                      )}
+                    </div>
                   </>
                 )}
               </div>
@@ -537,6 +559,9 @@ export default function WeeklyPage() {
                           <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} />
                           <span className="text-sm flex-1 min-w-0 truncate">{g.name}</span>
                           <span className={`text-[10px] px-1 py-0 rounded-full flex-shrink-0 ${g.type === "投資" ? "bg-blue-100 text-blue-600" : g.type === "付随" ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-500"}`}>{g.type || "経費"}</span>
+                          {g.type !== "付随" && g.subType && (
+                            <span className={`text-[9px] px-1 py-0 rounded-full flex-shrink-0 ${g.subType === "投資的" ? "bg-blue-50 text-blue-500" : "bg-amber-50 text-amber-500"}`}>{g.subType}</span>
+                          )}
                           <span className="text-sm font-medium tabular-nums flex-shrink-0">{g.count * 0.5}h</span>
                           <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden flex-shrink-0">
                             <div className="h-full rounded-full" style={{ backgroundColor: g.color, width: `${allSlots > 0 ? (g.count / allSlots) * 100 : 0}%` }} />
@@ -828,7 +853,7 @@ export default function WeeklyPage() {
                         width: `calc(${widthPct}% - 2px)`,
                         marginLeft: `calc(${leftPct}% + 1px)`,
                       }}
-                      title={`${slotToTime(entry.startSlot)}–${slotToTime(entry.endSlot)} [${entry.genre.type || "経費"}] ${entry.category.name} / ${entry.genre.name}${entry.title ? ` — ${entry.title}` : ""}`}
+                      title={`${slotToTime(entry.startSlot)}–${slotToTime(entry.endSlot)} [${entry.genre.type || "経費"}${entry.genre.subType ? `/${entry.genre.subType}` : ""}] ${entry.category.name} / ${entry.genre.name}${entry.title ? ` — ${entry.title}` : ""}`}
                     >
                       <div className="px-1 py-px overflow-hidden h-full leading-none">
                         <p

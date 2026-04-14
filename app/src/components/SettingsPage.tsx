@@ -5,7 +5,7 @@ import Link from "next/link";
 import ExpenseIcon, { EXPENSE_ICON_OPTIONS } from "./ExpenseIcon";
 
 type Category = { id: string; name: string; excludeFromSummary: boolean };
-type Genre = { id: string; name: string; color: string; type: string };
+type Genre = { id: string; name: string; color: string; type: string; subType: string };
 type ExpenseCategory = { id: string; name: string; color: string; icon: string };
 
 const COLORS = [
@@ -21,6 +21,7 @@ export default function SettingsPage() {
   const [newGenreName, setNewGenreName] = useState("");
   const [newGenreColor, setNewGenreColor] = useState("#6366f1");
   const [newGenreType, setNewGenreType] = useState<"投資" | "経費" | "付随">("経費");
+  const [newGenreSubType, setNewGenreSubType] = useState<"投資的" | "経費的">("経費的");
   const [newExpCatName, setNewExpCatName] = useState("");
   const [newExpCatColor, setNewExpCatColor] = useState("#6b7280");
   const [newExpCatIcon, setNewExpCatIcon] = useState("default");
@@ -75,7 +76,7 @@ export default function SettingsPage() {
   // Genre CRUD
   const addGenre = async () => {
     if (!newGenreName.trim()) return;
-    await fetch("/api/genres", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newGenreName.trim(), color: newGenreColor, type: newGenreType }) });
+    await fetch("/api/genres", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newGenreName.trim(), color: newGenreColor, type: newGenreType, subType: newGenreType === "付随" ? "" : newGenreSubType }) });
     setNewGenreName(""); fetchData();
   };
   const updateGenre = async () => {
@@ -207,10 +208,17 @@ export default function SettingsPage() {
                   <div className="space-y-2">
                     <input type="text" value={editingGenre.name} onChange={(e) => setEditingGenre({ ...editingGenre, name: e.target.value })} className="w-full px-2 py-1 rounded border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                     <div className="flex gap-1">
-                      <button onClick={() => setEditingGenre({ ...editingGenre, type: "投資" })} className={`px-3 py-1 rounded-full text-xs font-medium border ${editingGenre.type === "投資" ? "bg-blue-100 text-blue-700 border-blue-300" : "bg-white text-slate-400 border-slate-200"}`}>投資</button>
-                      <button onClick={() => setEditingGenre({ ...editingGenre, type: "経費" })} className={`px-3 py-1 rounded-full text-xs font-medium border ${editingGenre.type === "経費" ? "bg-slate-200 text-slate-700 border-slate-300" : "bg-white text-slate-400 border-slate-200"}`}>経費</button>
-                      <button onClick={() => setEditingGenre({ ...editingGenre, type: "付随" })} className={`px-3 py-1 rounded-full text-xs font-medium border ${editingGenre.type === "付随" ? "bg-red-100 text-red-700 border-red-300" : "bg-white text-slate-400 border-slate-200"}`}>付随</button>
+                      <button onClick={() => setEditingGenre({ ...editingGenre, type: "投資", subType: "投資的" })} className={`px-3 py-1 rounded-full text-xs font-medium border ${editingGenre.type === "投資" ? "bg-blue-100 text-blue-700 border-blue-300" : "bg-white text-slate-400 border-slate-200"}`}>投資</button>
+                      <button onClick={() => setEditingGenre({ ...editingGenre, type: "経費", subType: "経費的" })} className={`px-3 py-1 rounded-full text-xs font-medium border ${editingGenre.type === "経費" ? "bg-slate-200 text-slate-700 border-slate-300" : "bg-white text-slate-400 border-slate-200"}`}>経費</button>
+                      <button onClick={() => setEditingGenre({ ...editingGenre, type: "付随", subType: "" })} className={`px-3 py-1 rounded-full text-xs font-medium border ${editingGenre.type === "付随" ? "bg-red-100 text-red-700 border-red-300" : "bg-white text-slate-400 border-slate-200"}`}>付随</button>
                     </div>
+                    {editingGenre.type !== "付随" && (
+                      <div className="flex gap-1">
+                        <span className="text-[10px] text-slate-400 self-center mr-1">性質:</span>
+                        <button onClick={() => setEditingGenre({ ...editingGenre, subType: "投資的" })} className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${editingGenre.subType === "投資的" ? "bg-blue-50 text-blue-600 border-blue-200" : "bg-white text-slate-400 border-slate-200"}`}>投資的</button>
+                        <button onClick={() => setEditingGenre({ ...editingGenre, subType: "経費的" })} className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${editingGenre.subType === "経費的" ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-white text-slate-400 border-slate-200"}`}>経費的</button>
+                      </div>
+                    )}
                     <div className="flex flex-wrap gap-1.5">
                       {COLORS.map((c) => (
                         <button key={c} onClick={() => setEditingGenre({ ...editingGenre, color: c })} className={`w-7 h-7 rounded-full border-2 ${editingGenre.color === c ? "border-slate-800 scale-110" : "border-transparent"}`} style={{ backgroundColor: c }} />
@@ -228,6 +236,9 @@ export default function SettingsPage() {
                       <span className="w-4 h-4 rounded-full" style={{ backgroundColor: genre.color }} />
                       <span className="text-sm">{genre.name}</span>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${genre.type === "投資" ? "bg-blue-100 text-blue-600" : genre.type === "付随" ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-500"}`}>{genre.type || "経費"}</span>
+                      {genre.type !== "付随" && genre.subType && (
+                        <span className={`text-[9px] px-1 py-0.5 rounded-full font-medium ${genre.subType === "投資的" ? "bg-blue-50 text-blue-500" : "bg-amber-50 text-amber-500"}`}>{genre.subType}</span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <button onClick={() => setEditingGenre(genre)} className="text-xs text-indigo-600">編集</button>
@@ -244,10 +255,17 @@ export default function SettingsPage() {
               <button onClick={addGenre} disabled={!newGenreName.trim()} className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300">追加</button>
             </div>
             <div className="flex gap-1">
-              <button onClick={() => setNewGenreType("投資")} className={`px-3 py-1 rounded-full text-xs font-medium border ${newGenreType === "投資" ? "bg-blue-100 text-blue-700 border-blue-300" : "bg-white text-slate-400 border-slate-200"}`}>投資</button>
-              <button onClick={() => setNewGenreType("経費")} className={`px-3 py-1 rounded-full text-xs font-medium border ${newGenreType === "経費" ? "bg-slate-200 text-slate-700 border-slate-300" : "bg-white text-slate-400 border-slate-200"}`}>経費</button>
+              <button onClick={() => { setNewGenreType("投資"); setNewGenreSubType("投資的"); }} className={`px-3 py-1 rounded-full text-xs font-medium border ${newGenreType === "投資" ? "bg-blue-100 text-blue-700 border-blue-300" : "bg-white text-slate-400 border-slate-200"}`}>投資</button>
+              <button onClick={() => { setNewGenreType("経費"); setNewGenreSubType("経費的"); }} className={`px-3 py-1 rounded-full text-xs font-medium border ${newGenreType === "経費" ? "bg-slate-200 text-slate-700 border-slate-300" : "bg-white text-slate-400 border-slate-200"}`}>経費</button>
               <button onClick={() => setNewGenreType("付随")} className={`px-3 py-1 rounded-full text-xs font-medium border ${newGenreType === "付随" ? "bg-red-100 text-red-700 border-red-300" : "bg-white text-slate-400 border-slate-200"}`}>付随</button>
             </div>
+            {newGenreType !== "付随" && (
+              <div className="flex gap-1">
+                <span className="text-[10px] text-slate-400 self-center mr-1">性質:</span>
+                <button onClick={() => setNewGenreSubType("投資的")} className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${newGenreSubType === "投資的" ? "bg-blue-50 text-blue-600 border-blue-200" : "bg-white text-slate-400 border-slate-200"}`}>投資的</button>
+                <button onClick={() => setNewGenreSubType("経費的")} className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${newGenreSubType === "経費的" ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-white text-slate-400 border-slate-200"}`}>経費的</button>
+              </div>
+            )}
             <div className="flex flex-wrap gap-1.5">
               {COLORS.map((c) => (
                 <button key={c} onClick={() => setNewGenreColor(c)} className={`w-6 h-6 rounded-full border-2 ${newGenreColor === c ? "border-slate-800 scale-110" : "border-transparent"}`} style={{ backgroundColor: c }} />

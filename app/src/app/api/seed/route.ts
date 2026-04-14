@@ -20,17 +20,17 @@ export async function POST() {
   if (existingGenres === 0) {
     await prisma.genre.createMany({
       data: [
-        { name: "PJ/LvUp", color: "#3b82f6", type: "投資", sortOrder: 0 },
-        { name: "思考・学習", color: "#06b6d4", type: "投資", sortOrder: 1 },
-        { name: "顧客(対応)", color: "#f97316", type: "経費", sortOrder: 2 },
-        { name: "メンテ(自発)", color: "#8b5cf6", type: "経費", sortOrder: 3 },
-        { name: "メンテ(対応)", color: "#a855f7", type: "経費", sortOrder: 4 },
-        { name: "指導/対話", color: "#10b981", type: "投資", sortOrder: 5 },
-        { name: "1on1", color: "#ef4444", type: "投資", sortOrder: 6 },
-        { name: "ルーティン", color: "#6b7280", type: "経費", sortOrder: 7 },
-        { name: "その他(経)", color: "#9ca3af", type: "経費", sortOrder: 8 },
-        { name: "その他(投)", color: "#eab308", type: "投資", sortOrder: 9 },
-        { name: "移動", color: "#f59e0b", type: "付随", sortOrder: 10 },
+        { name: "PJ/LvUp", color: "#3b82f6", type: "投資", subType: "投資的", sortOrder: 0 },
+        { name: "思考・学習", color: "#06b6d4", type: "投資", subType: "投資的", sortOrder: 1 },
+        { name: "顧客(対応)", color: "#f97316", type: "経費", subType: "経費的", sortOrder: 2 },
+        { name: "メンテ(自発)", color: "#8b5cf6", type: "経費", subType: "経費的", sortOrder: 3 },
+        { name: "メンテ(対応)", color: "#a855f7", type: "経費", subType: "経費的", sortOrder: 4 },
+        { name: "指導/対話", color: "#10b981", type: "投資", subType: "投資的", sortOrder: 5 },
+        { name: "1on1", color: "#ef4444", type: "投資", subType: "投資的", sortOrder: 6 },
+        { name: "ルーティン", color: "#6b7280", type: "経費", subType: "経費的", sortOrder: 7 },
+        { name: "その他(経)", color: "#9ca3af", type: "経費", subType: "経費的", sortOrder: 8 },
+        { name: "その他(投)", color: "#eab308", type: "投資", subType: "投資的", sortOrder: 9 },
+        { name: "移動", color: "#f59e0b", type: "付随", subType: "", sortOrder: 10 },
       ],
     });
   }

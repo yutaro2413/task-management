@@ -25,6 +25,7 @@ model Genre {
   name      String
   color     String   @default("#6366f1")
   type      String   @default("経費")
+  subType   String   @default("")          // "投資的" | "経費的" | ""(付随)
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
