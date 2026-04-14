@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
+import { NOTE_SECTIONS, NoteSections, parseNote, serializeNote } from "@/lib/dailyNote";
 
 export default function DailyNoteInput({ date }: { date: string }) {
   const [content, setContent] = useState("");
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState<NoteSections>({});
   const [mode, setMode] = useState<"closed" | "preview" | "edit">("closed");
   const [saving, setSaving] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     fetch(`/api/daily-notes?date=${date}`)
@@ -21,21 +21,19 @@ export default function DailyNoteInput({ date }: { date: string }) {
     if (content) {
       setMode("preview");
     } else {
-      setDraft("");
+      setDraft({});
       setMode("edit");
-      setTimeout(() => textareaRef.current?.focus(), 50);
     }
   };
 
   const handleEdit = () => {
-    setDraft(content);
+    setDraft(parseNote(content));
     setMode("edit");
-    setTimeout(() => textareaRef.current?.focus(), 50);
   };
 
   const handleSave = async () => {
-    const trimmed = draft.trim();
-    if (trimmed === content) {
+    const serialized = serializeNote(draft);
+    if (serialized === content) {
       setMode("closed");
       return;
     }
@@ -44,9 +42,9 @@ export default function DailyNoteInput({ date }: { date: string }) {
       await fetch("/api/daily-notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date, content: trimmed }),
+        body: JSON.stringify({ date, content: serialized }),
       });
-      setContent(trimmed);
+      setContent(serialized);
     } finally {
       setSaving(false);
       setMode("closed");
@@ -54,7 +52,7 @@ export default function DailyNoteInput({ date }: { date: string }) {
   };
 
   const handleClose = () => {
-    setDraft(content);
+    setDraft({});
     setMode("closed");
   };
 
@@ -64,6 +62,13 @@ export default function DailyNoteInput({ date }: { date: string }) {
     day: "numeric",
     weekday: "short",
   });
+
+  // ボタンに表示する短いサマリ: 最初に埋まっているセクションを優先的に取る
+  const parsed = content ? parseNote(content) : {};
+  const firstSection = NOTE_SECTIONS.find((s) => parsed[s.key]?.trim());
+  const summaryText = firstSection
+    ? parsed[firstSection.key]!.split("\n")[0]
+    : parsed._free?.split("\n")[0] || "";
 
   return (
     <>
@@ -82,21 +87,22 @@ export default function DailyNoteInput({ date }: { date: string }) {
           <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
         </svg>
         {content ? (
-          <span className="flex-1 text-sm text-slate-700 truncate min-w-0">{content}</span>
+          <span className="flex-1 text-sm text-slate-700 truncate min-w-0">
+            {firstSection && <span className="text-[10px] text-slate-400 mr-1">★{firstSection.label}</span>}
+            {summaryText}
+          </span>
         ) : (
           <span className="flex-1 text-sm text-slate-300">今日の一言...</span>
         )}
-        {content.length > 20 && (
-          <svg
-            className="w-3 h-3 text-slate-300 flex-shrink-0"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path d="M9 5l7 7-7 7" />
-          </svg>
-        )}
+        <svg
+          className="w-3 h-3 text-slate-300 flex-shrink-0"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path d="M9 5l7 7-7 7" />
+        </svg>
       </button>
 
       {/* プレビューポップアップ（保存済みの場合） */}
@@ -106,17 +112,31 @@ export default function DailyNoteInput({ date }: { date: string }) {
           onClick={handleClose}
         >
           <div
-            className="bg-white rounded-2xl w-full max-w-lg p-5 shadow-xl"
+            className="bg-white rounded-2xl w-full max-w-lg shadow-xl flex flex-col max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100">
               <h3 className="text-base font-bold">今日の一言</h3>
               <span className="text-xs text-slate-400">{dateLabel}</span>
             </div>
-            <div className="bg-slate-50 rounded-xl px-4 py-4 mb-4 min-h-[6rem] max-h-[60vh] overflow-y-auto">
-              <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{content}</p>
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+              {NOTE_SECTIONS.filter((s) => parsed[s.key]?.trim()).map((s) => (
+                <div key={s.key}>
+                  <p className="text-xs font-semibold text-indigo-600 mb-1">★{s.label}</p>
+                  <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed pl-3 border-l-2 border-slate-100">{parsed[s.key]}</p>
+                </div>
+              ))}
+              {parsed._free && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 mb-1">メモ</p>
+                  <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed pl-3 border-l-2 border-slate-100">{parsed._free}</p>
+                </div>
+              )}
+              {!NOTE_SECTIONS.some((s) => parsed[s.key]?.trim()) && !parsed._free && (
+                <p className="text-sm text-slate-400">（内容なし）</p>
+              )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 px-5 py-3 border-t border-slate-100">
               <button
                 onClick={handleClose}
                 className="flex-1 py-2.5 rounded-lg text-sm text-slate-600 border border-slate-200 hover:bg-slate-50"
@@ -141,29 +161,39 @@ export default function DailyNoteInput({ date }: { date: string }) {
           onClick={handleClose}
         >
           <div
-            className="bg-white rounded-2xl w-full max-w-lg p-5 shadow-xl"
+            className="bg-white rounded-2xl w-full max-w-lg shadow-xl flex flex-col max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100">
               <h3 className="text-base font-bold">今日の一言</h3>
               <span className="text-xs text-slate-400">{dateLabel}</span>
             </div>
-            <textarea
-              ref={textareaRef}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSave();
-                if (e.key === "Escape") handleClose();
-              }}
-              placeholder="今日の一言を入力..."
-              rows={8}
-              className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-            />
-            <p className="text-[10px] text-slate-400 mt-1 mb-3">
-              Ctrl+Enter で保存 / Esc でキャンセル
-            </p>
-            <div className="flex gap-2">
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+              {NOTE_SECTIONS.map((s) => (
+                <div key={s.key}>
+                  <label className="block text-xs font-semibold text-indigo-600 mb-1">★{s.label}</label>
+                  <textarea
+                    value={draft[s.key] || ""}
+                    onChange={(e) => setDraft((d) => ({ ...d, [s.key]: e.target.value }))}
+                    placeholder={s.placeholder}
+                    rows={2}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-y leading-relaxed"
+                  />
+                </div>
+              ))}
+              {draft._free && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">メモ（旧形式の内容）</label>
+                  <textarea
+                    value={draft._free || ""}
+                    onChange={(e) => setDraft((d) => ({ ...d, _free: e.target.value }))}
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-y leading-relaxed"
+                  />
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2 px-5 py-3 border-t border-slate-100">
               <button
                 onClick={handleClose}
                 className="flex-1 py-2.5 rounded-lg text-sm text-slate-600 border border-slate-200 hover:bg-slate-50"

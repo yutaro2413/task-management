@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getWeekDates, getDayLabel, formatDate, slotToTime, getMonthDates, getMonthLabel, toJSTDateKey, toJSTDateString } from "@/lib/utils";
 import { cachedFetch, invalidateCache } from "@/lib/cache";
+import { NOTE_SECTIONS, NoteSections, parseNote, serializeNote } from "@/lib/dailyNote";
 import { useSwipe } from "@/hooks/useSwipe";
 import EntryModal from "./EntryModal";
 
@@ -94,9 +95,8 @@ export default function WeeklyPage() {
   const [filterGenreId, setFilterGenreId] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<string | null>(null); // "投資" | "経費" | "付随" | null
   const [editingNote, setEditingNote] = useState<DailyNote | null>(null);
-  const [noteDraft, setNoteDraft] = useState("");
+  const [noteDraft, setNoteDraft] = useState<NoteSections>({});
   const [noteSaving, setNoteSaving] = useState(false);
-  const noteTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [editingTimeEntry, setEditingTimeEntry] = useState<TimeEntry | null>(null);
@@ -576,7 +576,7 @@ export default function WeeklyPage() {
               {!showSpinner && notes.length > 0 && (
                 <div className="bg-white rounded-xl p-4 border border-slate-200">
                   <h3 className="text-sm font-semibold text-slate-700 mb-3">日記</h3>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {notes.map((n) => {
                       const noteDate = toJSTDateKey(n.date);
                       const d = new Date(noteDate + "T00:00:00");
@@ -584,6 +584,8 @@ export default function WeeklyPage() {
                       const days = ["日","月","火","水","木","金","土"];
                       const label = `${d.getMonth() + 1}/${d.getDate()}`;
                       const dowColor = dow === 0 ? "text-red-500" : dow === 6 ? "text-blue-500" : "text-slate-400";
+                      const parsed = parseNote(n.content);
+                      const filledSections = NOTE_SECTIONS.filter((s) => parsed[s.key]?.trim());
                       return (
                         <div key={n.date} className="flex gap-2 group">
                           <span className="text-xs flex-shrink-0 pt-0.5 w-10 text-center">
@@ -591,10 +593,23 @@ export default function WeeklyPage() {
                             <br />
                             <span className={dowColor}>{days[dow]}</span>
                           </span>
-                          <p className="text-sm text-slate-700 flex-1 min-w-0">{n.content}</p>
+                          <div className="flex-1 min-w-0 space-y-1.5">
+                            {filledSections.map((s) => (
+                              <div key={s.key}>
+                                <p className="text-[10px] font-semibold text-indigo-600">★{s.label}</p>
+                                <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed pl-2 border-l-2 border-slate-100">{parsed[s.key]}</p>
+                              </div>
+                            ))}
+                            {parsed._free && (
+                              <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{parsed._free}</p>
+                            )}
+                            {filledSections.length === 0 && !parsed._free && (
+                              <p className="text-sm text-slate-400">（内容なし）</p>
+                            )}
+                          </div>
                           <button
-                            onClick={() => { setEditingNote(n); setNoteDraft(n.content); setTimeout(() => noteTextareaRef.current?.focus(), 50); }}
-                            className="text-slate-300 hover:text-indigo-500 flex-shrink-0 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity p-0.5"
+                            onClick={() => { setEditingNote(n); setNoteDraft(parseNote(n.content)); }}
+                            className="text-slate-300 hover:text-indigo-500 flex-shrink-0 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity p-0.5 self-start"
                             title="編集"
                           >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -915,10 +930,10 @@ export default function WeeklyPage() {
       {editingNote && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop px-4"
-          onClick={() => { setEditingNote(null); setNoteDraft(""); }}
+          onClick={() => { setEditingNote(null); setNoteDraft({}); }}
         >
-          <div className="bg-white rounded-2xl w-full max-w-lg p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100">
               <h3 className="text-base font-bold">日記を編集</h3>
               <span className="text-xs text-slate-400">
                 {new Date(toJSTDateKey(editingNote.date) + "T00:00:00").toLocaleDateString("ja-JP", {
@@ -926,51 +941,52 @@ export default function WeeklyPage() {
                 })}
               </span>
             </div>
-            <textarea
-              ref={noteTextareaRef}
-              value={noteDraft}
-              onChange={(e) => setNoteDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                  e.preventDefault();
-                  const trimmed = noteDraft.trim();
-                  if (trimmed === editingNote.content) { setEditingNote(null); return; }
-                  setNoteSaving(true);
-                  fetch("/api/daily-notes", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ date: toJSTDateKey(editingNote.date), content: trimmed }),
-                  }).then(() => {
-                    setNotes((prev) => prev.map((n) => n.date === editingNote.date ? { ...n, content: trimmed } : n));
-                    setEditingNote(null);
-                  }).finally(() => setNoteSaving(false));
-                }
-                if (e.key === "Escape") { setEditingNote(null); setNoteDraft(""); }
-              }}
-              rows={8}
-              className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-            />
-            <p className="text-[10px] text-slate-400 mt-1 mb-3">Ctrl+Enter で保存 / Esc でキャンセル</p>
-            <div className="flex gap-2">
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+              {NOTE_SECTIONS.map((s) => (
+                <div key={s.key}>
+                  <label className="block text-xs font-semibold text-indigo-600 mb-1">★{s.label}</label>
+                  <textarea
+                    value={noteDraft[s.key] || ""}
+                    onChange={(e) => setNoteDraft((d) => ({ ...d, [s.key]: e.target.value }))}
+                    placeholder={s.placeholder}
+                    rows={2}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-y leading-relaxed"
+                  />
+                </div>
+              ))}
+              {noteDraft._free && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">メモ（旧形式の内容）</label>
+                  <textarea
+                    value={noteDraft._free || ""}
+                    onChange={(e) => setNoteDraft((d) => ({ ...d, _free: e.target.value }))}
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-y leading-relaxed"
+                  />
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2 px-5 py-3 border-t border-slate-100">
               <button
-                onClick={() => { setEditingNote(null); setNoteDraft(""); }}
+                onClick={() => { setEditingNote(null); setNoteDraft({}); }}
                 className="flex-1 py-2.5 rounded-lg text-sm text-slate-600 border border-slate-200 hover:bg-slate-50"
               >
                 キャンセル
               </button>
               <button
                 onClick={async () => {
-                  const trimmed = noteDraft.trim();
-                  if (trimmed === editingNote.content) { setEditingNote(null); return; }
+                  const serialized = serializeNote(noteDraft);
+                  if (serialized === editingNote.content) { setEditingNote(null); setNoteDraft({}); return; }
                   setNoteSaving(true);
                   try {
                     await fetch("/api/daily-notes", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ date: toJSTDateKey(editingNote.date), content: trimmed }),
+                      body: JSON.stringify({ date: toJSTDateKey(editingNote.date), content: serialized }),
                     });
-                    setNotes((prev) => prev.map((n) => n.date === editingNote.date ? { ...n, content: trimmed } : n));
+                    setNotes((prev) => prev.map((n) => n.date === editingNote.date ? { ...n, content: serialized } : n));
                     setEditingNote(null);
+                    setNoteDraft({});
                   } finally {
                     setNoteSaving(false);
                   }
