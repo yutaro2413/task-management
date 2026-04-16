@@ -1,23 +1,72 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { NOTE_SECTIONS, NoteSections, parseNote, serializeNote } from "@/lib/dailyNote";
+
+const DRAFT_KEY_PREFIX = "dailyNote-draft-";
+
+function saveDraftToStorage(date: string, draft: NoteSections) {
+  const serialized = serializeNote(draft);
+  if (serialized) {
+    localStorage.setItem(DRAFT_KEY_PREFIX + date, JSON.stringify(draft));
+  } else {
+    localStorage.removeItem(DRAFT_KEY_PREFIX + date);
+  }
+}
+
+function loadDraftFromStorage(date: string): NoteSections | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY_PREFIX + date);
+    if (!raw) return null;
+    return JSON.parse(raw) as NoteSections;
+  } catch {
+    return null;
+  }
+}
+
+function clearDraftFromStorage(date: string) {
+  localStorage.removeItem(DRAFT_KEY_PREFIX + date);
+}
 
 export default function DailyNoteInput({ date }: { date: string }) {
   const [content, setContent] = useState("");
   const [draft, setDraft] = useState<NoteSections>({});
   const [mode, setMode] = useState<"closed" | "preview" | "edit">("closed");
   const [saving, setSaving] = useState(false);
+  const [hasDraft, setHasDraft] = useState(false);
 
   useEffect(() => {
     fetch(`/api/daily-notes?date=${date}`)
       .then((r) => r.json())
       .then((data) => {
-        setContent(data?.content || "");
+        const saved = data?.content || "";
+        setContent(saved);
+        const stored = loadDraftFromStorage(date);
+        if (stored && serializeNote(stored) !== saved) {
+          setHasDraft(true);
+        } else {
+          clearDraftFromStorage(date);
+          setHasDraft(false);
+        }
       });
   }, [date]);
 
+  const updateDraft = useCallback((updater: (prev: NoteSections) => NoteSections) => {
+    setDraft((prev) => {
+      const next = updater(prev);
+      saveDraftToStorage(date, next);
+      return next;
+    });
+  }, [date]);
+
   const handleOpen = () => {
+    const stored = loadDraftFromStorage(date);
+    if (stored && serializeNote(stored) !== content) {
+      setDraft(stored);
+      setMode("edit");
+      setHasDraft(false);
+      return;
+    }
     if (content) {
       setMode("preview");
     } else {
@@ -27,13 +76,19 @@ export default function DailyNoteInput({ date }: { date: string }) {
   };
 
   const handleEdit = () => {
-    setDraft(parseNote(content));
+    const stored = loadDraftFromStorage(date);
+    if (stored && serializeNote(stored) !== content) {
+      setDraft(stored);
+    } else {
+      setDraft(parseNote(content));
+    }
     setMode("edit");
   };
 
   const handleSave = async () => {
     const serialized = serializeNote(draft);
     if (serialized === content) {
+      clearDraftFromStorage(date);
       setMode("closed");
       return;
     }
@@ -45,6 +100,8 @@ export default function DailyNoteInput({ date }: { date: string }) {
         body: JSON.stringify({ date, content: serialized }),
       });
       setContent(serialized);
+      clearDraftFromStorage(date);
+      setHasDraft(false);
     } finally {
       setSaving(false);
       setMode("closed");
@@ -52,7 +109,6 @@ export default function DailyNoteInput({ date }: { date: string }) {
   };
 
   const handleClose = () => {
-    setDraft({});
     setMode("closed");
   };
 
@@ -63,7 +119,6 @@ export default function DailyNoteInput({ date }: { date: string }) {
     weekday: "short",
   });
 
-  // ボタンに表示する短いサマリ: 最初に埋まっているセクションを優先的に取る
   const parsed = content ? parseNote(content) : {};
   const firstSection = NOTE_SECTIONS.find((s) => parsed[s.key]?.trim());
   const summaryText = firstSection
@@ -72,7 +127,6 @@ export default function DailyNoteInput({ date }: { date: string }) {
 
   return (
     <>
-      {/* ヘッダー内のボタン */}
       <button
         onClick={handleOpen}
         className="flex items-center gap-2 w-full bg-white rounded-lg border border-slate-200 px-3 py-1.5 text-left hover:bg-slate-50 active:bg-slate-100 transition-colors"
@@ -94,6 +148,7 @@ export default function DailyNoteInput({ date }: { date: string }) {
         ) : (
           <span className="flex-1 text-sm text-slate-300">今日の一言...</span>
         )}
+        {hasDraft && <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" title="下書きあり" />}
         <svg
           className="w-3 h-3 text-slate-300 flex-shrink-0"
           fill="none"
@@ -105,7 +160,6 @@ export default function DailyNoteInput({ date }: { date: string }) {
         </svg>
       </button>
 
-      {/* プレビューポップアップ（保存済みの場合） */}
       {mode === "preview" && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop px-4"
@@ -154,7 +208,6 @@ export default function DailyNoteInput({ date }: { date: string }) {
         </div>
       )}
 
-      {/* 編集モーダル */}
       {mode === "edit" && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop px-4"
@@ -174,7 +227,7 @@ export default function DailyNoteInput({ date }: { date: string }) {
                   <label className="block text-xs font-semibold text-indigo-600 mb-1">★{s.label}</label>
                   <textarea
                     value={draft[s.key] || ""}
-                    onChange={(e) => setDraft((d) => ({ ...d, [s.key]: e.target.value }))}
+                    onChange={(e) => updateDraft((d) => ({ ...d, [s.key]: e.target.value }))}
                     placeholder={s.placeholder}
                     rows={2}
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-y leading-relaxed"
@@ -186,7 +239,7 @@ export default function DailyNoteInput({ date }: { date: string }) {
                   <label className="block text-xs font-semibold text-slate-400 mb-1">メモ（旧形式の内容）</label>
                   <textarea
                     value={draft._free || ""}
-                    onChange={(e) => setDraft((d) => ({ ...d, _free: e.target.value }))}
+                    onChange={(e) => updateDraft((d) => ({ ...d, _free: e.target.value }))}
                     rows={3}
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-y leading-relaxed"
                   />

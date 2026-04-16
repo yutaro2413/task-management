@@ -83,6 +83,17 @@ function computeEntryLayout(entries: TimeEntry[]): Map<string, { col: number; to
   return result;
 }
 
+const NOTE_DRAFT_PREFIX = "dailyNote-draft-";
+function saveNoteDraft(date: string, draft: NoteSections) {
+  const s = serializeNote(draft);
+  if (s) localStorage.setItem(NOTE_DRAFT_PREFIX + date, JSON.stringify(draft));
+  else localStorage.removeItem(NOTE_DRAFT_PREFIX + date);
+}
+function loadNoteDraft(date: string): NoteSections | null {
+  try { const r = localStorage.getItem(NOTE_DRAFT_PREFIX + date); return r ? JSON.parse(r) : null; } catch { return null; }
+}
+function clearNoteDraft(date: string) { localStorage.removeItem(NOTE_DRAFT_PREFIX + date); }
+
 export default function WeeklyPage() {
   const [baseDate, setBaseDate] = useState(() => new Date(toJSTDateString() + "T00:00:00"));
   const [entries, setEntries] = useState<TimeEntry[]>([]);
@@ -326,46 +337,66 @@ export default function WeeklyPage() {
 
   const showSpinner = fetching && !hasData.current;
 
-  // Summary calculations
-  const workEntries = entries.filter((e) => !e.category.excludeFromSummary);
-  const totalWorkSlots = workEntries.reduce((sum, e) => sum + (e.endSlot - e.startSlot), 0);
+  // Summary calculations (overlap-aware: 同一スロットに複数エントリがある場合、按分する)
+  const slotMap = new Map<string, Map<number, TimeEntry[]>>();
+  entries.forEach((e) => {
+    const dk = toJSTDateKey(e.date);
+    if (!slotMap.has(dk)) slotMap.set(dk, new Map());
+    const dayMap = slotMap.get(dk)!;
+    for (let s = e.startSlot; s < e.endSlot; s++) {
+      if (!dayMap.has(s)) dayMap.set(s, []);
+      dayMap.get(s)!.push(e);
+    }
+  });
+
+  let allSlots = 0;
+  let totalWorkSlots = 0;
+  let investSlots = 0;
+  let costSlots = 0;
+  let lossSlots = 0;
+  let investNatureSlots = 0;
+  let costNatureSlots = 0;
+  const categorySummary = new Map<string, { name: string; count: number }>();
+  const genreSummary = new Map<string, { name: string; color: string; type: string; subType: string; count: number }>();
+
+  for (const [, dayMap] of slotMap) {
+    for (const [, slotEntries] of dayMap) {
+      allSlots += 1;
+      if (slotEntries.some((e) => !e.category.excludeFromSummary)) totalWorkSlots += 1;
+      const share = 1 / slotEntries.length;
+      for (const e of slotEntries) {
+        if (e.genre.type === "投資") investSlots += share;
+        else if (e.genre.type === "経費") costSlots += share;
+        else lossSlots += share;
+
+        if (e.genre.subType === "投資的") investNatureSlots += share;
+        else if (e.genre.subType === "経費的") costNatureSlots += share;
+
+        const cKey = e.category.id;
+        if (!categorySummary.has(cKey)) categorySummary.set(cKey, { name: e.category.name, count: 0 });
+        categorySummary.get(cKey)!.count += share;
+
+        const gKey = e.genre.id;
+        if (!genreSummary.has(gKey)) genreSummary.set(gKey, { name: e.genre.name, color: e.genre.color, type: e.genre.type, subType: e.genre.subType, count: 0 });
+        genreSummary.get(gKey)!.count += share;
+      }
+    }
+  }
+
   const totalWorkHours = totalWorkSlots * 0.5;
-  const allSlots = entries.reduce((sum, e) => sum + (e.endSlot - e.startSlot), 0);
   const avgDays = period === "weekly" ? 5 : 20;
   const avgHoursPerDay = avgDays > 0 ? totalWorkHours / avgDays : 0;
   const avgH = Math.floor(avgHoursPerDay);
   const avgM = Math.round((avgHoursPerDay - avgH) * 60);
 
-  const categorySummary = new Map<string, { name: string; count: number }>();
-  entries.forEach((e) => {
-    const slots = e.endSlot - e.startSlot;
-    const cKey = e.category.id;
-    const existing = categorySummary.get(cKey) || { name: e.category.name, count: 0 };
-    existing.count += slots;
-    categorySummary.set(cKey, existing);
-  });
-
-  const genreSummary = new Map<string, { name: string; color: string; type: string; subType: string; count: number }>();
-  entries.forEach((e) => {
-    const slots = e.endSlot - e.startSlot;
-    const gKey = e.genre.id;
-    const existing = genreSummary.get(gKey) || { name: e.genre.name, color: e.genre.color, type: e.genre.type, subType: e.genre.subType, count: 0 };
-    existing.count += slots;
-    genreSummary.set(gKey, existing);
-  });
-
-  const investSlots = entries.reduce((sum, e) => sum + (e.genre.type === "投資" ? (e.endSlot - e.startSlot) : 0), 0);
-  const costSlots = entries.reduce((sum, e) => sum + (e.genre.type === "経費" ? (e.endSlot - e.startSlot) : 0), 0);
-  const lossSlots = entries.reduce((sum, e) => sum + (e.genre.type === "付随" ? (e.endSlot - e.startSlot) : 0), 0);
-  const investHours = investSlots * 0.5;
-  const costHours = costSlots * 0.5;
-  const lossHours = lossSlots * 0.5;
+  const fmtHours = (slots: number) => Math.round(slots * 50) / 100;
+  const investHours = fmtHours(investSlots);
+  const costHours = fmtHours(costSlots);
+  const lossHours = fmtHours(lossSlots);
   const totalInvCostSlots = investSlots + costSlots;
   const investPct = totalInvCostSlots > 0 ? Math.round((investSlots / totalInvCostSlots) * 100) : 0;
 
   // 性質ベースの集計（付随は除外）
-  const investNatureSlots = entries.reduce((sum, e) => sum + (e.genre.subType === "投資的" ? (e.endSlot - e.startSlot) : 0), 0);
-  const costNatureSlots = entries.reduce((sum, e) => sum + (e.genre.subType === "経費的" ? (e.endSlot - e.startSlot) : 0), 0);
   const totalNatureSlots = investNatureSlots + costNatureSlots;
   const investNaturePct = totalNatureSlots > 0 ? Math.round((investNatureSlots / totalNatureSlots) * 100) : 0;
 
@@ -520,7 +551,7 @@ export default function WeeklyPage() {
                         <p className="text-[10px] text-slate-400">(付随 {lossHours}h) ※投資率の算出に含まず</p>
                       )}
                       {totalNatureSlots > 0 && investNaturePct !== investPct && (
-                        <p className="text-[10px] text-slate-400 ml-auto">(投資的 {investNatureSlots * 0.5}h / 経費的 {costNatureSlots * 0.5}h)</p>
+                        <p className="text-[10px] text-slate-400 ml-auto">(投資的 {fmtHours(investNatureSlots)}h / 経費的 {fmtHours(costNatureSlots)}h)</p>
                       )}
                     </div>
                   </>
@@ -538,7 +569,7 @@ export default function WeeklyPage() {
                       {Array.from(categorySummary.entries()).sort((a, b) => b[1].count - a[1].count).map(([cId, c]) => (
                         <button key={cId} className="flex items-center gap-2 w-full text-left hover:bg-slate-50 rounded -mx-1 px-1 py-0.5 transition-colors" onClick={() => { setFilterCategoryId(cId); setFilterGenreId(null); setView("timeline"); }}>
                           <span className="text-sm flex-1 min-w-0 truncate">{c.name}</span>
-                          <span className="text-sm font-medium tabular-nums flex-shrink-0">{c.count * 0.5}h</span>
+                          <span className="text-sm font-medium tabular-nums flex-shrink-0">{fmtHours(c.count)}h</span>
                           <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden flex-shrink-0">
                             <div className="h-full rounded-full bg-indigo-500" style={{ width: `${allSlots > 0 ? (c.count / allSlots) * 100 : 0}%` }} />
                           </div>
@@ -562,7 +593,7 @@ export default function WeeklyPage() {
                           {g.type !== "付随" && g.subType && (
                             <span className={`text-[9px] px-1 py-0 rounded-full flex-shrink-0 ${g.subType === "投資的" ? "bg-blue-50 text-blue-500" : "bg-amber-50 text-amber-500"}`}>{g.subType}</span>
                           )}
-                          <span className="text-sm font-medium tabular-nums flex-shrink-0">{g.count * 0.5}h</span>
+                          <span className="text-sm font-medium tabular-nums flex-shrink-0">{fmtHours(g.count)}h</span>
                           <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden flex-shrink-0">
                             <div className="h-full rounded-full" style={{ backgroundColor: g.color, width: `${allSlots > 0 ? (g.count / allSlots) * 100 : 0}%` }} />
                           </div>
@@ -608,7 +639,12 @@ export default function WeeklyPage() {
                             )}
                           </div>
                           <button
-                            onClick={() => { setEditingNote(n); setNoteDraft(parseNote(n.content)); }}
+                            onClick={() => {
+                              const dk = toJSTDateKey(n.date);
+                              const stored = loadNoteDraft(dk);
+                              setEditingNote(n);
+                              setNoteDraft(stored && serializeNote(stored) !== n.content ? stored : parseNote(n.content));
+                            }}
                             className="text-slate-300 hover:text-indigo-500 flex-shrink-0 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity p-0.5 self-start"
                             title="編集"
                           >
@@ -930,7 +966,7 @@ export default function WeeklyPage() {
       {editingNote && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop px-4"
-          onClick={() => { setEditingNote(null); setNoteDraft({}); }}
+          onClick={() => { setEditingNote(null); }}
         >
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100">
@@ -947,7 +983,14 @@ export default function WeeklyPage() {
                   <label className="block text-xs font-semibold text-indigo-600 mb-1">★{s.label}</label>
                   <textarea
                     value={noteDraft[s.key] || ""}
-                    onChange={(e) => setNoteDraft((d) => ({ ...d, [s.key]: e.target.value }))}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNoteDraft((d) => {
+                        const next = { ...d, [s.key]: val };
+                        saveNoteDraft(toJSTDateKey(editingNote.date), next);
+                        return next;
+                      });
+                    }}
                     placeholder={s.placeholder}
                     rows={2}
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-y leading-relaxed"
@@ -959,7 +1002,14 @@ export default function WeeklyPage() {
                   <label className="block text-xs font-semibold text-slate-400 mb-1">メモ（旧形式の内容）</label>
                   <textarea
                     value={noteDraft._free || ""}
-                    onChange={(e) => setNoteDraft((d) => ({ ...d, _free: e.target.value }))}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNoteDraft((d) => {
+                        const next = { ...d, _free: val };
+                        saveNoteDraft(toJSTDateKey(editingNote.date), next);
+                        return next;
+                      });
+                    }}
                     rows={3}
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-y leading-relaxed"
                   />
@@ -968,23 +1018,25 @@ export default function WeeklyPage() {
             </div>
             <div className="flex gap-2 px-5 py-3 border-t border-slate-100">
               <button
-                onClick={() => { setEditingNote(null); setNoteDraft({}); }}
+                onClick={() => { setEditingNote(null); }}
                 className="flex-1 py-2.5 rounded-lg text-sm text-slate-600 border border-slate-200 hover:bg-slate-50"
               >
                 キャンセル
               </button>
               <button
                 onClick={async () => {
+                  const dk = toJSTDateKey(editingNote.date);
                   const serialized = serializeNote(noteDraft);
-                  if (serialized === editingNote.content) { setEditingNote(null); setNoteDraft({}); return; }
+                  if (serialized === editingNote.content) { clearNoteDraft(dk); setEditingNote(null); setNoteDraft({}); return; }
                   setNoteSaving(true);
                   try {
                     await fetch("/api/daily-notes", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ date: toJSTDateKey(editingNote.date), content: serialized }),
+                      body: JSON.stringify({ date: dk, content: serialized }),
                     });
                     setNotes((prev) => prev.map((n) => n.date === editingNote.date ? { ...n, content: serialized } : n));
+                    clearNoteDraft(dk);
                     setEditingNote(null);
                     setNoteDraft({});
                   } finally {
