@@ -968,8 +968,8 @@ export default function WeeklyPage() {
           className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop px-4"
           onClick={() => { setEditingNote(null); }}
         >
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl flex flex-col max-h-[80vh]" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100 flex-shrink-0">
               <h3 className="text-base font-bold">日記を編集</h3>
               <span className="text-xs text-slate-400">
                 {new Date(toJSTDateKey(editingNote.date) + "T00:00:00").toLocaleDateString("ja-JP", {
@@ -1016,7 +1016,7 @@ export default function WeeklyPage() {
                 </div>
               )}
             </div>
-            <div className="flex gap-2 px-5 py-3 border-t border-slate-100">
+            <div className="flex gap-2 px-5 py-3 border-t border-slate-100 flex-shrink-0">
               <button
                 onClick={() => { setEditingNote(null); }}
                 className="flex-1 py-2.5 rounded-lg text-sm text-slate-600 border border-slate-200 hover:bg-slate-50"
