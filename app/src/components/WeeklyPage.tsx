@@ -969,6 +969,7 @@ export default function WeeklyPage() {
           onClick={() => { setEditingNote(null); }}
         >
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl flex flex-col max-h-[80dvh]" onClick={(e) => e.stopPropagation()}>
+
             <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100 flex-shrink-0">
               <h3 className="text-base font-bold">日記を編集</h3>
               <span className="text-xs text-slate-400">
