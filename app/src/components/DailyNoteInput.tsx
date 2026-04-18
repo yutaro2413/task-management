@@ -166,10 +166,10 @@ export default function DailyNoteInput({ date }: { date: string }) {
           onClick={handleClose}
         >
           <div
-            className="bg-white rounded-2xl w-full max-w-lg shadow-xl flex flex-col max-h-[90vh]"
+            className="bg-white rounded-2xl w-full max-w-lg shadow-xl flex flex-col max-h-[80vh]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100">
+            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100 flex-shrink-0">
               <h3 className="text-base font-bold">今日の一言</h3>
               <span className="text-xs text-slate-400">{dateLabel}</span>
             </div>
@@ -190,7 +190,7 @@ export default function DailyNoteInput({ date }: { date: string }) {
                 <p className="text-sm text-slate-400">（内容なし）</p>
               )}
             </div>
-            <div className="flex gap-2 px-5 py-3 border-t border-slate-100">
+            <div className="flex gap-2 px-5 py-3 border-t border-slate-100 flex-shrink-0">
               <button
                 onClick={handleClose}
                 className="flex-1 py-2.5 rounded-lg text-sm text-slate-600 border border-slate-200 hover:bg-slate-50"
@@ -214,10 +214,10 @@ export default function DailyNoteInput({ date }: { date: string }) {
           onClick={handleClose}
         >
           <div
-            className="bg-white rounded-2xl w-full max-w-lg shadow-xl flex flex-col max-h-[90vh]"
+            className="bg-white rounded-2xl w-full max-w-lg shadow-xl flex flex-col max-h-[80vh]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100">
+            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100 flex-shrink-0">
               <h3 className="text-base font-bold">今日の一言</h3>
               <span className="text-xs text-slate-400">{dateLabel}</span>
             </div>
@@ -246,7 +246,7 @@ export default function DailyNoteInput({ date }: { date: string }) {
                 </div>
               )}
             </div>
-            <div className="flex gap-2 px-5 py-3 border-t border-slate-100">
+            <div className="flex gap-2 px-5 py-3 border-t border-slate-100 flex-shrink-0">
               <button
                 onClick={handleClose}
                 className="flex-1 py-2.5 rounded-lg text-sm text-slate-600 border border-slate-200 hover:bg-slate-50"
