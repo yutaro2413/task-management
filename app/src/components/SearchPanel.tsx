@@ -14,6 +14,8 @@ type TimeEntry = {
   detail?: string | null;
   category: Category;
   genre: Genre;
+  recurrenceRule?: string | null;
+  parentRecurrenceId?: string | null;
 };
 type DailyNote = {
   date: string;

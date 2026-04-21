@@ -16,6 +16,9 @@ type TimeEntry = {
   detail?: string | null;
   category: { id: string; name: string; excludeFromSummary: boolean };
   genre: { id: string; name: string; color: string; type: string; subType: string };
+  recurrenceRule?: string | null;
+  recurrenceEnd?: string | null;
+  parentRecurrenceId?: string | null;
 };
 
 type DailyNote = {
@@ -284,7 +287,7 @@ export default function WeeklyPage() {
   }, [dropCell, executeMove]);
 
   // ── Edit entry from timeline ──
-  const handleTimelineSave = async (data: { categoryId: string; genreId: string; startSlot: number; endSlot: number; title?: string; detail?: string }) => {
+  const handleTimelineSave = async (data: { categoryId: string; genreId: string; startSlot: number; endSlot: number; title?: string; detail?: string; recurrenceRule?: string; recurrenceEnd?: string; scope?: string; virtualDate?: string }) => {
     if (!editingTimeEntry) return;
     await fetch("/api/time-entries", {
       method: "PUT",
@@ -295,16 +298,19 @@ export default function WeeklyPage() {
     invalidateCache(`time-entries?startDate=${startDate}&endDate=${endDate}`);
     fetchData();
   };
-  const handleTimelineDelete = async () => {
+  const handleTimelineDelete = async (scope?: string, virtualDate?: string) => {
     if (!editingTimeEntry) return;
-    await fetch(`/api/time-entries?id=${editingTimeEntry.id}`, { method: "DELETE" });
+    const params = new URLSearchParams({ id: editingTimeEntry.id });
+    if (scope) params.set("scope", scope);
+    if (virtualDate) params.set("virtualDate", virtualDate);
+    await fetch(`/api/time-entries?${params}`, { method: "DELETE" });
     setEditingTimeEntry(null);
     invalidateCache(`time-entries?startDate=${startDate}&endDate=${endDate}`);
     fetchData();
   };
 
   // ── Create entry from calendar ──
-  const handleCreateSave = async (data: { categoryId: string; genreId: string; startSlot: number; endSlot: number; title?: string; detail?: string }) => {
+  const handleCreateSave = async (data: { categoryId: string; genreId: string; startSlot: number; endSlot: number; title?: string; detail?: string; recurrenceRule?: string; recurrenceEnd?: string }) => {
     if (!newEntryContext) return;
     await fetch("/api/time-entries", {
       method: "POST",
@@ -904,7 +910,7 @@ export default function WeeklyPage() {
                         width: `calc(${widthPct}% - 2px)`,
                         marginLeft: `calc(${leftPct}% + 1px)`,
                       }}
-                      title={`${slotToTime(entry.startSlot)}–${slotToTime(entry.endSlot)} [${entry.genre.type || "経費"}${entry.genre.subType ? `/${entry.genre.subType}` : ""}] ${entry.category.name} / ${entry.genre.name}${entry.title ? ` — ${entry.title}` : ""}`}
+                      title={`${entry.recurrenceRule || entry.parentRecurrenceId ? "🔁 " : ""}${slotToTime(entry.startSlot)}–${slotToTime(entry.endSlot)} [${entry.genre.type || "経費"}${entry.genre.subType ? `/${entry.genre.subType}` : ""}] ${entry.category.name} / ${entry.genre.name}${entry.title ? ` — ${entry.title}` : ""}`}
                     >
                       <div className="px-1 py-px overflow-hidden h-full leading-none">
                         <p
@@ -1064,7 +1070,7 @@ export default function WeeklyPage() {
           genres={masterGenres}
           editEntry={editingTimeEntry}
           onSave={handleTimelineSave}
-          onDelete={() => handleTimelineDelete()}
+          onDelete={handleTimelineDelete}
           onClose={() => setEditingTimeEntry(null)}
         />
       )}
