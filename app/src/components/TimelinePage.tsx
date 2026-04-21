@@ -21,6 +21,9 @@ type TimeEntry = {
   detail?: string | null;
   category: Category;
   genre: Genre;
+  recurrenceRule?: string | null;
+  recurrenceEnd?: string | null;
+  parentRecurrenceId?: string | null;
 };
 
 // ─── Sub-component: renders a portion of the timeline grid ───────────────────
@@ -140,6 +143,11 @@ function TimeGrid({
             <div className="flex-1 flex flex-col justify-center px-1.5 py-0.5 min-w-0 overflow-hidden">
               {spanSlots === 1 ? (
                 <div className="flex items-center gap-1 min-w-0">
+                  {(entry.recurrenceRule || entry.parentRecurrenceId) && (
+                    <svg className="w-2.5 h-2.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  )}
                   <span
                     className="text-[9px] px-1 py-px rounded text-white font-medium leading-none flex-shrink-0"
                     style={{ backgroundColor: entry.genre.color }}
@@ -152,6 +160,11 @@ function TimeGrid({
               ) : (
                 <>
                   <div className="flex items-center gap-1 flex-wrap">
+                    {(entry.recurrenceRule || entry.parentRecurrenceId) && (
+                      <svg className="w-3 h-3 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    )}
                     <span className="text-[10px] text-slate-500 font-medium">{entry.category.name}</span>
                     <span
                       className="text-[10px] px-1 py-px rounded-full text-white font-medium leading-none"
@@ -415,6 +428,10 @@ export default function TimelinePage() {
     endSlot: number;
     title?: string;
     detail?: string;
+    recurrenceRule?: string;
+    recurrenceEnd?: string;
+    scope?: string;
+    virtualDate?: string;
   }) => {
     setSaving(true);
     try {
@@ -441,10 +458,14 @@ export default function TimelinePage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (scope?: string, virtualDate?: string) => {
+    if (!editEntry) return;
     setSaving(true);
     try {
-      await fetch(`/api/time-entries?id=${id}`, { method: "DELETE" });
+      const params = new URLSearchParams({ id: editEntry.id });
+      if (scope) params.set("scope", scope);
+      if (virtualDate) params.set("virtualDate", virtualDate);
+      await fetch(`/api/time-entries?${params}`, { method: "DELETE" });
       setSelectedSlot(null);
       setEditEntry(null);
       setIsPanelDirty(false);
@@ -785,7 +806,7 @@ export default function TimelinePage() {
                 genres={genres}
                 editEntry={editEntry}
                 onSave={handleSave}
-                onDelete={editEntry ? () => handleDelete(editEntry.id) : undefined}
+                onDelete={editEntry ? handleDelete : undefined}
                 onClose={closePanel}
                 panelMode
                 onDirtyChange={setIsPanelDirty}
@@ -866,7 +887,7 @@ export default function TimelinePage() {
             genres={genres}
             editEntry={editEntry}
             onSave={handleSave}
-            onDelete={editEntry ? () => handleDelete(editEntry.id) : undefined}
+            onDelete={editEntry ? handleDelete : undefined}
             onClose={() => { setSelectedSlot(null); setEditEntry(null); }}
           />
         )}

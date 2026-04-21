@@ -46,8 +46,19 @@ model TimeEntry {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  category Category @relation(fields: [categoryId], references: [id])
-  genre    Genre    @relation(fields: [genreId], references: [id])
+  // 繰り返し設定（親エントリのみ）
+  recurrenceRule String?   // JSON: { type, interval?, customUnit?, daysOfWeek? }
+  recurrenceEnd  DateTime? @db.Date
+
+  // オーバーライド/例外（子エントリのみ）
+  parentRecurrenceId String?
+  originalDate       DateTime? @db.Date // 本来の発生日
+  skipped            Boolean   @default(false) // true = この回はキャンセル
+
+  category         Category   @relation(fields: [categoryId], references: [id])
+  genre            Genre      @relation(fields: [genreId], references: [id])
+  parentRecurrence TimeEntry? @relation("RecurrenceOverrides", fields: [parentRecurrenceId], references: [id])
+  overrides        TimeEntry[] @relation("RecurrenceOverrides")
 }
 
 // 家計簿カテゴリ
