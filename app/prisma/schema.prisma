@@ -114,21 +114,48 @@ model DailyNote {
   updatedAt DateTime @updatedAt
 }
 
+// 筋トレメニューマスタ
+model ExerciseMenu {
+  id            String   @id @default(cuid())
+  name          String
+  defaultWeight String   @default("")
+  defaultReps   Int      @default(10)
+  defaultSets   Int      @default(3)
+  type          String   @default("strength") // "strength" | "running"
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
 // 筋トレ記録
 model WorkoutLog {
   id        String   @id @default(cuid())
   date      DateTime @unique @db.Date
-  exercises Json     // [{name, weight, reps, sets}]
+  exercises Json     // [{menuId?, name, weight, reps, sets, type, distance?, duration?, pace?}]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-// 読書記録
-model ReadingLog {
+// 本マスタ
+model BookTitle {
   id        String   @id @default(cuid())
-  date      DateTime @unique @db.Date
-  bookTitle String
-  note      String?
+  title     String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  readingLogs ReadingLog[]
+}
+
+// 読書記録
+model ReadingLog {
+  id          String   @id @default(cuid())
+  date        DateTime @db.Date
+  bookTitleId String
+  review      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  bookTitle BookTitle @relation(fields: [bookTitleId], references: [id])
+
+  @@unique([date, bookTitleId])
 }
