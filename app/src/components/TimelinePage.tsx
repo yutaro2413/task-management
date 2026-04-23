@@ -324,16 +324,15 @@ export default function TimelinePage() {
     if (fetching || !timelineRef.current || scrollDoneRef.current) return;
     scrollDoneRef.current = true;
     const slot = getCurrentSlotJST();
+    // In 2-column mode, target the row in the appropriate column (slots 0-23 = AM, 24-47 = PM)
     const targetSlot = isToday && slot >= 18 ? Math.max(0, slot - 2) : 18;
-    const gridEl = timelineRef.current.querySelector("[data-grid]");
-    if (gridEl) {
-      const label = gridEl.querySelector(`[data-slot="${targetSlot}"]`);
-      if (label) {
-        label.scrollIntoView({ behavior: "auto", block: "start" });
-        return;
-      }
+    // Find the slot label in either AM or PM grid
+    const label = timelineRef.current.querySelector(`[data-slot="${targetSlot}"]`);
+    if (label) {
+      label.scrollIntoView({ behavior: "auto", block: "start" });
+      return;
     }
-    timelineRef.current.scrollTop = targetSlot * 36;
+    timelineRef.current.scrollTop = targetSlot * 30;
   }, [date, isToday, fetching]);
 
   // Work hours (excluding summary-excluded categories) — deduplicate overlapping slots
@@ -589,26 +588,53 @@ export default function TimelinePage() {
       {/* Body */}
       <div className="flex-1 flex overflow-hidden">
 
-        {/* ── Mobile portrait: single scrollable column ── */}
+        {/* ── Mobile portrait: AM/PM 2-column layout ── */}
         {!isLandscape && (
           <div
             ref={timelineRef}
-            className="flex-1 overflow-y-auto timeline-scroll px-2 max-w-lg mx-auto w-full lg:hidden"
+            className="flex-1 overflow-y-auto timeline-scroll max-w-lg mx-auto w-full lg:hidden"
             {...swipeHandlers}
           >
-            <TimeGrid
-              startSlot={0}
-              endSlot={48}
-              entries={entries}
-              occupiedSlots={occupiedSlots}
-              entryColumns={entryColumns}
-              isToday={isToday}
-              currentSlot={currentSlot}
-              rowHeightRem={2.25}
-              onSlotClick={handleSlotClick}
-              onEntryClick={handleEntryClick}
-              onNewEntry={handleNewAtSlot}
-            />
+            <div className="flex">
+              {/* AM column 00:00–12:00 */}
+              <div className="flex-1 border-r border-slate-200 px-0.5">
+                <div className="text-center text-[10px] font-semibold text-slate-400 py-1 border-b border-slate-100 sticky top-0 bg-white z-10">
+                  午前
+                </div>
+                <TimeGrid
+                  startSlot={0}
+                  endSlot={24}
+                  entries={entries}
+                  occupiedSlots={occupiedSlots}
+                  entryColumns={entryColumns}
+                  isToday={isToday}
+                  currentSlot={currentSlot}
+                  rowHeightRem={1.875}
+                  onSlotClick={handleSlotClick}
+                  onEntryClick={handleEntryClick}
+                  onNewEntry={handleNewAtSlot}
+                />
+              </div>
+              {/* PM column 12:00–24:00 */}
+              <div className="flex-1 px-0.5">
+                <div className="text-center text-[10px] font-semibold text-slate-400 py-1 border-b border-slate-100 sticky top-0 bg-white z-10">
+                  午後
+                </div>
+                <TimeGrid
+                  startSlot={24}
+                  endSlot={48}
+                  entries={entries}
+                  occupiedSlots={occupiedSlots}
+                  entryColumns={entryColumns}
+                  isToday={isToday}
+                  currentSlot={currentSlot}
+                  rowHeightRem={1.875}
+                  onSlotClick={handleSlotClick}
+                  onEntryClick={handleEntryClick}
+                  onNewEntry={handleNewAtSlot}
+                />
+              </div>
+            </div>
           </div>
         )}
 
