@@ -3,7 +3,6 @@
 // DB は単一の content フィールドのままで、フォーマットで構造化を表現する。
 
 export type NoteSectionKey =
-  | "episode"
   | "quote"
   | "reflection"
   | "achievement"
@@ -11,7 +10,6 @@ export type NoteSectionKey =
   | "others";
 
 export const NOTE_SECTIONS: { key: NoteSectionKey; label: string; placeholder: string }[] = [
-  { key: "episode", label: "エピソード", placeholder: "今日あった出来事・シーン" },
   { key: "quote", label: "心に残った言葉・会話・本", placeholder: "印象に残った発言・一節など" },
   { key: "reflection", label: "反省・イヤだったこと・改善点", placeholder: "次に活かしたいこと" },
   { key: "achievement", label: "できたこと・良かったこと・達成できたこと", placeholder: "小さな達成もOK" },
