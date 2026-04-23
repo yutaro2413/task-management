@@ -145,16 +145,29 @@ export default function ExpenseModal({ date, editExpense, onSave, onDelete, onCl
           </div>
         </div>
 
-        {/* Memo */}
-        <div className="flex items-center bg-slate-50 rounded-lg px-3 py-2">
-          <span className="text-xs text-slate-500 w-10">メモ</span>
-          <input
-            type="text"
-            value={memo}
-            onChange={(e) => setMemo(e.target.value)}
-            placeholder="未入力"
-            className="flex-1 text-sm bg-transparent focus:outline-none"
-          />
+        {/* Memo + Save */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center bg-slate-50 rounded-lg px-3 py-2 flex-1">
+            <span className="text-xs text-slate-500 w-10">メモ</span>
+            <input
+              type="text"
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+              placeholder="未入力"
+              className="flex-1 text-sm bg-transparent focus:outline-none"
+            />
+          </div>
+          <button
+            onClick={handleSave}
+            disabled={!amount || isNaN(Number(amount)) || Number(amount) <= 0}
+            className={`px-5 py-2 rounded-lg text-xs font-bold text-white transition-colors flex-shrink-0 ${
+              type === "expense"
+                ? "bg-rose-500 hover:bg-rose-600 disabled:bg-slate-300"
+                : "bg-green-500 hover:bg-green-600 disabled:bg-slate-300"
+            } disabled:cursor-not-allowed`}
+          >
+            {isEdit ? "更新" : "保存"}
+          </button>
         </div>
 
         {/* Amount — text input with numeric keyboard, no spinner arrows */}
@@ -200,28 +213,17 @@ export default function ExpenseModal({ date, editExpense, onSave, onDelete, onCl
           </div>
         )}
 
-        {/* Action buttons */}
-        <div className="flex items-center justify-end gap-2">
-          {isEdit && onDelete && (
+        {/* Delete button (edit mode only) */}
+        {isEdit && onDelete && (
+          <div className="flex justify-end">
             <button
               onClick={onDelete}
               className="px-3 py-1.5 rounded-lg text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100"
             >
               削除
             </button>
-          )}
-          <button
-            onClick={handleSave}
-            disabled={!amount || isNaN(Number(amount)) || Number(amount) <= 0}
-            className={`px-6 py-1.5 rounded-lg text-xs font-bold text-white transition-colors ${
-              type === "expense"
-                ? "bg-rose-500 hover:bg-rose-600 disabled:bg-slate-300"
-                : "bg-green-500 hover:bg-green-600 disabled:bg-slate-300"
-            } disabled:cursor-not-allowed`}
-          >
-            {isEdit ? "更新" : "保存"}
-          </button>
-        </div>
+          </div>
+        )}
       </div>
     </>
   );
