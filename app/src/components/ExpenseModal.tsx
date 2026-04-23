@@ -201,11 +201,11 @@ export default function ExpenseModal({ date, editExpense, onSave, onDelete, onCl
         )}
 
         {/* Action buttons */}
-        <div className="flex gap-2">
+        <div className="flex items-center justify-end gap-2">
           {isEdit && onDelete && (
             <button
               onClick={onDelete}
-              className="px-4 py-3 rounded-lg text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100"
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100"
             >
               削除
             </button>
@@ -213,13 +213,13 @@ export default function ExpenseModal({ date, editExpense, onSave, onDelete, onCl
           <button
             onClick={handleSave}
             disabled={!amount || isNaN(Number(amount)) || Number(amount) <= 0}
-            className={`flex-1 py-3 rounded-lg text-sm font-bold text-white transition-colors ${
+            className={`px-6 py-1.5 rounded-lg text-xs font-bold text-white transition-colors ${
               type === "expense"
                 ? "bg-rose-500 hover:bg-rose-600 disabled:bg-slate-300"
                 : "bg-green-500 hover:bg-green-600 disabled:bg-slate-300"
             } disabled:cursor-not-allowed`}
           >
-            {isEdit ? "更新" : type === "expense" ? "支出を入力する" : "収入を入力する"}
+            {isEdit ? "更新" : "保存"}
           </button>
         </div>
       </div>
