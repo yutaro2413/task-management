@@ -592,7 +592,7 @@ export default function TimelinePage() {
         {!isLandscape && (
           <div
             ref={timelineRef}
-            className="flex-1 overflow-y-auto timeline-scroll max-w-lg mx-auto w-full lg:hidden"
+            className="flex-1 overflow-y-auto timeline-scroll pb-16 max-w-lg mx-auto w-full lg:hidden"
             {...swipeHandlers}
           >
             <div className="flex">
@@ -640,7 +640,7 @@ export default function TimelinePage() {
 
         {/* ── Mobile landscape: 7-day week view ── */}
         {isLandscape && (
-          <div ref={landscapeScrollRef} className="flex-1 overflow-y-auto lg:hidden" {...swipeHandlers}>
+          <div ref={landscapeScrollRef} className="flex-1 overflow-y-auto pb-16 lg:hidden" {...swipeHandlers}>
             {/* Sticky day headers */}
             <div
               className="sticky top-0 z-20 grid bg-white border-b border-slate-200"
