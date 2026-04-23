@@ -7,6 +7,7 @@ import ExpenseIcon, { EXPENSE_ICON_OPTIONS } from "./ExpenseIcon";
 type Category = { id: string; name: string; excludeFromSummary: boolean };
 type Genre = { id: string; name: string; color: string; type: string; subType: string };
 type ExpenseCategory = { id: string; name: string; color: string; icon: string };
+type ExerciseMenu = { id: string; name: string; defaultWeight: string; defaultReps: number; defaultSets: number; type: string };
 
 const COLORS = [
   "#ef4444", "#f97316", "#eab308", "#22c55e", "#10b981",
@@ -28,20 +29,28 @@ export default function SettingsPage() {
   const [editingCat, setEditingCat] = useState<Category | null>(null);
   const [editingGenre, setEditingGenre] = useState<Genre | null>(null);
   const [editingExpCat, setEditingExpCat] = useState<ExpenseCategory | null>(null);
+  const [exerciseMenus, setExerciseMenus] = useState<ExerciseMenu[]>([]);
+  const [newMenuName, setNewMenuName] = useState("");
+  const [newMenuWeight, setNewMenuWeight] = useState("");
+  const [newMenuReps, setNewMenuReps] = useState(10);
+  const [newMenuSets, setNewMenuSets] = useState(3);
+  const [editingMenu, setEditingMenu] = useState<ExerciseMenu | null>(null);
   // NOTE: fetchData 冒頭の setFetching(true) は react-hooks/set-state-in-effect
   // ルールを満たすために必要（非同期 setState だけだと effect 内から呼び出せない）。
   const [, setFetching] = useState(false);
   const fetchData = useCallback(async () => {
     setFetching(true);
     try {
-      const [cats, gnrs, expCats] = await Promise.all([
+      const [cats, gnrs, expCats, exMenus] = await Promise.all([
         fetch("/api/categories").then((r) => r.json()),
         fetch("/api/genres").then((r) => r.json()),
         fetch("/api/expense-categories").then((r) => r.json()),
+        fetch("/api/exercise-menus").then((r) => r.json()),
       ]);
       setCategories(cats);
       setGenres(gnrs);
       setExpenseCategories(expCats);
+      setExerciseMenus(exMenus);
     } finally {
       setFetching(false);
     }
@@ -119,6 +128,27 @@ export default function SettingsPage() {
     [list[index], list[t]] = [list[t], list[index]];
     setExpenseCategories(list);
     await fetch("/api/expense-categories", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reorder: true, ids: list.map(c => c.id) }) });
+  };
+
+  // Exercise menu CRUD
+  const addExerciseMenu = async () => {
+    if (!newMenuName.trim()) return;
+    await fetch("/api/exercise-menus", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newMenuName.trim(), defaultWeight: newMenuWeight, defaultReps: newMenuReps, defaultSets: newMenuSets }),
+    });
+    setNewMenuName(""); setNewMenuWeight(""); setNewMenuReps(10); setNewMenuSets(3);
+    fetchData();
+  };
+  const updateExerciseMenu = async () => {
+    if (!editingMenu) return;
+    await fetch("/api/exercise-menus", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editingMenu) });
+    setEditingMenu(null); fetchData();
+  };
+  const deleteExerciseMenu = async (id: string) => {
+    if (!confirm("削除しますか？")) return;
+    await fetch(`/api/exercise-menus?id=${id}`, { method: "DELETE" }); fetchData();
   };
 
   const ArrowButtons = ({ index, total, onMove }: { index: number; total: number; onMove: (i: number, d: -1 | 1) => void }) => (
@@ -332,6 +362,84 @@ export default function SettingsPage() {
                   <ExpenseIcon icon={ic} color={newExpCatColor} size={16} />
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Exercise Menus */}
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="px-4 py-3 bg-slate-50 border-b border-slate-100"><h2 className="text-sm font-semibold">筋トレメニュー</h2></div>
+          <div className="divide-y divide-slate-100">
+            {exerciseMenus.map((menu) => (
+              <div key={menu.id} className="px-4 py-3">
+                {editingMenu?.id === menu.id ? (
+                  <div className="space-y-2">
+                    <input type="text" value={editingMenu.name} onChange={(e) => setEditingMenu({ ...editingMenu, name: e.target.value })} className="w-full px-2 py-1 rounded border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    <div className="flex gap-1">
+                      <button onClick={() => setEditingMenu({ ...editingMenu, type: "strength" })} className={`px-3 py-1 rounded-full text-xs font-medium border ${editingMenu.type === "strength" ? "bg-emerald-100 text-emerald-700 border-emerald-300" : "bg-white text-slate-400 border-slate-200"}`}>筋トレ</button>
+                      <button onClick={() => setEditingMenu({ ...editingMenu, type: "running" })} className={`px-3 py-1 rounded-full text-xs font-medium border ${editingMenu.type === "running" ? "bg-blue-100 text-blue-700 border-blue-300" : "bg-white text-slate-400 border-slate-200"}`}>ランニング</button>
+                    </div>
+                    {editingMenu.type !== "running" && (
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          <input type="text" value={editingMenu.defaultWeight} onChange={(e) => setEditingMenu({ ...editingMenu, defaultWeight: e.target.value })} placeholder="重量" className="w-16 px-2 py-1 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                          <span className="text-[10px] text-slate-400">kg</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <input type="number" value={editingMenu.defaultReps} onChange={(e) => setEditingMenu({ ...editingMenu, defaultReps: Math.max(0, Number(e.target.value)) })} className="w-14 px-2 py-1 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                          <span className="text-[10px] text-slate-400">回</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <input type="number" value={editingMenu.defaultSets} onChange={(e) => setEditingMenu({ ...editingMenu, defaultSets: Math.max(0, Number(e.target.value)) })} className="w-12 px-2 py-1 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                          <span className="text-[10px] text-slate-400">set</span>
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <button onClick={updateExerciseMenu} className="text-xs text-indigo-600 font-medium">保存</button>
+                      <button onClick={() => setEditingMenu(null)} className="text-xs text-slate-400">取消</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">{menu.name}</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${menu.type === "running" ? "bg-blue-100 text-blue-600" : "bg-emerald-100 text-emerald-600"}`}>
+                        {menu.type === "running" ? "ランニング" : "筋トレ"}
+                      </span>
+                      {menu.type !== "running" && (
+                        <span className="text-[10px] text-slate-400">
+                          {menu.defaultWeight && `${menu.defaultWeight}kg `}{menu.defaultReps}回×{menu.defaultSets}set
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setEditingMenu(menu)} className="text-xs text-indigo-600">編集</button>
+                      <button onClick={() => deleteExerciseMenu(menu.id)} className="text-xs text-red-500">削除</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="px-4 py-3 border-t border-slate-100 space-y-2">
+            <div className="flex items-center gap-2">
+              <input type="text" value={newMenuName} onChange={(e) => setNewMenuName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addExerciseMenu()} placeholder="新しいメニュー名" className="flex-1 px-2 py-1.5 rounded border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              <button onClick={addExerciseMenu} disabled={!newMenuName.trim()} className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300">追加</button>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <input type="text" value={newMenuWeight} onChange={(e) => setNewMenuWeight(e.target.value)} placeholder="重量" className="w-16 px-2 py-1.5 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                <span className="text-[10px] text-slate-400">kg</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <input type="number" value={newMenuReps} onChange={(e) => setNewMenuReps(Math.max(0, Number(e.target.value)))} className="w-14 px-2 py-1.5 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                <span className="text-[10px] text-slate-400">回</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <input type="number" value={newMenuSets} onChange={(e) => setNewMenuSets(Math.max(0, Number(e.target.value)))} className="w-12 px-2 py-1.5 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                <span className="text-[10px] text-slate-400">set</span>
+              </div>
             </div>
           </div>
         </div>
