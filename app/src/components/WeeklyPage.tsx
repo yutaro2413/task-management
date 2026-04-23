@@ -499,7 +499,7 @@ export default function WeeklyPage() {
 
       {/* ── Summary / Timeline (mobile + PC) ── */}
       {view !== "calendar" && (
-        <div className="flex-1 overflow-y-auto px-4 py-4 max-w-lg mx-auto w-full lg:max-w-none" {...swipeHandlers}>
+        <div className="flex-1 overflow-y-auto px-4 py-4 pb-20 max-w-lg mx-auto w-full lg:max-w-none" {...swipeHandlers}>
           {view === "summary" ? (
             <div className="space-y-4">
               <div className="bg-white rounded-xl p-4 border border-slate-200">

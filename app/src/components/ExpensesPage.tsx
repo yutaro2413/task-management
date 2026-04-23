@@ -265,7 +265,7 @@ export default function ExpensesPage() {
       </header>
 
       {/* ── Mobile layout ── */}
-      <div className="flex-1 overflow-y-auto max-w-lg mx-auto w-full lg:hidden" {...swipeHandlers}>
+      <div className="flex-1 overflow-y-auto pb-16 max-w-lg mx-auto w-full lg:hidden" {...swipeHandlers}>
         {calendarSection}
         {dateDetailSection}
         {!selectedDate && !fetching && expenses.length === 0 && hasData.current && (

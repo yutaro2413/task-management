@@ -138,7 +138,7 @@ export default function SettingsPage() {
         <h1 className="text-lg font-bold text-center max-w-lg mx-auto">設定</h1>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 max-w-lg mx-auto w-full space-y-6">
+      <div className="flex-1 overflow-y-auto px-4 py-4 pb-20 max-w-lg mx-auto w-full space-y-6">
         {/* Fixed Expenses Link */}
         <Link
           href="/fixed-expenses"
