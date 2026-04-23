@@ -113,3 +113,22 @@ model DailyNote {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// 筋トレ記録
+model WorkoutLog {
+  id        String   @id @default(cuid())
+  date      DateTime @unique @db.Date
+  exercises Json     // [{name, weight, reps, sets}]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// 読書記録
+model ReadingLog {
+  id        String   @id @default(cuid())
+  date      DateTime @unique @db.Date
+  bookTitle String
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
