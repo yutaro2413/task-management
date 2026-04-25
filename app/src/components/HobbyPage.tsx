@@ -1,16 +1,19 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { toJSTDateString } from "@/lib/utils";
+import { Line } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Tooltip,
+  Legend,
+} from "chart.js";
 
-type ExerciseMenu = {
-  id: string;
-  name: string;
-  defaultWeight: string;
-  defaultReps: number;
-  defaultSets: number;
-  type: string;
-};
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
 type Exercise = {
   menuId?: string;
@@ -18,10 +21,16 @@ type Exercise = {
   weight: string;
   reps: number;
   sets: number;
-  type: string; // "strength" | "running"
+  type: string;
   distance?: string;
   duration?: string;
   pace?: string;
+};
+
+type WorkoutLogEntry = {
+  id: string;
+  date: string;
+  exercises: Exercise[];
 };
 
 type BookTitle = { id: string; title: string };
@@ -34,23 +43,47 @@ type ReadingEntry = {
 
 type Tab = "workout" | "reading";
 
-function formatDateLabel(d: string) {
-  return new Date(d + "T00:00:00").toLocaleDateString("ja-JP", {
-    month: "long",
-    day: "numeric",
-    weekday: "short",
-  });
+const CHART_COLORS = [
+  "#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6",
+  "#ec4899", "#06b6d4", "#f97316", "#6366f1", "#10b981",
+  "#e11d48", "#0ea5e9", "#84cc16", "#d946ef", "#14b8a6",
+  "#a855f7", "#f43f5e", "#2563eb", "#65a30d", "#c026d3",
+];
+
+const CIRCLED_NUMBERS: Record<string, number> = {
+  "①": 1, "②": 2, "③": 3, "④": 4, "⑤": 5,
+  "⑥": 6, "⑦": 7, "⑧": 8, "⑨": 9, "⑩": 10,
+  "⑪": 11, "⑫": 12, "⑬": 13, "⑭": 14, "⑮": 15,
+  "⑯": 16, "⑰": 17, "⑱": 18, "⑲": 19, "⑳": 20,
+};
+
+function parseWeight(w: string): number | null {
+  if (!w || !w.trim()) return null;
+  const trimmed = w.trim();
+  if (CIRCLED_NUMBERS[trimmed] !== undefined) return CIRCLED_NUMBERS[trimmed];
+  const num = parseFloat(trimmed.replace(/[kgKG㎏番]/g, ""));
+  return isNaN(num) ? null : num;
+}
+
+function getWeekLabel(dateStr: string): string {
+  const m = new Date(dateStr + "T00:00:00");
+  return `${m.getMonth() + 1}/${m.getDate()}~`;
+}
+
+function getWeekKey(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  const dayOfWeek = d.getDay() || 7;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - (dayOfWeek - 1));
+  return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`;
 }
 
 export default function HobbyPage() {
-  const [date, setDate] = useState(() => toJSTDateString());
   const [tab, setTab] = useState<Tab>("workout");
+  const [date, setDate] = useState(() => toJSTDateString());
 
-  // Workout state
-  const [menus, setMenus] = useState<ExerciseMenu[]>([]);
-  const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [workoutSaved, setWorkoutSaved] = useState(false);
-  const [workoutSaving, setWorkoutSaving] = useState(false);
+  // Workout chart state
+  const [allWorkouts, setAllWorkouts] = useState<WorkoutLogEntry[]>([]);
 
   // Reading state
   const [bookTitles, setBookTitles] = useState<BookTitle[]>([]);
@@ -61,25 +94,10 @@ export default function HobbyPage() {
 
   const isToday = date === toJSTDateString();
 
-  const fetchWorkout = useCallback(async (d: string) => {
-    const [menuData, logData] = await Promise.all([
-      fetch("/api/exercise-menus").then((r) => r.json()),
-      fetch(`/api/workout-logs?date=${d}`).then((r) => r.json()),
-    ]);
-    setMenus(menuData);
-    if (logData && logData.exercises) {
-      setExercises(logData.exercises as Exercise[]);
-      setWorkoutSaved(true);
-    } else {
-      // Load previous workout as default
-      const prev = await fetch("/api/workout-logs?startDate=2020-01-01&endDate=" + d).then((r) => r.json());
-      if (Array.isArray(prev) && prev.length > 0) {
-        const latest = prev[0]; // sorted desc
-        setExercises((latest.exercises as Exercise[]).map((e) => ({ ...e })));
-      } else {
-        setExercises([]);
-      }
-      setWorkoutSaved(false);
+  const fetchWorkouts = useCallback(async () => {
+    const data = await fetch("/api/workout-logs?startDate=2020-01-01&endDate=2099-12-31").then((r) => r.json());
+    if (Array.isArray(data)) {
+      setAllWorkouts(data);
     }
   }, []);
 
@@ -93,9 +111,12 @@ export default function HobbyPage() {
   }, []);
 
   useEffect(() => {
-    fetchWorkout(date);
-    fetchReading(date);
-  }, [date, fetchWorkout, fetchReading]);
+    fetchWorkouts();
+  }, [fetchWorkouts]);
+
+  useEffect(() => {
+    if (tab === "reading") fetchReading(date);
+  }, [date, tab, fetchReading]);
 
   const changeDate = (delta: number) => {
     const d = new Date(date + "T00:00:00");
@@ -106,52 +127,47 @@ export default function HobbyPage() {
     setDate(`${y}-${m}-${day}`);
   };
 
-  // ── Workout handlers ──
-  const addExerciseFromMenu = (menu: ExerciseMenu) => {
-    const ex: Exercise = {
-      menuId: menu.id,
-      name: menu.name,
-      weight: menu.defaultWeight,
-      reps: menu.defaultReps,
-      sets: menu.defaultSets,
-      type: menu.type,
-    };
-    setExercises((prev) => [...prev, ex]);
-  };
+  // ── Chart data ──
+  const chartData = useMemo(() => {
+    const weekMenuMax = new Map<string, Map<string, number>>();
+    const menuNames = new Set<string>();
+    const weekKeys = new Set<string>();
 
-  const addRunning = () => {
-    setExercises((prev) => [
-      ...prev,
-      { name: "ランニング", weight: "", reps: 0, sets: 0, type: "running", distance: "", duration: "", pace: "" },
-    ]);
-  };
+    for (const log of allWorkouts) {
+      const dateKey = typeof log.date === "string" && log.date.includes("T")
+        ? log.date.split("T")[0]
+        : log.date;
+      const wk = getWeekKey(dateKey);
+      weekKeys.add(wk);
 
-  const updateExercise = (idx: number, updates: Partial<Exercise>) => {
-    setExercises((prev) => prev.map((e, i) => (i === idx ? { ...e, ...updates } : e)));
-  };
-
-  const removeExercise = (idx: number) => {
-    setExercises((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  const saveWorkout = async () => {
-    setWorkoutSaving(true);
-    try {
-      if (exercises.length === 0) {
-        await fetch(`/api/workout-logs?date=${date}`, { method: "DELETE" });
-        setWorkoutSaved(false);
-      } else {
-        await fetch("/api/workout-logs", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ date, exercises }),
-        });
-        setWorkoutSaved(true);
+      for (const ex of log.exercises) {
+        if (ex.type === "running") continue;
+        const w = parseWeight(ex.weight);
+        if (w === null) continue;
+        menuNames.add(ex.name);
+        if (!weekMenuMax.has(wk)) weekMenuMax.set(wk, new Map());
+        const menuMap = weekMenuMax.get(wk)!;
+        menuMap.set(ex.name, Math.max(menuMap.get(ex.name) || 0, w));
       }
-    } finally {
-      setWorkoutSaving(false);
     }
-  };
+
+    const sortedWeeks = Array.from(weekKeys).sort();
+    const labels = sortedWeeks.map((wk) => getWeekLabel(wk));
+    const sortedMenus = Array.from(menuNames).sort();
+
+    const datasets = sortedMenus.map((menu, i) => ({
+      label: menu,
+      data: sortedWeeks.map((wk) => weekMenuMax.get(wk)?.get(menu) ?? null),
+      borderColor: CHART_COLORS[i % CHART_COLORS.length],
+      backgroundColor: CHART_COLORS[i % CHART_COLORS.length] + "33",
+      borderWidth: 2,
+      pointRadius: 3,
+      tension: 0.3,
+      spanGaps: true,
+    }));
+
+    return { labels, datasets };
+  }, [allWorkouts]);
 
   // ── Reading handlers ──
   const addReading = async (bookTitle: string) => {
@@ -184,36 +200,18 @@ export default function HobbyPage() {
     await fetchReading(date);
   };
 
-  // ── Menu select dropdown state ──
-  const [showMenuPicker, setShowMenuPicker] = useState(false);
+  const formatDateLabel = (d: string) =>
+    new Date(d + "T00:00:00").toLocaleDateString("ja-JP", {
+      month: "long", day: "numeric", weekday: "short",
+    });
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
       <header className="sticky top-0 bg-white border-b border-slate-200 z-40 px-4">
         <div className="max-w-lg mx-auto">
-          {/* Date nav */}
-          <div className="flex items-center justify-between py-2">
-            <button onClick={() => changeDate(-1)} className="p-2 rounded-lg hover:bg-slate-100">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <div className="text-center">
-              <div className="flex items-center gap-2 justify-center">
-                <span className="text-base font-bold">{formatDateLabel(date)}</span>
-                {!isToday && (
-                  <button onClick={() => setDate(toJSTDateString())} className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-medium">
-                    今日
-                  </button>
-                )}
-              </div>
-            </div>
-            <button onClick={() => changeDate(1)} className="p-2 rounded-lg hover:bg-slate-100">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
+          <div className="py-2 text-center">
+            <span className="text-base font-bold">趣味</span>
           </div>
 
           {/* Tabs */}
@@ -224,7 +222,7 @@ export default function HobbyPage() {
                 tab === "workout" ? "bg-white text-emerald-700 shadow-sm" : "text-slate-500"
               }`}
             >
-              💪 運動
+              💪 筋トレ推移
             </button>
             <button
               onClick={() => setTab("reading")}
@@ -242,134 +240,49 @@ export default function HobbyPage() {
       <div className="flex-1 overflow-y-auto pb-20 px-4">
         <div className="max-w-lg mx-auto py-4 space-y-3">
 
-          {/* ══ Workout tab ══ */}
+          {/* ══ Workout trend chart ══ */}
           {tab === "workout" && (
             <>
-              {/* Exercise list */}
-              {exercises.map((ex, idx) => (
-                <div key={idx} className={`rounded-lg border overflow-hidden ${ex.type === "running" ? "border-orange-200" : "border-slate-200"}`}>
-                  <div className={`flex items-center justify-between px-3 py-2 ${ex.type === "running" ? "bg-orange-50" : "bg-slate-50"}`}>
-                    <span className="text-sm font-bold text-slate-700">{ex.name}</span>
-                    <button onClick={() => removeExercise(idx)} className="text-slate-300 hover:text-red-500 p-1">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                  <div className="px-3 py-2 space-y-2">
-                    {ex.type === "running" ? (
-                      <div className="grid grid-cols-3 gap-2">
-                        <div>
-                          <label className="text-[10px] text-slate-400 block mb-0.5">距離</label>
-                          <input
-                            type="text"
-                            value={ex.distance || ""}
-                            onChange={(e) => updateExercise(idx, { distance: e.target.value })}
-                            placeholder="5.0km"
-                            className="w-full px-2 py-1.5 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-orange-400"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-slate-400 block mb-0.5">時間</label>
-                          <input
-                            type="text"
-                            value={ex.duration || ""}
-                            onChange={(e) => updateExercise(idx, { duration: e.target.value })}
-                            placeholder="30:00"
-                            className="w-full px-2 py-1.5 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-orange-400"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-slate-400 block mb-0.5">ペース</label>
-                          <input
-                            type="text"
-                            value={ex.pace || ""}
-                            onChange={(e) => updateExercise(idx, { pace: e.target.value })}
-                            placeholder="6:00/km"
-                            className="w-full px-2 py-1.5 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-orange-400"
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1">
-                          <label className="text-[10px] text-slate-400 block mb-0.5">重量</label>
-                          <input
-                            type="text"
-                            value={ex.weight}
-                            onChange={(e) => updateExercise(idx, { weight: e.target.value })}
-                            placeholder="20kg"
-                            className="w-full px-2 py-1.5 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-emerald-400"
-                          />
-                        </div>
-                        <div className="w-16">
-                          <label className="text-[10px] text-slate-400 block mb-0.5">回数</label>
-                          <input
-                            type="number"
-                            value={ex.reps}
-                            onChange={(e) => updateExercise(idx, { reps: Math.max(0, Number(e.target.value)) })}
-                            className="w-full px-2 py-1.5 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-emerald-400"
-                          />
-                        </div>
-                        <div className="w-14">
-                          <label className="text-[10px] text-slate-400 block mb-0.5">セット</label>
-                          <input
-                            type="number"
-                            value={ex.sets}
-                            onChange={(e) => updateExercise(idx, { sets: Math.max(0, Number(e.target.value)) })}
-                            className="w-full px-2 py-1.5 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-emerald-400"
-                          />
-                        </div>
-                      </div>
-                    )}
+              {chartData.datasets.length > 0 ? (
+                <div className="bg-white rounded-xl border border-slate-200 p-4">
+                  <h3 className="text-sm font-bold text-slate-700 mb-3">重量推移（週ごとの最大重量）</h3>
+                  <div className="h-64">
+                    <Line
+                      data={chartData}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: "index", intersect: false },
+                        scales: {
+                          x: {
+                            ticks: { font: { size: 10 }, maxRotation: 45 },
+                          },
+                          y: {
+                            title: { display: true, text: "重量", font: { size: 11 } },
+                            ticks: { font: { size: 10 } },
+                            beginAtZero: true,
+                          },
+                        },
+                        plugins: {
+                          legend: {
+                            position: "bottom",
+                            labels: { font: { size: 10 }, boxWidth: 12, padding: 8 },
+                          },
+                          tooltip: {
+                            callbacks: {
+                              label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}`,
+                            },
+                          },
+                        },
+                      }}
+                    />
                   </div>
                 </div>
-              ))}
-
-              {/* Add menu */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowMenuPicker(!showMenuPicker)}
-                  className="w-full py-2.5 rounded-lg border-2 border-dashed border-emerald-300 text-emerald-600 text-sm font-medium hover:bg-emerald-50 transition-colors"
-                >
-                  + メニュー追加
-                </button>
-                {showMenuPicker && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border border-slate-200 z-30 max-h-60 overflow-y-auto">
-                    {menus.filter((m) => m.type === "strength").map((menu) => (
-                      <button
-                        key={menu.id}
-                        onClick={() => { addExerciseFromMenu(menu); setShowMenuPicker(false); }}
-                        className="w-full px-4 py-2.5 text-left hover:bg-slate-50 border-b border-slate-50 flex items-center justify-between"
-                      >
-                        <span className="text-sm font-medium">{menu.name}</span>
-                        <span className="text-xs text-slate-400">
-                          {menu.defaultWeight} × {menu.defaultReps}回 × {menu.defaultSets}set
-                        </span>
-                      </button>
-                    ))}
-                    <button
-                      onClick={() => { addRunning(); setShowMenuPicker(false); }}
-                      className="w-full px-4 py-2.5 text-left hover:bg-orange-50 border-b border-slate-50 flex items-center gap-2"
-                    >
-                      <span className="text-sm font-medium text-orange-600">🏃 ランニング</span>
-                    </button>
-                    {menus.length === 0 && (
-                      <p className="px-4 py-3 text-xs text-slate-400">設定からメニューを追加してください</p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Save button */}
-              {exercises.length > 0 && (
-                <button
-                  onClick={saveWorkout}
-                  disabled={workoutSaving}
-                  className="w-full py-2.5 rounded-lg text-sm font-bold text-white bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 transition-colors"
-                >
-                  {workoutSaving ? "保存中..." : workoutSaved ? "更新" : "保存"}
-                </button>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-sm text-slate-400">筋トレの記録がまだありません</p>
+                  <p className="text-xs text-slate-300 mt-1">記録タブの「今日の一言」から記録してください</p>
+                </div>
               )}
             </>
           )}
@@ -377,6 +290,30 @@ export default function HobbyPage() {
           {/* ══ Reading tab ══ */}
           {tab === "reading" && (
             <>
+              {/* Date nav */}
+              <div className="flex items-center justify-between py-1">
+                <button onClick={() => changeDate(-1)} className="p-2 rounded-lg hover:bg-slate-100">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <div className="text-center">
+                  <div className="flex items-center gap-2 justify-center">
+                    <span className="text-sm font-bold">{formatDateLabel(date)}</span>
+                    {!isToday && (
+                      <button onClick={() => setDate(toJSTDateString())} className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-medium">
+                        今日
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <button onClick={() => changeDate(1)} className="p-2 rounded-lg hover:bg-slate-100">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+
               {/* Reading entries for this date */}
               {readings.map((entry) => (
                 <div key={entry.id} className="rounded-lg border border-slate-200 overflow-hidden">

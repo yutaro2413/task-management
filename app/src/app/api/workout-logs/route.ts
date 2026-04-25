@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   const logs = await prisma.workoutLog.findMany({
     where,
     orderBy: { date: "desc" },
-    take: 200,
+    take: 1000,
   });
   return NextResponse.json(logs);
 }
