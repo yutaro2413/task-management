@@ -159,37 +159,46 @@ function WorkoutSection({
                   )}
                 </div>
               ))}
-              <div className="relative">
-                <button
-                  onClick={() => setShowPicker(!showPicker)}
-                  className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
-                >
-                  + メニュー追加
-                </button>
-                {showPicker && (
-                  <div className="absolute left-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 z-30 max-h-48 overflow-y-auto min-w-[200px]">
-                    {menus.filter((m) => m.type === "strength").map((menu) => (
-                      <button
-                        key={menu.id}
-                        onClick={() => addFromMenu(menu)}
-                        className="w-full px-3 py-2 text-left hover:bg-slate-50 border-b border-slate-50 text-xs flex justify-between"
-                      >
-                        <span className="font-medium">{menu.name}</span>
-                        <span className="text-slate-400">{menu.defaultWeight}×{menu.defaultReps}×{menu.defaultSets}</span>
+              <button
+                onClick={() => setShowPicker(true)}
+                className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
+              >
+                + メニュー追加
+              </button>
+              {showPicker && (
+                <div className="fixed inset-0 z-[60] flex items-end justify-center" onClick={() => setShowPicker(false)}>
+                  <div className="absolute inset-0 bg-black/20" />
+                  <div className="relative bg-white rounded-t-2xl w-full max-w-lg max-h-[50vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
+                    <div className="sticky top-0 bg-white border-b border-slate-100 px-4 py-3 flex items-center justify-between">
+                      <span className="text-sm font-bold">メニュー選択</span>
+                      <button onClick={() => setShowPicker(false)} className="text-slate-400 hover:text-slate-600">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M6 18L18 6M6 6l12 12" /></svg>
                       </button>
-                    ))}
-                    <button
-                      onClick={addRunning}
-                      className="w-full px-3 py-2 text-left hover:bg-orange-50 text-xs font-medium text-orange-600"
-                    >
-                      🏃 ランニング
-                    </button>
-                    {menus.filter((m) => m.type === "strength").length === 0 && (
-                      <p className="px-3 py-2 text-[10px] text-slate-400">設定からメニューを追加</p>
-                    )}
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                      {menus.filter((m) => m.type === "strength").map((menu) => (
+                        <button
+                          key={menu.id}
+                          onClick={() => addFromMenu(menu)}
+                          className="w-full px-4 py-3 text-left hover:bg-slate-50 flex items-center justify-between"
+                        >
+                          <span className="text-sm font-medium">{menu.name}</span>
+                          <span className="text-xs text-slate-400">{menu.defaultWeight} × {menu.defaultReps}回 × {menu.defaultSets}set</span>
+                        </button>
+                      ))}
+                      <button
+                        onClick={addRunning}
+                        className="w-full px-4 py-3 text-left hover:bg-orange-50 flex items-center gap-2"
+                      >
+                        <span className="text-sm font-medium text-orange-600">🏃 ランニング</span>
+                      </button>
+                      {menus.filter((m) => m.type === "strength").length === 0 && (
+                        <p className="px-4 py-3 text-xs text-slate-400">設定からメニューを追加してください</p>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </>
           )}
         </div>
