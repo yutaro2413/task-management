@@ -175,8 +175,8 @@ export default function HabitModal() {
                         style={{
                           backgroundColor: bg,
                           borderColor: isSelected ? habit.color : border,
-                          ringColor: habit.color,
                           color: textDark ? "#fff" : "#334155",
+                          ["--tw-ring-color" as string]: habit.color,
                         }}
                       >
                         <span
