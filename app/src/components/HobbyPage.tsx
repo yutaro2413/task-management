@@ -197,6 +197,8 @@ export default function HobbyPage() {
 
   // Sleep state
   const [sleepSessions, setSleepSessions] = useState<SleepSession[]>([]);
+  const [cleanupRunning, setCleanupRunning] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState<string | null>(null);
 
   const isToday = date === toJSTDateString();
 
@@ -265,6 +267,24 @@ export default function HobbyPage() {
   useEffect(() => {
     if (tab === "sleep") fetchSleepSessions();
   }, [tab, fetchSleepSessions]);
+
+  const runCleanup = useCallback(async () => {
+    if (!confirm("30日以上前のロック解除イベントを集約・削除します。よろしいですか？")) return;
+    setCleanupRunning(true);
+    setCleanupResult(null);
+    try {
+      const res = await fetch("/api/sleep-sessions/cleanup", { method: "POST" });
+      const data = await res.json();
+      setCleanupResult(
+        `集約 ${data.upsertedSessions ?? 0} 件 / 削除 ${data.deletedEvents ?? 0} 件`
+      );
+      await fetchSleepSessions();
+    } catch {
+      setCleanupResult("失敗しました");
+    } finally {
+      setCleanupRunning(false);
+    }
+  }, [fetchSleepSessions]);
 
   const habitLogMap = useMemo(() => {
     const map = new Map<string, Map<string, number>>();
@@ -892,6 +912,20 @@ export default function HobbyPage() {
                   </div>
                 </>
               )}
+
+              {/* Manual cleanup */}
+              <div className="pt-2 text-center">
+                <button
+                  onClick={runCleanup}
+                  disabled={cleanupRunning}
+                  className="text-[11px] text-slate-400 hover:text-slate-600 underline disabled:opacity-50"
+                >
+                  {cleanupRunning ? "クリーンアップ中..." : "古いデータを集約して削除"}
+                </button>
+                {cleanupResult && (
+                  <p className="text-[10px] text-slate-400 mt-1">{cleanupResult}</p>
+                )}
+              </div>
             </>
           )}
         </div>

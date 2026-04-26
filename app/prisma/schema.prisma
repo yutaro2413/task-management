@@ -196,8 +196,18 @@ model HabitLog {
 model UnlockEvent {
   id        String   @id @default(cuid())
   timestamp DateTime
-  source    String   @default("ios") // "ios" | "manual"
+  source    String   @default("ios") // "ios" | "manual" | "web"
   createdAt DateTime @default(now())
 
   @@index([timestamp])
+}
+
+// 確定済み睡眠セッション (cleanup でUnlockEventから集約)
+model SleepSession {
+  id              String   @id @default(cuid())
+  date            DateTime @unique @db.Date // JST覚醒日
+  sleepAt         DateTime
+  wakeAt          DateTime
+  durationMinutes Int
+  createdAt       DateTime @default(now())
 }

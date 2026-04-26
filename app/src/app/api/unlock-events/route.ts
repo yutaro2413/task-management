@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-const DEDUP_SECONDS = 60;
+const DEDUP_SECONDS = 600;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
