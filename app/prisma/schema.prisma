@@ -191,3 +191,13 @@ model HabitLog {
 
   @@unique([date, habitId])
 }
+
+// スマホロック解除イベント (iOS Shortcut から POST される)
+model UnlockEvent {
+  id        String   @id @default(cuid())
+  timestamp DateTime
+  source    String   @default("ios") // "ios" | "manual"
+  createdAt DateTime @default(now())
+
+  @@index([timestamp])
+}

@@ -61,7 +61,28 @@ type HabitLog = {
   level: number;
 };
 
-type Tab = "workout" | "reading" | "habit";
+type Tab = "workout" | "reading" | "habit" | "sleep";
+
+type SleepSession = {
+  date: string;
+  sleepAt: string;
+  wakeAt: string;
+  durationMinutes: number;
+};
+
+function formatJSTHHMM(iso: string) {
+  const d = new Date(iso);
+  const jst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+  const hh = String(jst.getUTCHours()).padStart(2, "0");
+  const mm = String(jst.getUTCMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+function formatDurationHM(min: number) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${h}:${String(m).padStart(2, "0")}`;
+}
 
 const HABIT_GRID_WEEKS = 12;
 const HABIT_LEVEL_OPACITIES = [0.18, 0.34, 0.52, 0.74, 1.0];
@@ -174,6 +195,9 @@ export default function HobbyPage() {
   const [hLevels, setHLevels] = useState<[string, string, string, string, string]>(["", "", "", "", ""]);
   const [habitSaving, setHabitSaving] = useState(false);
 
+  // Sleep state
+  const [sleepSessions, setSleepSessions] = useState<SleepSession[]>([]);
+
   const isToday = date === toJSTDateString();
 
   const fetchWorkouts = useCallback(async () => {
@@ -225,6 +249,22 @@ export default function HobbyPage() {
       fetchHabitLogs();
     }
   }, [tab, fetchHabits, fetchHabitLogs]);
+
+  const fetchSleepSessions = useCallback(async () => {
+    const today = new Date();
+    const start = new Date(today);
+    start.setDate(today.getDate() - 29);
+    const startDate = toJSTDateString(start);
+    const endDate = toJSTDateString(today);
+    const data = await fetch(
+      `/api/sleep-sessions?startDate=${startDate}&endDate=${endDate}`
+    ).then((r) => r.json());
+    if (Array.isArray(data)) setSleepSessions(data);
+  }, []);
+
+  useEffect(() => {
+    if (tab === "sleep") fetchSleepSessions();
+  }, [tab, fetchSleepSessions]);
 
   const habitLogMap = useMemo(() => {
     const map = new Map<string, Map<string, number>>();
@@ -435,6 +475,14 @@ export default function HobbyPage() {
               }`}
             >
               🎯 習慣
+            </button>
+            <button
+              onClick={() => setTab("sleep")}
+              className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-colors ${
+                tab === "sleep" ? "bg-white text-sky-700 shadow-sm" : "text-slate-500"
+              }`}
+            >
+              🌙 睡眠
             </button>
           </div>
         </div>
@@ -752,6 +800,98 @@ export default function HobbyPage() {
                   </div>
                 )}
               </div>
+            </>
+          )}
+
+          {/* ══ Sleep tab ══ */}
+          {tab === "sleep" && (
+            <>
+              {sleepSessions.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-sm text-slate-400">睡眠データがまだありません</p>
+                  <p className="text-xs text-slate-300 mt-1">
+                    iOSショートカットで <code className="bg-slate-100 px-1 rounded">/api/unlock-events</code> に POST してください
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* Duration chart */}
+                  <div className="bg-white rounded-xl border border-slate-200 p-4">
+                    <h3 className="text-sm font-bold text-slate-700 mb-3">睡眠時間（直近30日）</h3>
+                    <div className="h-48">
+                      <Line
+                        data={{
+                          labels: sleepSessions.map((s) => {
+                            const d = new Date(s.date + "T00:00:00");
+                            return `${d.getMonth() + 1}/${d.getDate()}`;
+                          }),
+                          datasets: [
+                            {
+                              label: "睡眠時間 (時間)",
+                              data: sleepSessions.map((s) => +(s.durationMinutes / 60).toFixed(2)),
+                              borderColor: "#0ea5e9",
+                              backgroundColor: "#0ea5e933",
+                              borderWidth: 2,
+                              pointRadius: 3,
+                              tension: 0.3,
+                            },
+                          ],
+                        }}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          scales: {
+                            x: { ticks: { font: { size: 10 } } },
+                            y: {
+                              beginAtZero: true,
+                              suggestedMax: 10,
+                              ticks: { font: { size: 10 } },
+                              title: { display: true, text: "時間", font: { size: 11 } },
+                            },
+                          },
+                          plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                              callbacks: {
+                                label: (ctx) => `${(ctx.parsed.y ?? 0).toFixed(2)} 時間`,
+                              },
+                            },
+                          },
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Log list */}
+                  <div className="bg-white rounded-xl border border-slate-200">
+                    <h3 className="text-sm font-bold text-slate-700 px-3 pt-3">睡眠ログ</h3>
+                    <div className="divide-y divide-slate-100">
+                      {[...sleepSessions].reverse().map((s) => {
+                        const dateLabel = new Date(s.date + "T00:00:00").toLocaleDateString("ja-JP", {
+                          month: "numeric", day: "numeric", weekday: "short",
+                        });
+                        const widthPct = Math.min(100, (s.durationMinutes / (10 * 60)) * 100);
+                        return (
+                          <div key={s.date} className="px-3 py-2.5">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-bold text-slate-600">{dateLabel}</span>
+                              <span className="text-xs font-bold text-sky-700">{formatDurationHM(s.durationMinutes)}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] text-slate-500 mb-1">
+                              <span>🌙 {formatJSTHHMM(s.sleepAt)}</span>
+                              <span className="text-slate-300">→</span>
+                              <span>☀️ {formatJSTHHMM(s.wakeAt)}</span>
+                            </div>
+                            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                              <div className="h-full bg-sky-400 rounded-full" style={{ width: `${widthPct}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>

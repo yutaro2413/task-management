@@ -19,6 +19,27 @@ type HabitLog = {
   level: number;
 };
 
+type SleepSession = {
+  date: string;
+  sleepAt: string;
+  wakeAt: string;
+  durationMinutes: number;
+};
+
+function formatJSTTime(iso: string) {
+  const d = new Date(iso);
+  const jst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+  const hh = String(jst.getUTCHours()).padStart(2, "0");
+  const mm = String(jst.getUTCMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+function formatDuration(min: number) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${h}:${String(m).padStart(2, "0")}`;
+}
+
 const DISMISS_KEY_PREFIX = "habit-dismiss-";
 const LEVEL_OPACITIES = [0.15, 0.3, 0.5, 0.75, 1.0];
 
@@ -56,6 +77,7 @@ export default function HabitModal() {
   const [visible, setVisible] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dontShowToday, setDontShowToday] = useState(false);
+  const [sleep, setSleep] = useState<SleepSession | null>(null);
 
   const today = toJSTDateString();
 
@@ -66,7 +88,8 @@ export default function HabitModal() {
     Promise.all([
       fetch("/api/habits").then((r) => r.json()),
       fetch(`/api/habit-logs?date=${today}`).then((r) => r.json()),
-    ]).then(([habitsData, logsData]) => {
+      fetch(`/api/sleep-sessions?date=${today}`).then((r) => r.json()).catch(() => null),
+    ]).then(([habitsData, logsData, sleepData]) => {
       const activeHabits = (habitsData as Habit[]).filter((h) => {
         const hasLevel = h.level1 || h.level2 || h.level3 || h.level4 || h.level5;
         return hasLevel;
@@ -84,6 +107,9 @@ export default function HabitModal() {
 
       setHabits(activeHabits);
       setSelected(new Map(logMap));
+      if (sleepData && typeof sleepData === "object" && "sleepAt" in sleepData) {
+        setSleep(sleepData as SleepSession);
+      }
       setVisible(true);
     });
   }, [today]);
@@ -140,6 +166,14 @@ export default function HabitModal() {
         <div className="px-5 pt-5 pb-3 border-b border-slate-100 flex-shrink-0">
           <h3 className="text-base font-bold">今日の習慣チェック</h3>
           <p className="text-xs text-slate-400 mt-0.5">達成したレベルをタップしてください</p>
+          {sleep && (
+            <p className="text-[11px] text-slate-500 mt-1.5 flex items-center gap-1">
+              <span>🌙 {formatJSTTime(sleep.sleepAt)}</span>
+              <span className="text-slate-300">→</span>
+              <span>☀️ {formatJSTTime(sleep.wakeAt)}</span>
+              <span className="ml-1 text-slate-400">({formatDuration(sleep.durationMinutes)})</span>
+            </p>
+          )}
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4">
