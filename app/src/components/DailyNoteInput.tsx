@@ -175,7 +175,7 @@ function WorkoutSection({
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M6 18L18 6M6 6l12 12" /></svg>
                       </button>
                     </div>
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-slate-100 pb-20">
                       {menus.filter((m) => m.type === "strength").map((menu) => (
                         <button
                           key={menu.id}
