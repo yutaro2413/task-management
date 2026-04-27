@@ -41,6 +41,8 @@ function formatDuration(min: number) {
 }
 
 const DISMISS_KEY_PREFIX = "habit-dismiss-";
+const SNOOZE_KEY = "habit-snooze-until";
+const SNOOZE_MS = 60 * 60 * 1000;
 const LEVEL_OPACITIES = [0.15, 0.3, 0.5, 0.75, 1.0];
 
 function hexToRgb(hex: string) {
@@ -84,6 +86,8 @@ export default function HabitModal() {
   useEffect(() => {
     const dismissed = localStorage.getItem(DISMISS_KEY_PREFIX + today);
     if (dismissed) return;
+    const snoozeUntil = Number(localStorage.getItem(SNOOZE_KEY) || 0);
+    if (snoozeUntil > Date.now()) return;
 
     Promise.all([
       fetch("/api/habits").then((r) => r.json()),
@@ -140,6 +144,7 @@ export default function HabitModal() {
         );
       await Promise.all(promises);
       localStorage.setItem(DISMISS_KEY_PREFIX + today, "1");
+      localStorage.removeItem(SNOOZE_KEY);
       setVisible(false);
     } finally {
       setSaving(false);
@@ -149,6 +154,9 @@ export default function HabitModal() {
   const handleSkip = () => {
     if (dontShowToday) {
       localStorage.setItem(DISMISS_KEY_PREFIX + today, "1");
+      localStorage.removeItem(SNOOZE_KEY);
+    } else {
+      localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS));
     }
     setVisible(false);
   };
