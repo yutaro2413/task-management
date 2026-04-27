@@ -143,8 +143,13 @@ export default function HabitModal() {
           })
         );
       await Promise.all(promises);
-      localStorage.setItem(DISMISS_KEY_PREFIX + today, "1");
-      localStorage.removeItem(SNOOZE_KEY);
+      const allChosen = habits.every((h) => selected.has(h.id));
+      if (allChosen) {
+        localStorage.setItem(DISMISS_KEY_PREFIX + today, "1");
+        localStorage.removeItem(SNOOZE_KEY);
+      } else {
+        localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS));
+      }
       setVisible(false);
     } finally {
       setSaving(false);
@@ -249,6 +254,36 @@ export default function HabitModal() {
                       </button>
                     );
                   })}
+                  {(() => {
+                    const isSelected = selectedLevel === 0;
+                    return (
+                      <button
+                        key={0}
+                        onClick={() => handleSelect(habit.id, 0)}
+                        className={`w-full px-3 py-2 rounded-lg text-left transition-all border-2 flex items-center gap-2 bg-slate-100 ${
+                          isSelected ? "ring-2 ring-offset-1 ring-slate-400 border-slate-400" : "border-slate-200"
+                        }`}
+                      >
+                        <span
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0`}
+                          style={{
+                            borderColor: isSelected ? "#64748b" : "rgba(0,0,0,0.15)",
+                            backgroundColor: isSelected ? "#64748b" : "transparent",
+                          }}
+                        >
+                          {isSelected && (
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={3}>
+                              <path d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </span>
+                        <span className="flex-1 text-slate-500">
+                          <span className="text-[10px] font-bold opacity-60">Lv.0</span>
+                          <span className="text-xs font-medium ml-2">できなかった</span>
+                        </span>
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             );
