@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import SleepTracker from "@/components/SleepTracker";
+import HabitModal from "@/components/HabitModal";
 
 export const metadata: Metadata = {
   title: "TimeTracker",
@@ -35,6 +36,7 @@ export default function RootLayout({
         <Sidebar />
         <SleepTracker />
         {children}
+        <HabitModal />
       </body>
     </html>
   );
