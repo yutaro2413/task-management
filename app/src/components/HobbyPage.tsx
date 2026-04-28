@@ -199,6 +199,7 @@ export default function HobbyPage() {
   const [sleepSessions, setSleepSessions] = useState<SleepSession[]>([]);
   const [cleanupRunning, setCleanupRunning] = useState(false);
   const [cleanupResult, setCleanupResult] = useState<string | null>(null);
+  const [sleepView, setSleepView] = useState<"duration" | "sleepAt" | "wakeAt">("duration");
 
   const isToday = date === toJSTDateString();
 
@@ -263,9 +264,7 @@ export default function HobbyPage() {
 
   const fetchSleepSessions = useCallback(async () => {
     const today = new Date();
-    const start = new Date(today);
-    start.setDate(today.getDate() - 29);
-    const startDate = toJSTDateString(start);
+    const startDate = "2020-01-01";
     const endDate = toJSTDateString(today);
     const data = await fetch(
       `/api/sleep-sessions?startDate=${startDate}&endDate=${endDate}`
@@ -345,19 +344,65 @@ export default function HobbyPage() {
     const labels = sortedWeeks.map((wk) => getWeekLabel(wk));
     const sortedMenus = Array.from(menuNames).sort();
 
+    const POINT_STYLES = ["circle", "rect", "triangle", "rectRot", "star", "crossRot"] as const;
+    const DASH_PATTERNS: number[][] = [[], [6, 4], [2, 3], [10, 4, 2, 4]];
+
     const datasets = sortedMenus.map((menu, i) => ({
       label: menu,
       data: sortedWeeks.map((wk) => weekMenuMax.get(wk)?.get(menu) ?? null),
       borderColor: CHART_COLORS[i % CHART_COLORS.length],
       backgroundColor: CHART_COLORS[i % CHART_COLORS.length] + "33",
       borderWidth: 2,
-      pointRadius: 3,
+      borderDash: DASH_PATTERNS[i % DASH_PATTERNS.length],
+      pointStyle: POINT_STYLES[i % POINT_STYLES.length],
+      pointRadius: 5,
+      pointHoverRadius: 7,
+      pointBorderWidth: 2,
+      pointBackgroundColor: "#fff",
       tension: 0.3,
       spanGaps: true,
     }));
 
     return { labels, datasets };
   }, [allWorkouts]);
+
+  // ── Sleep chart data ──
+  const sleepChart = useMemo(() => {
+    const sortedSessions = [...sleepSessions].sort((a, b) => a.date.localeCompare(b.date));
+    const labels = sortedSessions.map((s) => {
+      const d = new Date(s.date + "T00:00:00");
+      return `${d.getMonth() + 1}/${d.getDate()}`;
+    });
+
+    const durations = sortedSessions.map((s) => +(s.durationMinutes / 60).toFixed(2));
+    const sortedDur = [...durations].sort((a, b) => a - b);
+    const median = sortedDur.length === 0
+      ? 0
+      : sortedDur.length % 2 === 0
+      ? (sortedDur[sortedDur.length / 2 - 1] + sortedDur[sortedDur.length / 2]) / 2
+      : sortedDur[(sortedDur.length - 1) / 2];
+
+    const jstHourFloat = (iso: string) => {
+      const d = new Date(iso);
+      const jst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+      return jst.getUTCHours() + jst.getUTCMinutes() / 60;
+    };
+    // 就寝時刻: 12時前は深夜と見做して+24（連続軸上で 22, 23, 24, 25...と表示するため）
+    const sleepHours = sortedSessions.map((s) => {
+      const h = jstHourFloat(s.sleepAt);
+      return h < 12 ? h + 24 : h;
+    });
+    const wakeHours = sortedSessions.map((s) => jstHourFloat(s.wakeAt));
+
+    return { labels, durations, median, sleepHours, wakeHours, count: sortedSessions.length };
+  }, [sleepSessions]);
+
+  const formatHourTick = (val: number) => {
+    const h = ((val % 24) + 24) % 24;
+    const wholeH = Math.floor(h);
+    const m = Math.round((h - wholeH) * 60);
+    return `${String(wholeH).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  };
 
   // ── Reading handlers ──
   const addReading = async (bookTitle: string) => {
@@ -547,7 +592,7 @@ export default function HobbyPage() {
                         plugins: {
                           legend: {
                             position: "bottom",
-                            labels: { font: { size: 10 }, boxWidth: 12, padding: 8 },
+                            labels: { font: { size: 10 }, boxWidth: 12, padding: 8, usePointStyle: true },
                           },
                           tooltip: {
                             callbacks: {
@@ -851,50 +896,154 @@ export default function HobbyPage() {
                 </div>
               ) : (
                 <>
-                  {/* Duration chart */}
+                  {/* Chart with view toggle */}
                   <div className="bg-white rounded-xl border border-slate-200 p-4">
-                    <h3 className="text-sm font-bold text-slate-700 mb-3">睡眠時間（直近30日）</h3>
-                    <div className="h-48">
-                      <Line
-                        data={{
-                          labels: sleepSessions.map((s) => {
-                            const d = new Date(s.date + "T00:00:00");
-                            return `${d.getMonth() + 1}/${d.getDate()}`;
-                          }),
-                          datasets: [
-                            {
-                              label: "睡眠時間 (時間)",
-                              data: sleepSessions.map((s) => +(s.durationMinutes / 60).toFixed(2)),
-                              borderColor: "#0ea5e9",
-                              backgroundColor: "#0ea5e933",
-                              borderWidth: 2,
-                              pointRadius: 3,
-                              tension: 0.3,
-                            },
-                          ],
-                        }}
-                        options={{
-                          responsive: true,
-                          maintainAspectRatio: false,
-                          scales: {
-                            x: { ticks: { font: { size: 10 } } },
-                            y: {
-                              beginAtZero: true,
-                              suggestedMax: 10,
-                              ticks: { font: { size: 10 } },
-                              title: { display: true, text: "時間", font: { size: 11 } },
-                            },
-                          },
-                          plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                              callbacks: {
-                                label: (ctx) => `${(ctx.parsed.y ?? 0).toFixed(2)} 時間`,
+                    <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+                      <h3 className="text-sm font-bold text-slate-700">
+                        {sleepView === "duration" && `睡眠時間（全${sleepChart.count}日 / 中央値 ${sleepChart.median.toFixed(2)}h）`}
+                        {sleepView === "sleepAt" && "就寝時刻の推移"}
+                        {sleepView === "wakeAt" && "起床時刻の推移"}
+                      </h3>
+                      <div className="flex gap-1 bg-slate-100 rounded-lg p-0.5">
+                        {[
+                          { key: "duration", label: "時間" },
+                          { key: "sleepAt", label: "就寝" },
+                          { key: "wakeAt", label: "起床" },
+                        ].map((v) => (
+                          <button
+                            key={v.key}
+                            onClick={() => setSleepView(v.key as "duration" | "sleepAt" | "wakeAt")}
+                            className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
+                              sleepView === v.key ? "bg-white text-sky-700 shadow-sm font-medium" : "text-slate-500"
+                            }`}
+                          >
+                            {v.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="h-56">
+                      {sleepView === "duration" && (
+                        <Line
+                          data={{
+                            labels: sleepChart.labels,
+                            datasets: [
+                              {
+                                label: "睡眠時間",
+                                data: sleepChart.durations,
+                                borderColor: "#0ea5e9",
+                                backgroundColor: "#0ea5e933",
+                                borderWidth: 2,
+                                pointRadius: 2,
+                                tension: 0.3,
+                              },
+                              {
+                                label: "中央値",
+                                data: sleepChart.labels.map(() => +sleepChart.median.toFixed(2)),
+                                borderColor: "#f97316",
+                                backgroundColor: "transparent",
+                                borderWidth: 1.5,
+                                borderDash: [5, 4],
+                                pointRadius: 0,
+                                tension: 0,
+                              },
+                            ],
+                          }}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                              x: { ticks: { font: { size: 10 }, maxRotation: 0, autoSkip: true } },
+                              y: {
+                                beginAtZero: true,
+                                suggestedMax: 10,
+                                ticks: { font: { size: 10 } },
+                                title: { display: true, text: "時間", font: { size: 11 } },
                               },
                             },
-                          },
-                        }}
-                      />
+                            plugins: {
+                              legend: { position: "bottom", labels: { font: { size: 10 }, boxWidth: 12, padding: 8, usePointStyle: true } },
+                              tooltip: {
+                                callbacks: {
+                                  label: (ctx) => `${ctx.dataset.label}: ${(ctx.parsed.y ?? 0).toFixed(2)} 時間`,
+                                },
+                              },
+                            },
+                          }}
+                        />
+                      )}
+                      {sleepView === "sleepAt" && (
+                        <Line
+                          data={{
+                            labels: sleepChart.labels,
+                            datasets: [
+                              {
+                                label: "就寝時刻",
+                                data: sleepChart.sleepHours,
+                                borderColor: "#6366f1",
+                                backgroundColor: "#6366f133",
+                                borderWidth: 2,
+                                pointRadius: 2,
+                                tension: 0.3,
+                              },
+                            ],
+                          }}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                              x: { ticks: { font: { size: 10 }, maxRotation: 0, autoSkip: true } },
+                              y: {
+                                ticks: { font: { size: 10 }, callback: (v) => formatHourTick(v as number) },
+                                title: { display: true, text: "JST", font: { size: 11 } },
+                                suggestedMin: 20,
+                                suggestedMax: 30,
+                                reverse: true,
+                              },
+                            },
+                            plugins: {
+                              legend: { display: false },
+                              tooltip: { callbacks: { label: (ctx) => `就寝 ${formatHourTick(ctx.parsed.y as number)}` } },
+                            },
+                          }}
+                        />
+                      )}
+                      {sleepView === "wakeAt" && (
+                        <Line
+                          data={{
+                            labels: sleepChart.labels,
+                            datasets: [
+                              {
+                                label: "起床時刻",
+                                data: sleepChart.wakeHours,
+                                borderColor: "#f59e0b",
+                                backgroundColor: "#f59e0b33",
+                                borderWidth: 2,
+                                pointRadius: 2,
+                                tension: 0.3,
+                              },
+                            ],
+                          }}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                              x: { ticks: { font: { size: 10 }, maxRotation: 0, autoSkip: true } },
+                              y: {
+                                ticks: { font: { size: 10 }, callback: (v) => formatHourTick(v as number) },
+                                title: { display: true, text: "JST", font: { size: 11 } },
+                                suggestedMin: 4,
+                                suggestedMax: 12,
+                                reverse: true,
+                              },
+                            },
+                            plugins: {
+                              legend: { display: false },
+                              tooltip: { callbacks: { label: (ctx) => `起床 ${formatHourTick(ctx.parsed.y as number)}` } },
+                            },
+                          }}
+                        />
+                      )}
                     </div>
                   </div>
 
