@@ -252,6 +252,15 @@ export default function HobbyPage() {
     }
   }, [tab, fetchHabits, fetchHabitLogs]);
 
+  useEffect(() => {
+    const handler = () => {
+      fetchHabits();
+      fetchHabitLogs();
+    };
+    window.addEventListener("habit-logs-updated", handler);
+    return () => window.removeEventListener("habit-logs-updated", handler);
+  }, [fetchHabits, fetchHabitLogs]);
+
   const fetchSleepSessions = useCallback(async () => {
     const today = new Date();
     const start = new Date(today);
@@ -715,13 +724,20 @@ export default function HobbyPage() {
                                 : level
                                 ? habitLevelColor(h.color, level)
                                 : "#f1f5f9";
+                              const onCellClick = cell.isFuture
+                                ? undefined
+                                : () =>
+                                    window.dispatchEvent(
+                                      new CustomEvent("open-habit-modal", { detail: { date: cell.date } })
+                                    );
                               return (
                                 <div
                                   key={cell.date}
                                   title={`${cell.date}${level ? ` Lv.${level}` : ""}`}
+                                  onClick={onCellClick}
                                   className={`aspect-square rounded-sm ${
-                                    cell.isToday ? "ring-1 ring-slate-400" : ""
-                                  }`}
+                                    cell.isFuture ? "" : "cursor-pointer"
+                                  } ${cell.isToday ? "ring-1 ring-slate-400" : ""}`}
                                   style={{ backgroundColor: bg }}
                                 />
                               );

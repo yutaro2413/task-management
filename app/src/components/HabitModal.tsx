@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toJSTDateString } from "@/lib/utils";
 
 type Habit = {
@@ -40,9 +40,13 @@ function formatDuration(min: number) {
   return `${h}:${String(m).padStart(2, "0")}`;
 }
 
-const DISMISS_KEY_PREFIX = "habit-dismiss-";
-const SNOOZE_KEY = "habit-snooze-until";
-const SNOOZE_MS = 60 * 60 * 1000;
+function formatJSTDateLabel(dateStr: string) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  const wd = ["日", "月", "火", "水", "木", "金", "土"][dt.getDay()];
+  return `${m}/${d} (${wd})`;
+}
+
 const LEVEL_OPACITIES = [0.15, 0.3, 0.5, 0.75, 1.0];
 
 function hexToRgb(hex: string) {
@@ -74,49 +78,65 @@ function levelBorderColor(hex: string, level: number) {
 
 export default function HabitModal() {
   const [habits, setHabits] = useState<Habit[]>([]);
-  const [todayLogs, setTodayLogs] = useState<Map<string, number>>(new Map());
+  const [existingLogs, setExistingLogs] = useState<Map<string, number>>(new Map());
   const [selected, setSelected] = useState<Map<string, number>>(new Map());
   const [visible, setVisible] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [dontShowToday, setDontShowToday] = useState(false);
   const [sleep, setSleep] = useState<SleepSession | null>(null);
+  const [targetDate, setTargetDate] = useState<string>(() => toJSTDateString());
 
-  const today = toJSTDateString();
+  const loadAndMaybeShow = useCallback(
+    async (date: string, opts: { autoOpen: boolean }) => {
+      const [habitsData, logsData, sleepData] = await Promise.all([
+        fetch("/api/habits").then((r) => r.json()),
+        fetch(`/api/habit-logs?date=${date}`).then((r) => r.json()),
+        fetch(`/api/sleep-sessions?date=${date}`)
+          .then((r) => r.json())
+          .catch(() => null),
+      ]);
 
-  useEffect(() => {
-    const dismissed = localStorage.getItem(DISMISS_KEY_PREFIX + today);
-    if (dismissed) return;
-    const snoozeUntil = Number(localStorage.getItem(SNOOZE_KEY) || 0);
-    if (snoozeUntil > Date.now()) return;
-
-    Promise.all([
-      fetch("/api/habits").then((r) => r.json()),
-      fetch(`/api/habit-logs?date=${today}`).then((r) => r.json()),
-      fetch(`/api/sleep-sessions?date=${today}`).then((r) => r.json()).catch(() => null),
-    ]).then(([habitsData, logsData, sleepData]) => {
-      const activeHabits = (habitsData as Habit[]).filter((h) => {
-        const hasLevel = h.level1 || h.level2 || h.level3 || h.level4 || h.level5;
-        return hasLevel;
-      });
+      const activeHabits = (habitsData as Habit[]).filter(
+        (h) => h.level1 || h.level2 || h.level3 || h.level4 || h.level5
+      );
       if (activeHabits.length === 0) return;
 
       const logMap = new Map<string, number>();
       for (const log of logsData as HabitLog[]) {
         logMap.set(log.habitId, log.level);
       }
-      setTodayLogs(logMap);
 
-      const hasAllLogged = activeHabits.every((h) => logMap.has(h.id));
-      if (hasAllLogged) return;
+      if (opts.autoOpen) {
+        const hasAllLogged = activeHabits.every((h) => logMap.has(h.id));
+        if (hasAllLogged) return;
+      }
 
       setHabits(activeHabits);
+      setExistingLogs(logMap);
       setSelected(new Map(logMap));
-      if (sleepData && typeof sleepData === "object" && "sleepAt" in sleepData) {
-        setSleep(sleepData as SleepSession);
-      }
+      setSleep(
+        sleepData && typeof sleepData === "object" && "sleepAt" in sleepData
+          ? (sleepData as SleepSession)
+          : null
+      );
+      setTargetDate(date);
       setVisible(true);
-    });
-  }, [today]);
+    },
+    []
+  );
+
+  useEffect(() => {
+    loadAndMaybeShow(toJSTDateString(), { autoOpen: true });
+  }, [loadAndMaybeShow]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const date = (e as CustomEvent<{ date: string }>).detail?.date;
+      if (!date) return;
+      loadAndMaybeShow(date, { autoOpen: false });
+    };
+    window.addEventListener("open-habit-modal", handler);
+    return () => window.removeEventListener("open-habit-modal", handler);
+  }, [loadAndMaybeShow]);
 
   const handleSelect = (habitId: string, level: number) => {
     setSelected((prev) => {
@@ -134,22 +154,16 @@ export default function HabitModal() {
     setSaving(true);
     try {
       const promises = Array.from(selected.entries())
-        .filter(([id, level]) => todayLogs.get(id) !== level)
+        .filter(([id, level]) => existingLogs.get(id) !== level)
         .map(([habitId, level]) =>
           fetch("/api/habit-logs", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ date: today, habitId, level }),
+            body: JSON.stringify({ date: targetDate, habitId, level }),
           })
         );
       await Promise.all(promises);
-      const allChosen = habits.every((h) => selected.has(h.id));
-      if (allChosen) {
-        localStorage.setItem(DISMISS_KEY_PREFIX + today, "1");
-        localStorage.removeItem(SNOOZE_KEY);
-      } else {
-        localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS));
-      }
+      window.dispatchEvent(new CustomEvent("habit-logs-updated"));
       setVisible(false);
     } finally {
       setSaving(false);
@@ -157,18 +171,15 @@ export default function HabitModal() {
   };
 
   const handleSkip = () => {
-    if (dontShowToday) {
-      localStorage.setItem(DISMISS_KEY_PREFIX + today, "1");
-      localStorage.removeItem(SNOOZE_KEY);
-    } else {
-      localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS));
-    }
     setVisible(false);
   };
 
   if (!visible) return null;
 
   const getLevels = (h: Habit) => [h.level1, h.level2, h.level3, h.level4, h.level5];
+  const today = toJSTDateString();
+  const isToday = targetDate === today;
+  const titleLabel = isToday ? "今日の習慣チェック" : `${formatJSTDateLabel(targetDate)}の習慣`;
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center modal-backdrop px-4">
@@ -177,7 +188,7 @@ export default function HabitModal() {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 pt-5 pb-3 border-b border-slate-100 flex-shrink-0">
-          <h3 className="text-base font-bold">今日の習慣チェック</h3>
+          <h3 className="text-base font-bold">{titleLabel}</h3>
           <p className="text-xs text-slate-400 mt-0.5">達成したレベルをタップしてください</p>
           {sleep && (
             <p className="text-[11px] text-slate-500 mt-1.5 flex items-center gap-1">
@@ -227,12 +238,20 @@ export default function HabitModal() {
                         }}
                       >
                         <span
-                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                            isSelected ? "" : ""
-                          }`}
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0`}
                           style={{
-                            borderColor: isSelected ? (textDark ? "#fff" : habit.color) : (textDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.15)"),
-                            backgroundColor: isSelected ? (textDark ? "#fff" : habit.color) : "transparent",
+                            borderColor: isSelected
+                              ? textDark
+                                ? "#fff"
+                                : habit.color
+                              : textDark
+                              ? "rgba(255,255,255,0.5)"
+                              : "rgba(0,0,0,0.15)",
+                            backgroundColor: isSelected
+                              ? textDark
+                                ? "#fff"
+                                : habit.color
+                              : "transparent",
                           }}
                         >
                           {isSelected && (
@@ -261,7 +280,9 @@ export default function HabitModal() {
                         key={0}
                         onClick={() => handleSelect(habit.id, 0)}
                         className={`w-full px-3 py-2 rounded-lg text-left transition-all border-2 flex items-center gap-2 bg-slate-100 ${
-                          isSelected ? "ring-2 ring-offset-1 ring-slate-400 border-slate-400" : "border-slate-200"
+                          isSelected
+                            ? "ring-2 ring-offset-1 ring-slate-400 border-slate-400"
+                            : "border-slate-200"
                         }`}
                       >
                         <span
@@ -290,16 +311,7 @@ export default function HabitModal() {
           })}
         </div>
 
-        <div className="px-5 py-3 border-t border-slate-100 flex-shrink-0 space-y-2">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={dontShowToday}
-              onChange={(e) => setDontShowToday(e.target.checked)}
-              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-            />
-            <span className="text-xs text-slate-500">今日は表示しない</span>
-          </label>
+        <div className="px-5 py-3 border-t border-slate-100 flex-shrink-0">
           <div className="flex gap-2">
             <button
               onClick={handleSkip}
