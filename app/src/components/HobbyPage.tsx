@@ -78,6 +78,18 @@ function formatJSTHHMM(iso: string) {
   return `${hh}:${mm}`;
 }
 
+// Replace the HH:MM portion of an ISO timestamp while preserving its JST date.
+function replaceJSTHHMM(originalIso: string, hhmm: string): string {
+  const [hh, mm] = hhmm.split(":").map(Number);
+  const orig = new Date(originalIso);
+  const jst = new Date(orig.getTime() + 9 * 60 * 60 * 1000);
+  const y = jst.getUTCFullYear();
+  const mo = jst.getUTCMonth();
+  const d = jst.getUTCDate();
+  const utcMs = Date.UTC(y, mo, d, hh, mm, 0, 0) - 9 * 60 * 60 * 1000;
+  return new Date(utcMs).toISOString();
+}
+
 function formatDurationHM(min: number) {
   const h = Math.floor(min / 60);
   const m = min % 60;
@@ -200,6 +212,10 @@ export default function HobbyPage() {
   const [cleanupRunning, setCleanupRunning] = useState(false);
   const [cleanupResult, setCleanupResult] = useState<string | null>(null);
   const [sleepView, setSleepView] = useState<"duration" | "sleepAt" | "wakeAt">("duration");
+  const [editingSleep, setEditingSleep] = useState<SleepSession | null>(null);
+  const [editSleepHM, setEditSleepHM] = useState("");
+  const [editWakeHM, setEditWakeHM] = useState("");
+  const [savingSleep, setSavingSleep] = useState(false);
 
   const isToday = date === toJSTDateString();
 
@@ -275,6 +291,37 @@ export default function HobbyPage() {
   useEffect(() => {
     if (tab === "sleep") fetchSleepSessions();
   }, [tab, fetchSleepSessions]);
+
+  const openSleepEdit = (s: SleepSession) => {
+    setEditingSleep(s);
+    setEditSleepHM(formatJSTHHMM(s.sleepAt));
+    setEditWakeHM(formatJSTHHMM(s.wakeAt));
+  };
+
+  const saveSleepEdit = async () => {
+    if (!editingSleep) return;
+    setSavingSleep(true);
+    try {
+      const res = await fetch("/api/sleep-sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: editingSleep.date,
+          sleepAt: replaceJSTHHMM(editingSleep.sleepAt, editSleepHM),
+          wakeAt: replaceJSTHHMM(editingSleep.wakeAt, editWakeHM),
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "保存に失敗しました");
+        return;
+      }
+      setEditingSleep(null);
+      await fetchSleepSessions();
+    } finally {
+      setSavingSleep(false);
+    }
+  };
 
   const runCleanup = useCallback(async () => {
     if (!confirm("30日以上前のロック解除イベントを集約・削除します。よろしいですか？")) return;
@@ -1057,7 +1104,11 @@ export default function HobbyPage() {
                         });
                         const widthPct = Math.min(100, (s.durationMinutes / (10 * 60)) * 100);
                         return (
-                          <div key={s.date} className="px-3 py-2.5">
+                          <button
+                            key={s.date}
+                            onClick={() => openSleepEdit(s)}
+                            className="w-full text-left px-3 py-2.5 hover:bg-slate-50 active:bg-slate-100 transition-colors"
+                          >
                             <div className="flex items-center justify-between mb-1">
                               <span className="text-xs font-bold text-slate-600">{dateLabel}</span>
                               <span className="text-xs font-bold text-sky-700">{formatDurationHM(s.durationMinutes)}</span>
@@ -1070,7 +1121,7 @@ export default function HobbyPage() {
                             <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                               <div className="h-full bg-sky-400 rounded-full" style={{ width: `${widthPct}%` }} />
                             </div>
-                          </div>
+                          </button>
                         );
                       })}
                     </div>
@@ -1095,6 +1146,61 @@ export default function HobbyPage() {
           )}
         </div>
       </div>
+
+      {/* Sleep Edit Modal */}
+      {editingSleep && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center modal-backdrop px-4"
+          onClick={() => setEditingSleep(null)}
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-sm p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-bold mb-1">睡眠時刻を編集</h3>
+            <p className="text-xs text-slate-500 mb-4">
+              {new Date(editingSleep.date + "T00:00:00").toLocaleDateString("ja-JP", {
+                month: "numeric", day: "numeric", weekday: "short",
+              })}
+            </p>
+            <div className="space-y-3">
+              <label className="block">
+                <span className="text-xs text-slate-600 flex items-center gap-1">🌙 就寝時刻</span>
+                <input
+                  type="time"
+                  value={editSleepHM}
+                  onChange={(e) => setEditSleepHM(e.target.value)}
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs text-slate-600 flex items-center gap-1">☀️ 起床時刻</span>
+                <input
+                  type="time"
+                  value={editWakeHM}
+                  onChange={(e) => setEditWakeHM(e.target.value)}
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"
+                />
+              </label>
+            </div>
+            <div className="flex gap-2 mt-5">
+              <button
+                onClick={() => setEditingSleep(null)}
+                className="flex-1 py-2.5 rounded-lg text-sm text-slate-600 border border-slate-200 hover:bg-slate-50"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={saveSleepEdit}
+                disabled={savingSleep}
+                className="flex-1 py-2.5 rounded-lg text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300"
+              >
+                {savingSleep ? "保存中..." : "保存"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Habit Add/Edit Modal */}
       {habitModalOpen && (

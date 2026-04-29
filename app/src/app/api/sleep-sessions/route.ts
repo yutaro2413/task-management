@@ -74,3 +74,31 @@ export async function GET(request: NextRequest) {
   }
   return NextResponse.json(result);
 }
+
+export async function POST(request: NextRequest) {
+  const body = (await request.json()) as { date?: string; sleepAt?: string; wakeAt?: string };
+  if (!body.date || !body.sleepAt || !body.wakeAt) {
+    return NextResponse.json({ error: "date, sleepAt, wakeAt required" }, { status: 400 });
+  }
+  const sleepAt = new Date(body.sleepAt);
+  const wakeAt = new Date(body.wakeAt);
+  if (isNaN(sleepAt.getTime()) || isNaN(wakeAt.getTime())) {
+    return NextResponse.json({ error: "invalid date format" }, { status: 400 });
+  }
+  const durationMinutes = Math.round((wakeAt.getTime() - sleepAt.getTime()) / 60000);
+  if (durationMinutes <= 0) {
+    return NextResponse.json({ error: "wakeAt must be after sleepAt" }, { status: 400 });
+  }
+  const date = new Date(body.date + "T00:00:00.000Z");
+  const session = await prisma.sleepSession.upsert({
+    where: { date },
+    update: { sleepAt, wakeAt, durationMinutes },
+    create: { date, sleepAt, wakeAt, durationMinutes },
+  });
+  return NextResponse.json({
+    date: dateKeyFromDb(session.date),
+    sleepAt: session.sleepAt.toISOString(),
+    wakeAt: session.wakeAt.toISOString(),
+    durationMinutes: session.durationMinutes,
+  });
+}
