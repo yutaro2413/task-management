@@ -6,7 +6,8 @@ import { usePathname } from "next/navigation";
 const navItems = [
   { href: "/", label: "記録", icon: "clock" },
   { href: "/weekly", label: "サマリー", icon: "chart" },
-  { href: "/hobby", label: "趣味/習慣", icon: "hobby" },
+  { href: "/hobby", label: "趣味", icon: "hobby" },
+  { href: "/books", label: "書籍", icon: "book" },
   { href: "/expenses", label: "家計簿", icon: "wallet" },
   { href: "/settings", label: "設定", icon: "gear" },
 ];
@@ -27,6 +28,12 @@ const icons: Record<string, React.ReactNode> = {
   hobby: (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  book: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
     </svg>
   ),
   wallet: (

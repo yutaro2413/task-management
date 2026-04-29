@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import Link from "next/link";
 import { toJSTDateString } from "@/lib/utils";
 import { Line } from "react-chartjs-2";
 import {
@@ -663,6 +664,9 @@ export default function HobbyPage() {
           {/* ══ Reading tab ══ */}
           {tab === "reading" && (
             <>
+              <Link href="/books" className="block text-center py-2 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-bold hover:bg-indigo-100">
+                📚 書籍ライブラリ・ハイライトを開く →
+              </Link>
               {/* Date nav */}
               <div className="flex items-center justify-between py-1">
                 <button onClick={() => changeDate(-1)} className="p-2 rounded-lg hover:bg-slate-100">

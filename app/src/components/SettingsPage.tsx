@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import ExpenseIcon, { EXPENSE_ICON_OPTIONS } from "./ExpenseIcon";
+import KindleSyncSetup from "./KindleSyncSetup";
 
 type Category = { id: string; name: string; excludeFromSummary: boolean };
 type Genre = { id: string; name: string; color: string; type: string; subType: string };
@@ -169,6 +170,7 @@ export default function SettingsPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 pb-20 max-w-lg mx-auto w-full space-y-6">
+        <KindleSyncSetup />
         {/* Fixed Expenses Link */}
         <Link
           href="/fixed-expenses"
