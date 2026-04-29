@@ -136,7 +136,7 @@ model WorkoutLog {
   updatedAt DateTime @updatedAt
 }
 
-// 本マスタ
+// 本マスタ（旧スキーマ。Book に移行中。次PRで削除予定）
 model BookTitle {
   id        String   @id @default(cuid())
   title     String   @unique
@@ -146,18 +146,102 @@ model BookTitle {
   readingLogs ReadingLog[]
 }
 
+// 漫画シリーズ等の書籍まとめ
+model BookSeries {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  author    String?
+  coverUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  books Book[]
+}
+
+// 書籍 (Kindle / 紙 / 漫画巻 を統合)
+model Book {
+  id          String    @id @default(cuid())
+  title       String
+  author      String?
+  coverUrl    String?
+  source      String    @default("kindle") // "kindle" | "paper" | "manga"
+  asin        String?   @unique             // Kindle 突合キー
+  isbn        String?
+  publisher   String?
+  rating      Int? // 1-5
+  purchasedAt DateTime? @db.Date
+  finishedAt  DateTime? @db.Date
+  seriesId    String?
+  volume      Int? // 漫画の巻数
+  notes       String?
+  archived    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  series      BookSeries?  @relation(fields: [seriesId], references: [id])
+  highlights  Highlight[]
+  bookmarks   Bookmark[]
+  readingLogs ReadingLog[] @relation("BookReadingLogs")
+
+  @@index([seriesId])
+  @@index([source])
+}
+
+// ハイライト（テキスト / 図表 / 自分のメモ）
+model Highlight {
+  id            String    @id @default(cuid())
+  bookId        String
+  type          String    @default("text") // "text" | "image" | "note"
+  text          String? // ハイライト本文（image なら caption）
+  note          String? // 自分のメモ
+  color         String? // yellow | blue | pink | orange
+  location      String? // 例: "位置No. 1234"
+  page          Int?
+  imageUrl      String? // 図表ハイライトの画像URL
+  highlightedAt DateTime?
+  externalId    String? // Amazon の一意キー（重複排除用）
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([bookId, externalId])
+  @@index([bookId])
+}
+
+// しおり
+model Bookmark {
+  id           String    @id @default(cuid())
+  bookId       String
+  location     String?
+  page         Int?
+  bookmarkedAt DateTime?
+  externalId   String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([bookId, externalId])
+  @@index([bookId])
+}
+
 // 読書記録
 model ReadingLog {
   id          String   @id @default(cuid())
   date        DateTime @db.Date
-  bookTitleId String
+  bookTitleId String? // 旧スキーマ参照（次PRで削除）
+  bookId      String? // 新スキーマ参照（移行後に必須化）
   review      String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  bookTitle BookTitle @relation(fields: [bookTitleId], references: [id])
+  bookTitle BookTitle? @relation(fields: [bookTitleId], references: [id])
+  book      Book?      @relation("BookReadingLogs", fields: [bookId], references: [id], onDelete: Cascade)
 
   @@unique([date, bookTitleId])
+  @@unique([date, bookId])
+  @@index([bookId])
 }
 
 // 習慣マスタ
