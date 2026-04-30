@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import BookFormModal from "./BookFormModal";
 import PdfImportButton from "./PdfImportButton";
+import { features } from "@/lib/features";
 
 type Book = {
   id: string;
@@ -26,6 +27,7 @@ const SOURCE_LABEL: Record<string, string> = {
   kindle: "Kindle",
   paper: "紙",
   manga: "漫画",
+  anime: "アニメ",
   web: "Web",
   pdf: "PDF",
 };
@@ -34,6 +36,7 @@ const SOURCE_COLOR: Record<string, string> = {
   kindle: "bg-amber-50 text-amber-700",
   paper: "bg-slate-100 text-slate-600",
   manga: "bg-pink-50 text-pink-700",
+  anime: "bg-sky-50 text-sky-700",
   web: "bg-emerald-50 text-emerald-700",
   pdf: "bg-violet-50 text-violet-700",
 };
@@ -98,7 +101,7 @@ export default function BooksPage() {
   return (
     <div className="flex-1 flex flex-col">
       <header className="sticky top-0 bg-white border-b border-slate-200 z-40 px-4 py-3">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-lg lg:max-w-5xl mx-auto">
           <h1 className="text-lg font-bold text-center mb-2">書籍</h1>
           <div className="flex gap-1 mb-2 flex-wrap">
             {[
@@ -106,8 +109,9 @@ export default function BooksPage() {
               { v: "kindle", label: "Kindle" },
               { v: "paper", label: "紙" },
               { v: "manga", label: "漫画" },
-              { v: "web", label: "Web" },
-              { v: "pdf", label: "PDF" },
+              ...(features.anime ? [{ v: "anime", label: "アニメ" }] : []),
+              ...(features.webClipper ? [{ v: "web", label: "Web" }] : []),
+              ...(features.pdfImport ? [{ v: "pdf", label: "PDF" }] : []),
             ].map((t) => (
               <button key={t.v} onClick={() => setFilter(t.v)} className={`flex-1 min-w-[55px] py-1.5 text-xs font-bold rounded-md transition-colors ${filter === t.v ? "bg-indigo-100 text-indigo-700" : "text-slate-500 bg-slate-50"}`}>{t.label}</button>
             ))}
@@ -122,12 +126,12 @@ export default function BooksPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto pb-24 px-4">
-        <div className="max-w-lg mx-auto py-4 space-y-3">
+        <div className="max-w-lg lg:max-w-5xl mx-auto py-4 space-y-3">
           <div className="flex gap-2">
             <button onClick={() => setShowForm(true)} className="flex-1 py-2 rounded-lg border-2 border-dashed border-indigo-300 text-indigo-600 text-sm font-medium hover:bg-indigo-50">+ 書籍を追加</button>
             <button onClick={() => setShowSeriesForm(!showSeriesForm)} className="px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-500">シリーズ管理</button>
           </div>
-          <PdfImportButton onImported={load} />
+          {features.pdfImport && <PdfImportButton onImported={load} />}
 
           {showSeriesForm && (
             <div className="bg-white rounded-lg border border-slate-200 p-3 space-y-2">
@@ -153,24 +157,24 @@ export default function BooksPage() {
           ) : displayBooks.length === 0 ? (
             <p className="text-center text-sm text-slate-400 py-8">まだ書籍がありません</p>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-2 lg:gap-3">
               {displayBooks.map((b) => (
                 <Link key={b.id} href={`/books/${b.id}`} className="bg-white rounded-lg border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
                   <div className="aspect-[2/3] bg-slate-100 flex items-center justify-center overflow-hidden">
                     {b.coverUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={b.coverUrl} alt={b.title} className="w-full h-full object-cover" />
+                      <img src={b.coverUrl} alt={b.title} loading="lazy" className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-3xl text-slate-300">📖</span>
+                      <span className="text-2xl text-slate-300">📖</span>
                     )}
                   </div>
-                  <div className="p-2 space-y-1">
+                  <div className="p-1.5 space-y-0.5">
                     <div className="flex items-center gap-1">
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${SOURCE_COLOR[b.source] ?? "bg-slate-100 text-slate-500"}`}>{SOURCE_LABEL[b.source] ?? b.source}</span>
-                      {b.series && <span className="text-[9px] text-slate-400 truncate">{b.series.name}</span>}
+                      <span className={`text-[8px] px-1 py-0.5 rounded-full font-medium ${SOURCE_COLOR[b.source] ?? "bg-slate-100 text-slate-500"}`}>{SOURCE_LABEL[b.source] ?? b.source}</span>
+                      {b.series && <span className="text-[8px] text-slate-400 truncate">{b.series.name}</span>}
                     </div>
-                    <p className="text-xs font-bold text-slate-700 line-clamp-2">{b.title}</p>
-                    {b.author && <p className="text-[10px] text-slate-400 line-clamp-1">{b.author}</p>}
+                    <p className="text-[11px] font-bold text-slate-700 line-clamp-2 leading-tight">{b.title}</p>
+                    {b.author && <p className="text-[9px] text-slate-400 line-clamp-1">{b.author}</p>}
                     <div className="flex items-center gap-1 text-[9px] text-slate-400">
                       {typeof b.rating === "number" && b.rating > 0 && <span className="text-amber-400">{"★".repeat(b.rating)}</span>}
                       {b._count && b._count.highlights > 0 && <span>📝{b._count.highlights}</span>}

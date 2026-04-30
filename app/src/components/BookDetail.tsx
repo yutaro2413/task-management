@@ -125,7 +125,7 @@ export default function BookDetail({ bookId }: { bookId: string }) {
   return (
     <div className="flex-1 flex flex-col">
       <header className="sticky top-0 bg-white border-b border-slate-200 z-40 px-4 py-3">
-        <div className="flex items-center max-w-lg mx-auto">
+        <div className="flex items-center max-w-lg lg:max-w-3xl mx-auto">
           <Link href="/books" className="text-slate-400 text-sm">← 戻る</Link>
           <h1 className="flex-1 text-base font-bold text-center truncate px-2">{book.title}</h1>
           <button onClick={() => setEditing(true)} className="text-xs text-indigo-600">編集</button>
@@ -133,7 +133,7 @@ export default function BookDetail({ bookId }: { bookId: string }) {
       </header>
 
       <div className="flex-1 overflow-y-auto pb-24 px-4">
-        <div className="max-w-lg mx-auto py-4 space-y-4">
+        <div className="max-w-lg lg:max-w-3xl mx-auto py-4 space-y-4">
           <div className="bg-white rounded-xl border border-slate-200 p-3 flex gap-3">
             <div className="w-24 aspect-[2/3] bg-slate-100 rounded overflow-hidden flex-shrink-0 flex items-center justify-center">
               {book.coverUrl ? (

@@ -89,7 +89,7 @@ export default function ReviewPage() {
   return (
     <div className="flex-1 flex flex-col">
       <header className="sticky top-0 bg-white border-b border-slate-200 z-40 px-4 py-3">
-        <div className="max-w-lg mx-auto flex items-center justify-between">
+        <div className="max-w-lg lg:max-w-2xl mx-auto flex items-center justify-between">
           <h1 className="text-lg font-bold">復習</h1>
           <div className="flex items-center gap-3 text-xs text-slate-500">
             <span>本日: <b className="text-indigo-600">{reviewedToday}</b></span>
@@ -99,7 +99,7 @@ export default function ReviewPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto pb-24 px-4">
-        <div className="max-w-lg mx-auto py-4 space-y-4">
+        <div className="max-w-lg lg:max-w-2xl mx-auto py-4 space-y-4">
           {!current ? (
             <EmptyState newCount={newCount} stats={stats} onReload={load} />
           ) : (

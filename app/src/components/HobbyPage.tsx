@@ -567,7 +567,7 @@ export default function HobbyPage() {
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
       <header className="sticky top-0 bg-white border-b border-slate-200 z-40 px-4">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-lg lg:max-w-3xl mx-auto">
           <div className="py-2 text-center">
             <span className="text-base font-bold">趣味</span>
           </div>
@@ -612,7 +612,7 @@ export default function HobbyPage() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto pb-20 px-4">
-        <div className="max-w-lg mx-auto py-4 space-y-3">
+        <div className="max-w-lg lg:max-w-3xl mx-auto py-4 space-y-3">
 
           {/* ══ Workout trend chart ══ */}
           {tab === "workout" && (

@@ -32,6 +32,7 @@ const SOURCES = [
   { value: "kindle", label: "Kindle" },
   { value: "paper", label: "紙の本" },
   { value: "manga", label: "漫画" },
+  { value: "anime", label: "アニメ" },
 ];
 
 export default function BookFormModal({ open, initial, onClose, onSaved }: Props) {
@@ -117,7 +118,7 @@ export default function BookFormModal({ open, initial, onClose, onSaved }: Props
             <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-3 py-2 rounded border border-slate-200 text-sm" />
           </div>
           <div>
-            <label className="text-xs text-slate-500">著者</label>
+            <label className="text-xs text-slate-500">{source === "anime" ? "監督・制作" : "著者"}</label>
             <input value={author} onChange={(e) => setAuthor(e.target.value)} className="w-full px-3 py-2 rounded border border-slate-200 text-sm" />
           </div>
           <div>
@@ -129,40 +130,42 @@ export default function BookFormModal({ open, initial, onClose, onSaved }: Props
             </div>
           </div>
 
-          {source === "manga" && (
+          {(source === "manga" || source === "anime") && (
             <div className="grid grid-cols-3 gap-2">
               <div className="col-span-2">
-                <label className="text-xs text-slate-500">シリーズ</label>
+                <label className="text-xs text-slate-500">{source === "anime" ? "作品" : "シリーズ"}</label>
                 <select value={seriesId} onChange={(e) => setSeriesId(e.target.value)} className="w-full px-3 py-2 rounded border border-slate-200 text-sm">
                   <option value="">（未設定）</option>
                   {seriesList.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs text-slate-500">巻</label>
+                <label className="text-xs text-slate-500">{source === "anime" ? "シーズン" : "巻"}</label>
                 <input type="number" value={volume} onChange={(e) => setVolume(e.target.value === "" ? "" : Number(e.target.value))} className="w-full px-3 py-2 rounded border border-slate-200 text-sm" />
+              </div>
+            </div>
+          )}
+
+          {source !== "anime" && (
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-slate-500">ISBN</label>
+                <input value={isbn} onChange={(e) => setIsbn(e.target.value)} className="w-full px-3 py-2 rounded border border-slate-200 text-sm" />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500">出版社</label>
+                <input value={publisher} onChange={(e) => setPublisher(e.target.value)} className="w-full px-3 py-2 rounded border border-slate-200 text-sm" />
               </div>
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-xs text-slate-500">ISBN</label>
-              <input value={isbn} onChange={(e) => setIsbn(e.target.value)} className="w-full px-3 py-2 rounded border border-slate-200 text-sm" />
-            </div>
-            <div>
-              <label className="text-xs text-slate-500">出版社</label>
-              <input value={publisher} onChange={(e) => setPublisher(e.target.value)} className="w-full px-3 py-2 rounded border border-slate-200 text-sm" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-xs text-slate-500">購入日</label>
+              <label className="text-xs text-slate-500">{source === "anime" ? "視聴開始日" : "購入日"}</label>
               <input type="date" value={purchasedAt} onChange={(e) => setPurchasedAt(e.target.value)} className="w-full px-3 py-2 rounded border border-slate-200 text-sm" />
             </div>
             <div>
-              <label className="text-xs text-slate-500">読了日</label>
+              <label className="text-xs text-slate-500">{source === "anime" ? "視聴完了日" : "読了日"}</label>
               <input type="date" value={finishedAt} onChange={(e) => setFinishedAt(e.target.value)} className="w-full px-3 py-2 rounded border border-slate-200 text-sm" />
             </div>
           </div>
