@@ -15,29 +15,46 @@
   const ENDPOINT = window.__KINDLE_SYNC_ENDPOINT__;
   const TOKEN = window.__KINDLE_SYNC_TOKEN__;
 
+  // Always-visible status banner (created first so user sees *something* even on early failure).
+  const banner = document.createElement("div");
+  banner.style.cssText = "position:fixed;top:12px;right:12px;background:#1e293b;color:#fff;padding:10px 14px;border-radius:8px;font:12px/1.4 -apple-system,sans-serif;z-index:2147483647;box-shadow:0 4px 14px rgba(0,0,0,.2);max-width:320px;white-space:pre-wrap";
+  banner.textContent = "Kindle Sync: 起動中...";
+  (document.body || document.documentElement).appendChild(banner);
+  const setStatus = (msg) => {
+    console.log("[KindleSync]", msg);
+    banner.textContent = "Kindle Sync: " + msg;
+  };
+
   if (!ENDPOINT || !TOKEN) {
-    alert("Kindle Sync: 設定が読み込まれていません。設定ページからブックマークレットを再生成してください。");
+    setStatus("設定が読み込まれていません。/settings でブックマークレットを再生成してください。");
     return;
   }
 
   if (!/read\.amazon\.(co\.jp|com)\/notebook/.test(location.href)) {
-    alert("Kindle Sync: read.amazon.co.jp/notebook を開いた状態で実行してください。");
+    setStatus("read.amazon.co.jp/notebook を開いた状態で実行してください。\n現在のURL: " + location.href);
     return;
   }
-
-  // Floating status banner
-  const banner = document.createElement("div");
-  banner.style.cssText = "position:fixed;top:12px;right:12px;background:#1e293b;color:#fff;padding:10px 14px;border-radius:8px;font:12px/1.4 -apple-system,sans-serif;z-index:99999;box-shadow:0 4px 14px rgba(0,0,0,.2);max-width:280px";
-  banner.textContent = "Kindle Sync: 起動中...";
-  document.body.appendChild(banner);
-  const setStatus = (msg) => { banner.textContent = "Kindle Sync: " + msg; };
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   // 1. Collect the list of books from the left pane.
-  const bookEls = Array.from(document.querySelectorAll("#kp-notebook-library .kp-notebook-library-each-book"));
+  // Amazon の DOM が将来変わる可能性に備え、複数のセレクタをフォールバック。
+  const candidateSelectors = [
+    "#kp-notebook-library .kp-notebook-library-each-book",
+    ".kp-notebook-library-each-book",
+    "[id^='B0'][class*='kp-notebook']",
+  ];
+  let bookEls = [];
+  for (const sel of candidateSelectors) {
+    bookEls = Array.from(document.querySelectorAll(sel));
+    if (bookEls.length > 0) {
+      setStatus(`書籍リスト発見: ${bookEls.length}冊 (selector: ${sel})`);
+      break;
+    }
+  }
   if (bookEls.length === 0) {
-    setStatus("書籍リストが見つかりません。ページをスクロールしてから再実行してください。");
+    setStatus("書籍リストが見つかりません。\nページを下までスクロールして全書籍を読み込んでから再実行してください。\nDOM 変更の可能性もあります（DevTools > Console をご確認）。");
+    console.log("[KindleSync] DOM dump (first 500 chars of body):", document.body.innerHTML.slice(0, 500));
     return;
   }
 
@@ -45,11 +62,14 @@
 
   for (let i = 0; i < bookEls.length; i++) {
     const el = bookEls[i];
-    const asin = el.getAttribute("id"); // Amazon stores ASIN as the element id
-    const titleEl = el.querySelector("h2");
+    const asin = el.getAttribute("id") || el.getAttribute("data-asin");
+    const titleEl = el.querySelector("h2") || el.querySelector(".kp-notebook-searchable");
     const authorEl = el.querySelector("p");
     const coverEl = el.querySelector("img");
-    if (!asin || !titleEl) continue;
+    if (!asin || !titleEl) {
+      console.log("[KindleSync] skip book without asin/title", el);
+      continue;
+    }
 
     setStatus(`(${i + 1}/${bookEls.length}) ${titleEl.textContent.trim().slice(0, 30)}...`);
 
@@ -79,7 +99,8 @@
       const typeLabel = (a.querySelector("#annotationHighlightHeader")?.textContent || "").trim();
       const isBookmark = /ブックマーク|Bookmark/i.test(typeLabel);
 
-      const locationText = (a.querySelector("#kp-annotation-location")?.value || "").trim();
+      const locInput = a.querySelector("#kp-annotation-location");
+      const locationText = locInput && "value" in locInput ? String(locInput.value || "").trim() : "";
       const pageEl = a.querySelector("#kp-annotation-location-header") || a.querySelector(".kp-notebook-metadata");
       let page = null;
       const pageText = (pageEl?.textContent || "");
@@ -119,6 +140,7 @@
       });
     }
 
+    console.log(`[KindleSync] ${asin}: ${highlights.length} highlights, ${bookmarks.length} bookmarks`);
     books.push({
       asin,
       title: titleEl.textContent.trim(),
@@ -142,14 +164,15 @@
     });
     if (!res.ok) {
       const txt = await res.text();
-      setStatus(`失敗: ${res.status} ${txt.slice(0, 80)}`);
+      setStatus(`失敗: HTTP ${res.status}\n${txt.slice(0, 200)}`);
       return;
     }
     const json = await res.json();
     setStatus(`完了: ${json.booksTouched}冊 / ハイライト${json.highlightsUpserted} / しおり${json.bookmarksUpserted}`);
   } catch (e) {
     setStatus(`エラー: ${e && e.message ? e.message : e}`);
+    console.error("[KindleSync]", e);
   }
 
-  setTimeout(() => banner.remove(), 8000);
+  setTimeout(() => banner.remove(), 12000);
 })();
