@@ -25,12 +25,16 @@ const SOURCE_LABEL: Record<string, string> = {
   kindle: "Kindle",
   paper: "紙",
   manga: "漫画",
+  web: "Web",
+  pdf: "PDF",
 };
 
 const SOURCE_COLOR: Record<string, string> = {
   kindle: "bg-amber-50 text-amber-700",
   paper: "bg-slate-100 text-slate-600",
   manga: "bg-pink-50 text-pink-700",
+  web: "bg-emerald-50 text-emerald-700",
+  pdf: "bg-violet-50 text-violet-700",
 };
 
 export default function BooksPage() {
@@ -95,14 +99,16 @@ export default function BooksPage() {
       <header className="sticky top-0 bg-white border-b border-slate-200 z-40 px-4 py-3">
         <div className="max-w-lg mx-auto">
           <h1 className="text-lg font-bold text-center mb-2">書籍</h1>
-          <div className="flex gap-1 mb-2">
+          <div className="flex gap-1 mb-2 flex-wrap">
             {[
               { v: "all", label: "すべて" },
               { v: "kindle", label: "Kindle" },
               { v: "paper", label: "紙" },
               { v: "manga", label: "漫画" },
+              { v: "web", label: "Web" },
+              { v: "pdf", label: "PDF" },
             ].map((t) => (
-              <button key={t.v} onClick={() => setFilter(t.v)} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-colors ${filter === t.v ? "bg-indigo-100 text-indigo-700" : "text-slate-500 bg-slate-50"}`}>{t.label}</button>
+              <button key={t.v} onClick={() => setFilter(t.v)} className={`flex-1 min-w-[55px] py-1.5 text-xs font-bold rounded-md transition-colors ${filter === t.v ? "bg-indigo-100 text-indigo-700" : "text-slate-500 bg-slate-50"}`}>{t.label}</button>
             ))}
           </div>
           <input
