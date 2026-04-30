@@ -109,6 +109,7 @@ export default function KindleSyncSetup() {
               <ol className="list-decimal list-inside space-y-0.5 text-[11px] text-slate-600">
                 <li><a href="https://read.amazon.co.jp/notebook" target="_blank" rel="noreferrer" className="text-indigo-600 underline">read.amazon.co.jp/notebook</a> を開く</li>
                 <li>DevTools を開く（Mac: <code className="px-1 bg-white rounded">⌥⌘I</code> / Win: <code className="px-1 bg-white rounded">F12</code>）→ Console タブ</li>
+                <li><b>初回のみ</b>: Console に <code className="px-1 bg-white rounded">allow pasting</code> と<b>手入力</b>して Enter（Chrome のセルフXSS警告解除）</li>
                 <li>下の「コードをコピー」を押して、Console に貼り付け → <code className="px-1 bg-white rounded">Enter</code></li>
                 <li>右上に黒バナーが出て進行状況が表示される</li>
               </ol>
