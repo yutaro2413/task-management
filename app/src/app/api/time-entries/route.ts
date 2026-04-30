@@ -133,7 +133,16 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const nonRecurringEntries = entries.filter((e) => !e.parentRecurrenceId || !e.skipped);
+  const nonRecurringEntries = entries.filter((e) => {
+    // Override row (parentRecurrenceId set): keep only non-skipped
+    if (e.parentRecurrenceId) return !e.skipped;
+    // Recurring parent on its own date: hide when a skipped override exists for that date
+    if (e.recurrenceRule) {
+      const ov = overridesByParent.get(e.id)?.get(formatDate(e.date));
+      if (ov?.skipped) return false;
+    }
+    return true;
+  });
   const allEntries = [...nonRecurringEntries, ...virtualEntries];
   allEntries.sort((a, b) => {
     const da = formatDate(new Date(a.date));
