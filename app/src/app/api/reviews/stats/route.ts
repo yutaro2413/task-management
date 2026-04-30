@@ -27,15 +27,15 @@ export async function GET() {
     .map(([date, v]) => ({ date, ...v }));
 
   const totalReviewed = await prisma.highlight.count({
-    where: { reviewReps: { gt: 0 } },
+    where: { reviewReps: { gt: 0 }, archived: false },
   });
   const totalLearning = await prisma.highlight.count({
-    where: { reviewReps: { gt: 0, lt: 3 } },
+    where: { reviewReps: { gt: 0, lt: 3 }, archived: false },
   });
   const totalMature = await prisma.highlight.count({
-    where: { reviewReps: { gte: 3 } },
+    where: { reviewReps: { gte: 3 }, archived: false },
   });
-  const totalNew = await prisma.highlight.count({ where: { reviewReps: 0 } });
+  const totalNew = await prisma.highlight.count({ where: { reviewReps: 0, archived: false } });
 
   return NextResponse.json({
     days,

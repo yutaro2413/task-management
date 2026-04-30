@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { searchBookMetadata } from "@/lib/googleBooks";
 import { checkSyncToken, syncCorsHeaders } from "@/lib/syncAuth";
+import { computeSyncDiff } from "@/lib/syncDiff";
 
 const corsHeaders = syncCorsHeaders;
 
@@ -17,7 +18,7 @@ type IncomingHighlight = {
   color?: string;
   location?: string;
   page?: number;
-  note?: string;
+  note?: string; // Kindle 側のメモ。サーバ側では kindleNote に保存。app の note は触らない。
   highlightedAt?: string;
 };
 
@@ -54,6 +55,10 @@ export async function POST(request: NextRequest) {
   let booksTouched = 0;
   let highlightsUpserted = 0;
   let bookmarksUpserted = 0;
+  let highlightsArchived = 0;
+  let highlightsRestored = 0;
+  let bookmarksArchived = 0;
+  let bookmarksRestored = 0;
 
   for (const inc of incoming) {
     if (!inc.asin || !inc.title) continue;
@@ -89,6 +94,7 @@ export async function POST(request: NextRequest) {
     }
     booksTouched++;
 
+    // ハイライト upsert (note は触らず kindleNote だけ更新)
     for (const h of inc.highlights ?? []) {
       if (!h.externalId) continue;
       await prisma.highlight.upsert({
@@ -100,8 +106,9 @@ export async function POST(request: NextRequest) {
           color: h.color ?? null,
           location: h.location ?? null,
           page: typeof h.page === "number" ? h.page : null,
-          note: h.note ?? null,
+          kindleNote: h.note ?? null,
           highlightedAt: h.highlightedAt ? new Date(h.highlightedAt) : null,
+          // archived は明示復活（後の computeSyncDiff で処理する）
         },
         create: {
           bookId: book.id,
@@ -112,13 +119,14 @@ export async function POST(request: NextRequest) {
           color: h.color ?? null,
           location: h.location ?? null,
           page: typeof h.page === "number" ? h.page : null,
-          note: h.note ?? null,
+          kindleNote: h.note ?? null,
           highlightedAt: h.highlightedAt ? new Date(h.highlightedAt) : null,
         },
       });
       highlightsUpserted++;
     }
 
+    // しおり upsert
     for (const b of inc.bookmarks ?? []) {
       if (!b.externalId) continue;
       await prisma.bookmark.upsert({
@@ -138,6 +146,56 @@ export async function POST(request: NextRequest) {
       });
       bookmarksUpserted++;
     }
+
+    // archive 差分計算 (今回 incoming に来なかった既存項目を archive、戻ってきたものを restore)
+    const incomingHighlightIds = (inc.highlights ?? []).map((h) => h.externalId).filter(Boolean) as string[];
+    const incomingBookmarkIds = (inc.bookmarks ?? []).map((b) => b.externalId).filter(Boolean) as string[];
+
+    const existingHighlights = await prisma.highlight.findMany({
+      where: { bookId: book.id, externalId: { not: null } },
+      select: { externalId: true, archived: true },
+    });
+    const hDiff = computeSyncDiff(
+      incomingHighlightIds,
+      existingHighlights.map((h) => ({ externalId: h.externalId!, archived: h.archived })),
+    );
+    if (hDiff.toArchive.length > 0) {
+      const r = await prisma.highlight.updateMany({
+        where: { bookId: book.id, externalId: { in: hDiff.toArchive } },
+        data: { archived: true },
+      });
+      highlightsArchived += r.count;
+    }
+    if (hDiff.toRestore.length > 0) {
+      const r = await prisma.highlight.updateMany({
+        where: { bookId: book.id, externalId: { in: hDiff.toRestore } },
+        data: { archived: false },
+      });
+      highlightsRestored += r.count;
+    }
+
+    const existingBookmarks = await prisma.bookmark.findMany({
+      where: { bookId: book.id, externalId: { not: null } },
+      select: { externalId: true, archived: true },
+    });
+    const bDiff = computeSyncDiff(
+      incomingBookmarkIds,
+      existingBookmarks.map((b) => ({ externalId: b.externalId!, archived: b.archived })),
+    );
+    if (bDiff.toArchive.length > 0) {
+      const r = await prisma.bookmark.updateMany({
+        where: { bookId: book.id, externalId: { in: bDiff.toArchive } },
+        data: { archived: true },
+      });
+      bookmarksArchived += r.count;
+    }
+    if (bDiff.toRestore.length > 0) {
+      const r = await prisma.bookmark.updateMany({
+        where: { bookId: book.id, externalId: { in: bDiff.toRestore } },
+        data: { archived: false },
+      });
+      bookmarksRestored += r.count;
+    }
   }
 
   return NextResponse.json(
@@ -146,6 +204,10 @@ export async function POST(request: NextRequest) {
       booksTouched,
       highlightsUpserted,
       bookmarksUpserted,
+      highlightsArchived,
+      highlightsRestored,
+      bookmarksArchived,
+      bookmarksRestored,
     },
     { headers: corsHeaders },
   );

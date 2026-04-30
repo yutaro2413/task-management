@@ -10,13 +10,37 @@ export async function GET(
     where: { id },
     include: {
       series: true,
-      highlights: { orderBy: [{ page: "asc" }, { highlightedAt: "asc" }] },
-      bookmarks: { orderBy: [{ page: "asc" }] },
+      // active のみ取得
+      highlights: {
+        where: { archived: false },
+        orderBy: [{ page: "asc" }, { highlightedAt: "asc" }],
+      },
+      bookmarks: {
+        where: { archived: false },
+        orderBy: [{ page: "asc" }],
+      },
       readingLogs: { orderBy: { date: "desc" }, take: 100 },
     },
   });
   if (!book) return NextResponse.json({ error: "not found" }, { status: 404 });
-  return NextResponse.json(book);
+
+  // archived 件数も別途取得
+  const [archivedHighlights, archivedBookmarks] = await Promise.all([
+    prisma.highlight.findMany({
+      where: { bookId: id, archived: true },
+      orderBy: [{ page: "asc" }, { highlightedAt: "asc" }],
+    }),
+    prisma.bookmark.findMany({
+      where: { bookId: id, archived: true },
+      orderBy: [{ page: "asc" }],
+    }),
+  ]);
+
+  return NextResponse.json({
+    ...book,
+    archivedHighlights,
+    archivedBookmarks,
+  });
 }
 
 export async function PATCH(
