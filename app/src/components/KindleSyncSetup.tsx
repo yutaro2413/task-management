@@ -39,24 +39,36 @@ export default function KindleSyncSetup() {
     else window.localStorage.removeItem(TOKEN_KEY);
   };
 
-  // 本体スクリプトをインライン化したブックマークレットを組み立てる。
-  // 先頭で env globals を仕込んでから、本体 IIFE を即時実行。
-  // encodeURI で URI 予約文字を処理しつつ、encodeURI が処理しない `#` だけ手動でエスケープ。
-  const bookmarklet = (() => {
+  // 同じスクリプトを 2 通りの形で配布する：
+  //   (1) javascript: ブックマークレット (ワンクリック実行、CSP に依存)
+  //   (2) DevTools Console に貼り付ける生コード (CSP 完全回避)
+  // どちらも env globals を先頭で仕込んで本体 IIFE を即時実行する。
+  const consolePaste = (() => {
     if (!origin || !token || !scriptSource) return "";
-    const wrapper =
-      "(()=>{" +
-      `window.__KINDLE_SYNC_ENDPOINT__=${JSON.stringify(origin + "/api/kindle/sync")};` +
-      `window.__KINDLE_SYNC_TOKEN__=${JSON.stringify(token)};` +
-      "console.log('[KindleSync] starting...');" +
-      scriptSource +
-      "})();";
+    return (
+      `window.__KINDLE_SYNC_ENDPOINT__=${JSON.stringify(origin + "/api/kindle/sync")};\n` +
+      `window.__KINDLE_SYNC_TOKEN__=${JSON.stringify(token)};\n` +
+      `console.log('[KindleSync] starting...');\n` +
+      scriptSource
+    );
+  })();
+
+  const bookmarklet = (() => {
+    if (!consolePaste) return "";
+    const wrapper = "(()=>{" + consolePaste + "})();";
     return "javascript:" + encodeURI(wrapper).replace(/#/g, "%23");
   })();
 
-  const copy = async () => {
+  const copyBookmarklet = async () => {
     if (!bookmarklet) return;
     await navigator.clipboard.writeText(bookmarklet);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  const copyConsole = async () => {
+    if (!consolePaste) return;
+    await navigator.clipboard.writeText(consolePaste);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
@@ -68,16 +80,8 @@ export default function KindleSyncSetup() {
       </div>
       <div className="px-4 py-3 space-y-3 text-xs text-slate-600">
         <p className="leading-relaxed">
-          Kindleの<a href="https://read.amazon.co.jp/notebook" target="_blank" rel="noreferrer" className="text-indigo-600 underline">notebookページ</a>でブックマークレットを実行すると、ハイライト・しおりがこのアプリに同期されます。
+          Kindleの<a href="https://read.amazon.co.jp/notebook" target="_blank" rel="noreferrer" className="text-indigo-600 underline">notebookページ</a>でスクリプトを実行すると、ハイライト・しおりがこのアプリに同期されます。
         </p>
-
-        <ol className="list-decimal list-inside space-y-1 text-slate-500">
-          <li>Vercelダッシュボードで環境変数 <code className="px-1 bg-slate-100 rounded">KINDLE_SYNC_TOKEN</code> を任意の文字列で設定（例: ランダム32文字）</li>
-          <li>下のフォームに同じ値を入力</li>
-          <li>下のリンクをブックマークバーへドラッグ（または「コピー」を押して新規ブックマークの URL に貼り付け）</li>
-          <li>read.amazon.co.jp/notebook を開き、ブックマークをクリック</li>
-          <li>ブラウザの DevTools → Console を開いておくと <code>[KindleSync]</code> ログで進行状況が確認できる</li>
-        </ol>
 
         <div>
           <label className="text-[10px] text-slate-400">同期トークン (KINDLE_SYNC_TOKEN と同じ値)</label>
@@ -90,26 +94,64 @@ export default function KindleSyncSetup() {
           />
         </div>
 
-        {bookmarklet ? (
-          <div className="space-y-2">
-            <a
-              href={bookmarklet}
-              onClick={(e) => e.preventDefault()}
-              draggable
-              className="block px-3 py-2 rounded-lg text-center text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 cursor-grab active:cursor-grabbing"
-            >
-              📚 Kindle Sync (このリンクをブックマークバーへドラッグ)
-            </a>
-            <button onClick={copy} className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-500 hover:bg-slate-50">
-              {copied ? "コピーしました" : "javascript: コードをコピー"}
-            </button>
-            <p className="text-[10px] text-slate-400">サイズ: {bookmarklet.length.toLocaleString()} 文字</p>
-          </div>
-        ) : !scriptSource ? (
-          <p className="text-[11px] text-slate-400">ブックマークレット本体を読み込み中...</p>
+        {!scriptSource ? (
+          <p className="text-[11px] text-slate-400">スクリプト本体を読み込み中...</p>
+        ) : !consolePaste ? (
+          <p className="text-[11px] text-slate-400">トークンを入力すると同期コードが表示されます。</p>
         ) : (
-          <p className="text-[11px] text-slate-400">トークンを入力するとブックマークレットが表示されます。</p>
+          <>
+            {/* 推奨: DevTools Console 貼り付け方式 (React の javascript: ブロックを回避) */}
+            <div className="border border-indigo-200 bg-indigo-50 rounded-lg p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-600 text-white font-bold">推奨</span>
+                <span className="text-xs font-bold text-indigo-700">DevTools Console 貼り付け方式</span>
+              </div>
+              <ol className="list-decimal list-inside space-y-0.5 text-[11px] text-slate-600">
+                <li><a href="https://read.amazon.co.jp/notebook" target="_blank" rel="noreferrer" className="text-indigo-600 underline">read.amazon.co.jp/notebook</a> を開く</li>
+                <li>DevTools を開く（Mac: <code className="px-1 bg-white rounded">⌥⌘I</code> / Win: <code className="px-1 bg-white rounded">F12</code>）→ Console タブ</li>
+                <li>下の「コードをコピー」を押して、Console に貼り付け → <code className="px-1 bg-white rounded">Enter</code></li>
+                <li>右上に黒バナーが出て進行状況が表示される</li>
+              </ol>
+              <button onClick={copyConsole} className="w-full px-3 py-2 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700">
+                {copied ? "✓ コピーしました — Console に貼り付けて Enter" : "📋 コードをコピー"}
+              </button>
+            </div>
+
+            {/* 代替: ブックマークレット (一部ブラウザ/ページで React にブロックされる) */}
+            <details className="border border-slate-200 rounded-lg p-3">
+              <summary className="text-xs font-bold text-slate-500 cursor-pointer">代替: ブックマークレット方式（React にブロックされる場合あり）</summary>
+              <div className="space-y-2 mt-2">
+                <p className="text-[10px] text-slate-400 leading-relaxed">
+                  Amazon の notebook ページは React 製で、<code>javascript:</code> URL を「セキュリティ上の理由」で実行ブロックすることがあります。
+                  ブックマークレットが動かない場合は上の Console 方式を使ってください。
+                </p>
+                <a
+                  href={bookmarklet}
+                  onClick={(e) => e.preventDefault()}
+                  draggable
+                  className="block px-3 py-2 rounded-lg text-center text-xs font-bold text-white bg-slate-500 hover:bg-slate-600 cursor-grab active:cursor-grabbing"
+                >
+                  📚 Kindle Sync (ブックマークバーへドラッグ)
+                </a>
+                <button onClick={copyBookmarklet} className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-500 hover:bg-slate-50">
+                  javascript: URL をコピー
+                </button>
+              </div>
+            </details>
+
+            <p className="text-[10px] text-slate-400">スクリプトサイズ: {consolePaste.length.toLocaleString()} 文字</p>
+          </>
         )}
+
+        <details className="border-t border-slate-100 pt-2">
+          <summary className="text-[10px] text-slate-400 cursor-pointer">セットアップ手順（初回のみ）</summary>
+          <ol className="list-decimal list-inside space-y-0.5 text-[10px] text-slate-500 mt-1">
+            <li>Vercel ダッシュボードで環境変数 <code className="px-1 bg-slate-100 rounded">KINDLE_SYNC_TOKEN</code> を任意の文字列で設定</li>
+            <li>上の「同期トークン」に同じ値を入力</li>
+            <li>read.amazon.co.jp に Amazon アカウントでログインしておく</li>
+            <li>左ペインの書籍一覧を一番下までスクロール（Amazon の遅延読込で全冊表示するため）</li>
+          </ol>
+        </details>
       </div>
     </div>
   );
