@@ -10,12 +10,14 @@ type Highlight = {
   id: string;
   type: string;
   text?: string | null;
-  note?: string | null;
+  note?: string | null;       // App 専用メモ
+  kindleNote?: string | null; // Kindle 由来メモ (同期で上書き)
   color?: string | null;
   location?: string | null;
   page?: number | null;
   imageUrl?: string | null;
   highlightedAt?: string | null;
+  archived?: boolean;
 };
 
 type Bookmark = {
@@ -52,6 +54,8 @@ type Book = {
   highlights: Highlight[];
   bookmarks: Bookmark[];
   readingLogs: ReadingLog[];
+  archivedHighlights?: Highlight[];
+  archivedBookmarks?: Bookmark[];
 };
 
 const SOURCE_LABEL: Record<string, string> = { kindle: "Kindle", paper: "紙", manga: "漫画", web: "Web", pdf: "PDF" };
@@ -120,6 +124,15 @@ export default function BookDetail({ bookId }: { bookId: string }) {
   const deleteBookmark = async (id: string) => {
     await fetch(`/api/bookmarks?id=${id}`, { method: "DELETE" });
     setBook({ ...book, bookmarks: book.bookmarks.filter((b) => b.id !== id) });
+  };
+
+  const unarchiveHighlight = async (id: string) => {
+    await fetch("/api/highlights", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, archived: false }),
+    });
+    load();
   };
 
   return (
@@ -227,6 +240,28 @@ export default function BookDetail({ bookId }: { bookId: string }) {
                 ))}
               </ul>
             )
+          )}
+
+          {/* Kindle 側で削除されたハイライト（アプリ側のメモ・復習履歴を保持するため archived として残している） */}
+          {(book.archivedHighlights?.length ?? 0) > 0 && (
+            <details className="border border-slate-300 rounded-xl overflow-hidden">
+              <summary className="bg-slate-100 px-4 py-2 text-xs font-bold text-slate-600 cursor-pointer">
+                🗑 Kindle で削除されたハイライト ({book.archivedHighlights!.length} 件)
+              </summary>
+              <div className="p-3 bg-slate-50 space-y-2">
+                <p className="text-[10px] text-slate-500">
+                  これらのハイライトは Kindle 側で削除されたが、アプリ側のメモや復習履歴を保持するため残してある。<br />
+                  Kindle で再度ハイライトを追加すると次回の同期で自動的に復活する。
+                </p>
+                <HighlightList
+                  highlights={book.archivedHighlights ?? []}
+                  onDelete={deleteHighlight}
+                  onUpdateNote={updateHighlightNote}
+                  onUnarchive={unarchiveHighlight}
+                  archivedMode
+                />
+              </div>
+            </details>
           )}
         </div>
       </div>

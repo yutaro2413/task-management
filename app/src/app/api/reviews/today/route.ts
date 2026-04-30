@@ -30,26 +30,26 @@ export async function GET(request: NextRequest) {
   } as const;
 
   const due = await prisma.highlight.findMany({
-    where: { nextReviewAt: { lt: endOfToday } },
+    where: { nextReviewAt: { lt: endOfToday }, archived: false },
     include,
     orderBy: [{ nextReviewAt: "asc" }],
     take: limit,
   });
 
   const dueCount = await prisma.highlight.count({
-    where: { nextReviewAt: { lt: endOfToday } },
+    where: { nextReviewAt: { lt: endOfToday }, archived: false },
   });
   const newCount = await prisma.highlight.count({
-    where: { nextReviewAt: null },
+    where: { nextReviewAt: null, archived: false },
   });
 
   let queue = due;
   if (queue.length < limit) {
-    // 未学習からランダム抽出して補充。Postgres の RANDOM() で順序付け。
+    // 未学習からランダム抽出して補充。Postgres の RANDOM() で順序付け。archived は除外。
     const fillCount = limit - queue.length;
     const fresh = await prisma.$queryRaw<{ id: string }[]>`
       SELECT id FROM "Highlight"
-      WHERE "nextReviewAt" IS NULL
+      WHERE "nextReviewAt" IS NULL AND "archived" = false
       ORDER BY RANDOM()
       LIMIT ${fillCount}
     `;

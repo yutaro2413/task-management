@@ -197,13 +197,15 @@ model Highlight {
   bookId        String
   type          String    @default("text") // "text" | "image" | "note"
   text          String? // ハイライト本文（image なら caption）
-  note          String? // 自分のメモ
+  note          String? // App 側のメモ (アプリ専用、同期で触らない)
+  kindleNote    String? // Kindle 側のメモ (同期のたびに上書きされる)
   color         String? // yellow | blue | pink | orange
   location      String? // 例: "位置No. 1234"
   page          Int?
   imageUrl      String? // 図表ハイライトの画像URL
   highlightedAt DateTime?
   externalId    String? // Amazon の一意キー（重複排除用）
+  archived      Boolean   @default(false) // true = Kindle 側で削除されたが、アプリ側のメモ等を残すために保持
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -220,6 +222,7 @@ model Highlight {
   @@unique([bookId, externalId])
   @@index([bookId])
   @@index([nextReviewAt])
+  @@index([archived])
 }
 
 // 復習履歴（1 ハイライトに複数件）
@@ -244,6 +247,7 @@ model Bookmark {
   page         Int?
   bookmarkedAt DateTime?
   externalId   String?
+  archived     Boolean   @default(false)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -251,6 +255,7 @@ model Bookmark {
 
   @@unique([bookId, externalId])
   @@index([bookId])
+  @@index([archived])
 }
 
 // 読書記録
