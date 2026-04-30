@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { searchBookMetadata } from "@/lib/googleBooks";
+import { checkSyncToken, syncCorsHeaders } from "@/lib/syncAuth";
 
-// CORS（ブックマークレットは read.amazon.co.jp から fetch するため）
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, X-Kindle-Sync-Token",
-};
+const corsHeaders = syncCorsHeaders;
 
 export async function OPTIONS() {
   return new Response(null, { status: 204, headers: corsHeaders });
@@ -42,16 +38,9 @@ type IncomingBook = {
 };
 
 export async function POST(request: NextRequest) {
-  const expected = process.env.KINDLE_SYNC_TOKEN;
-  if (!expected) {
-    return NextResponse.json(
-      { error: "KINDLE_SYNC_TOKEN is not configured on the server" },
-      { status: 500, headers: corsHeaders },
-    );
-  }
-  const provided = request.headers.get("x-kindle-sync-token");
-  if (provided !== expected) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: corsHeaders });
+  const auth = checkSyncToken(request);
+  if (!auth.ok) {
+    return NextResponse.json(auth.body, { status: auth.status, headers: corsHeaders });
   }
 
   let body: { books?: IncomingBook[] };

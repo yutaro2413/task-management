@@ -158,16 +158,20 @@ model BookSeries {
   books Book[]
 }
 
-// 書籍 (Kindle / 紙 / 漫画巻 を統合)
+// 書籍/記事 (Kindle / 紙 / 漫画 / Web 記事 / PDF を統合)
 model Book {
   id          String    @id @default(cuid())
   title       String
   author      String?
   coverUrl    String?
-  source      String    @default("kindle") // "kindle" | "paper" | "manga"
+  source      String    @default("kindle") // "kindle" | "paper" | "manga" | "web" | "pdf"
   asin        String?   @unique             // Kindle 突合キー
   isbn        String?
   publisher   String?
+  url         String?   @unique             // Web 記事の URL (source="web") / 突合キー兼用
+  excerpt     String?                       // 記事冒頭・要約
+  siteName    String?                       // og:site_name 等
+  publishedAt DateTime?                     // 記事公開日
   rating      Int? // 1-5
   purchasedAt DateTime? @db.Date
   finishedAt  DateTime? @db.Date

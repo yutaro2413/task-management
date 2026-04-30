@@ -40,6 +40,9 @@ type Book = {
   asin?: string | null;
   isbn?: string | null;
   publisher?: string | null;
+  url?: string | null;
+  excerpt?: string | null;
+  siteName?: string | null;
   rating?: number | null;
   purchasedAt?: string | null;
   finishedAt?: string | null;
@@ -51,7 +54,7 @@ type Book = {
   readingLogs: ReadingLog[];
 };
 
-const SOURCE_LABEL: Record<string, string> = { kindle: "Kindle", paper: "紙", manga: "漫画" };
+const SOURCE_LABEL: Record<string, string> = { kindle: "Kindle", paper: "紙", manga: "漫画", web: "Web", pdf: "PDF" };
 
 export default function BookDetail({ bookId }: { bookId: string }) {
   const router = useRouter();
@@ -157,7 +160,16 @@ export default function BookDetail({ bookId }: { bookId: string }) {
                 {book.finishedAt && <p>読了: {book.finishedAt.slice(0, 10)}</p>}
                 {book.asin && <p>ASIN: {book.asin}</p>}
                 {book.isbn && <p>ISBN: {book.isbn}</p>}
+                {book.siteName && <p>{book.siteName}</p>}
+                {book.url && (
+                  <a href={book.url} target="_blank" rel="noreferrer" className="text-emerald-600 underline truncate block">
+                    {book.url}
+                  </a>
+                )}
               </div>
+              {book.excerpt && (
+                <p className="text-[10px] text-slate-500 mt-1 line-clamp-3">{book.excerpt}</p>
+              )}
             </div>
           </div>
 
