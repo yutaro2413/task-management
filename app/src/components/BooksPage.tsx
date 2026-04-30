@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import BookFormModal from "./BookFormModal";
+import PdfImportButton from "./PdfImportButton";
 
 type Book = {
   id: string;
@@ -126,6 +127,7 @@ export default function BooksPage() {
             <button onClick={() => setShowForm(true)} className="flex-1 py-2 rounded-lg border-2 border-dashed border-indigo-300 text-indigo-600 text-sm font-medium hover:bg-indigo-50">+ 書籍を追加</button>
             <button onClick={() => setShowSeriesForm(!showSeriesForm)} className="px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-500">シリーズ管理</button>
           </div>
+          <PdfImportButton onImported={load} />
 
           {showSeriesForm && (
             <div className="bg-white rounded-lg border border-slate-200 p-3 space-y-2">
