@@ -8,6 +8,7 @@ const navItems = [
   { href: "/weekly", label: "サマリー", icon: "chart" },
   { href: "/hobby", label: "趣味", icon: "hobby" },
   { href: "/books", label: "書籍", icon: "book" },
+  { href: "/review", label: "復習", icon: "review" },
   { href: "/expenses", label: "家計簿", icon: "wallet" },
   { href: "/settings", label: "設定", icon: "gear" },
 ];
@@ -34,6 +35,13 @@ const icons: Record<string, React.ReactNode> = {
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
       <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+    </svg>
+  ),
+  review: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path d="M12 8v4l3 3" />
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3.5 7.5L7 5" />
     </svg>
   ),
   wallet: (
