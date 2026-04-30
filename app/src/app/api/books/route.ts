@@ -19,11 +19,28 @@ export async function GET(request: NextRequest) {
     include: {
       series: true,
       _count: { select: { highlights: true, bookmarks: true, readingLogs: true } },
+      // 各書籍の「最新ハイライト時刻」を取得し、サーバ側でソートに使う
+      highlights: {
+        select: { highlightedAt: true, updatedAt: true, createdAt: true },
+        orderBy: [{ highlightedAt: "desc" }, { updatedAt: "desc" }],
+        take: 1,
+      },
     },
-    orderBy: [{ updatedAt: "desc" }],
     take: 500,
   });
-  return NextResponse.json(books);
+
+  // ソートキー: 最新ハイライトの highlightedAt > updatedAt > createdAt > book.updatedAt
+  const enriched = books.map((b) => {
+    const h = b.highlights[0];
+    const lastActivity = h?.highlightedAt ?? h?.updatedAt ?? h?.createdAt ?? b.updatedAt;
+    // highlights を返さない (UI 不要 + payload 軽量化)
+    const { highlights: _omit, ...rest } = b;
+    void _omit;
+    return { ...rest, lastActivityAt: lastActivity instanceof Date ? lastActivity.toISOString() : lastActivity };
+  });
+  enriched.sort((a, b) => (a.lastActivityAt < b.lastActivityAt ? 1 : a.lastActivityAt > b.lastActivityAt ? -1 : 0));
+
+  return NextResponse.json(enriched);
 }
 
 export async function POST(request: NextRequest) {
@@ -33,9 +50,11 @@ export async function POST(request: NextRequest) {
   }
   const source: string = body.source || "paper";
 
-  // Google Books でメタを補完（無くても続行）
+  // Google Books でメタを補完（無くても続行）。
+  // anime / web / pdf は対象外（書籍 DB に無いため）。
   let meta = null;
-  if (!body.author || !body.coverUrl) {
+  const useGoogleBooks = ["kindle", "paper", "manga"].includes(source);
+  if (useGoogleBooks && (!body.author || !body.coverUrl)) {
     meta = await searchBookMetadata({
       isbn: body.isbn,
       title: body.title,
