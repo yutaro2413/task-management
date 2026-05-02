@@ -4,11 +4,40 @@
 
 ## セットアップ（初回のみ）
 
-1. **Tampermonkey 拡張機能をインストール**: [tampermonkey.net](https://www.tampermonkey.net/) からブラウザに追加（無料・5秒）
-2. アプリの `/settings` を開く → 「Kindle ハイライト同期」セクション → 「⬇️ ユーザースクリプトをインストール」をクリック
-3. Tampermonkey のインストールダイアログが出るので「インストール」を押す
-4. `https://read.amazon.co.jp/notebook` を開く → 右上に黒い「📚 Kindle Sync」パネルが表示される
-5. ⚙ ボタンを押して、同期トークン（Vercel の `KINDLE_SYNC_TOKEN` と同じ値）を入力
+### 1. Tampermonkey 拡張機能をインストール
+
+[tampermonkey.net](https://www.tampermonkey.net/) からブラウザに追加（無料・5秒）。Chrome / Edge / Firefox / Safari 対応。
+
+### 2. ユーザースクリプトをインストール
+
+Chrome 最新版では「このウェブサイトからユーザースクリプトを追加できません」というブラウザ標準の警告が出てインストールリンクが弾かれることがある。3 つの方法のうちどれかで OK。
+
+#### 方法 A: 直接リンク（Edge / Firefox は OK、Chrome は構成次第）
+
+`/settings` の「⬇️ ユーザースクリプトをインストール」ボタンをクリック。Tampermonkey のインストール画面が出れば成功。Chrome の警告が出たら方法 B / C へ。
+
+#### 方法 B: ダッシュボードから URL インストール（Chrome 推奨）
+
+1. ブラウザツールバーの Tampermonkey アイコンをクリック → 「ダッシュボード」
+2. 上部の「ユーティリティ」タブ
+3. 「URL からインストール」欄にこの URL を貼り付け：
+   ```
+   https://<your-app>/userscript/kindle-sync.user.js
+   ```
+   `/settings` ページの「📋 ユーザースクリプト URL をコピー」ボタンで取得可能
+4. 「インストール」を押す → install 画面で承認
+
+#### 方法 C: スクリプト本体を直接貼り付け
+
+1. Tampermonkey ダッシュボード → 「+」（新規スクリプト）タブ
+2. エディタの中身を全て削除
+3. `/settings` の「📋 スクリプトソースをコピー」ボタンで取得した内容を貼り付け
+4. Ctrl+S / Cmd+S で保存
+
+### 3. 同期トークンを設定
+
+1. `https://read.amazon.co.jp/notebook` を開く → 右上に黒い「📚 Kindle Sync」パネルが表示される
+2. ⚙ ボタンを押して、同期トークン（Vercel の `KINDLE_SYNC_TOKEN` と同じ値）を入力
 
 ## 日常使い
 
