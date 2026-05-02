@@ -100,30 +100,54 @@ export default function KindleSyncSetup() {
           <p className="text-[11px] text-slate-400">トークンを入力すると同期コードが表示されます。</p>
         ) : (
           <>
-            {/* 推奨: DevTools Console 貼り付け方式 (React の javascript: ブロックを回避) */}
-            <div className="border border-indigo-200 bg-indigo-50 rounded-lg p-3 space-y-2">
+            {/* 推奨: Tampermonkey ユーザースクリプト方式 (notebook を開くと右上にボタン常駐) */}
+            <div className="border border-emerald-200 bg-emerald-50 rounded-lg p-3 space-y-2">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-600 text-white font-bold">推奨</span>
-                <span className="text-xs font-bold text-indigo-700">DevTools Console 貼り付け方式</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-600 text-white font-bold">最推奨</span>
+                <span className="text-xs font-bold text-emerald-700">ユーザースクリプト方式（ボタン1つで同期）</span>
               </div>
               <ol className="list-decimal list-inside space-y-0.5 text-[11px] text-slate-600">
-                <li><a href="https://read.amazon.co.jp/notebook" target="_blank" rel="noreferrer" className="text-indigo-600 underline">read.amazon.co.jp/notebook</a> を開く</li>
-                <li>DevTools を開く（Mac: <code className="px-1 bg-white rounded">⌥⌘I</code> / Win: <code className="px-1 bg-white rounded">F12</code>）→ Console タブ</li>
-                <li>下の「コードをコピー」を押して、Console に貼り付け → <code className="px-1 bg-white rounded">Enter</code></li>
-                <li>右上に黒バナーが出て進行状況が表示される</li>
+                <li>
+                  <a href="https://www.tampermonkey.net/" target="_blank" rel="noreferrer" className="text-emerald-700 underline">Tampermonkey 拡張機能</a>
+                  を初回のみブラウザに入れる（無料・5秒）
+                </li>
+                <li>
+                  下のボタンを押す → Tampermonkey が「インストール」ダイアログを表示 → 同意
+                </li>
+                <li>read.amazon.co.jp/notebook を開く → 右上に「📚 Kindle Sync」パネルが常駐</li>
+                <li>初回だけ ⚙ から同期トークン (KINDLE_SYNC_TOKEN と同じ値) を入力 → 「同期実行」</li>
               </ol>
-              <button onClick={copyConsole} className="w-full px-3 py-2 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700">
-                {copied ? "✓ コピーしました — Console に貼り付けて Enter" : "📋 コードをコピー"}
-              </button>
+              <a
+                href={origin ? `${origin}/userscript/kindle-sync.user.js` : "#"}
+                className="block px-3 py-2 rounded-lg text-center text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700"
+              >
+                ⬇️ ユーザースクリプトをインストール
+              </a>
+              <p className="text-[10px] text-slate-500">
+                スクリプトはこの URL から自動アップデートされる: <code className="text-[9px] break-all">/userscript/kindle-sync.user.js</code>
+              </p>
             </div>
 
-            {/* 代替: ブックマークレット (一部ブラウザ/ページで React にブロックされる) */}
+            {/* 折り畳み: Console 貼り付け方式 (Tampermonkey が嫌な場合のフォールバック) */}
+            <details className="border border-indigo-200 bg-indigo-50/40 rounded-lg p-3">
+              <summary className="text-xs font-bold text-indigo-700 cursor-pointer">代替: DevTools Console 貼り付け方式</summary>
+              <div className="space-y-2 mt-2">
+                <ol className="list-decimal list-inside space-y-0.5 text-[11px] text-slate-600">
+                  <li><a href="https://read.amazon.co.jp/notebook" target="_blank" rel="noreferrer" className="text-indigo-600 underline">read.amazon.co.jp/notebook</a> を開く</li>
+                  <li>DevTools を開く（Mac: <code className="px-1 bg-white rounded">⌥⌘I</code> / Win: <code className="px-1 bg-white rounded">F12</code>）→ Console タブ</li>
+                  <li>下の「コードをコピー」を押して、Console に貼り付け → <code className="px-1 bg-white rounded">Enter</code></li>
+                </ol>
+                <button onClick={copyConsole} className="w-full px-3 py-2 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700">
+                  {copied ? "✓ コピーしました — Console に貼り付けて Enter" : "📋 コードをコピー"}
+                </button>
+              </div>
+            </details>
+
             <details className="border border-slate-200 rounded-lg p-3">
               <summary className="text-xs font-bold text-slate-500 cursor-pointer">代替: ブックマークレット方式（React にブロックされる場合あり）</summary>
               <div className="space-y-2 mt-2">
                 <p className="text-[10px] text-slate-400 leading-relaxed">
                   Amazon の notebook ページは React 製で、<code>javascript:</code> URL を「セキュリティ上の理由」で実行ブロックすることがあります。
-                  ブックマークレットが動かない場合は上の Console 方式を使ってください。
                 </p>
                 <a
                   href={bookmarklet}
