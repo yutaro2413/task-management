@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { getWeekDates, getDayLabel, formatDate, slotToTime, getMonthDates, getMonthLabel, toJSTDateKey, toJSTDateString } from "@/lib/utils";
 import { cachedFetch, invalidateCache } from "@/lib/cache";
 import { NOTE_SECTIONS, NoteSections, parseNote, serializeNote } from "@/lib/dailyNote";
+import { addDaysIso, expandEntrySlots } from "@/lib/slotExpansion";
 import { useSwipe } from "@/hooks/useSwipe";
 import EntryModal from "./EntryModal";
 
@@ -136,11 +137,15 @@ export default function WeeklyPage() {
   const startDate = period === "weekly" ? formatDate(weekDates[0]) : formatDate(monthRange.start);
   const endDate = period === "weekly" ? formatDate(weekDates[6]) : formatDate(monthRange.end);
 
+  // 日跨ぎエントリ (前日 23:30 → 翌 02:30 のように endSlot >= 48 で保存) を週次サマリに含めるため、
+  // タイムエントリの fetch だけは start - 1 日まで遡る。日記・家計簿はこの調整不要。
+  const entriesFetchStart = addDaysIso(startDate, -1);
+
   const fetchData = useCallback(async () => {
     setFetching(true);
     try {
       const [entriesData, notesData, expensesData] = await Promise.all([
-        cachedFetch<TimeEntry[]>(`/api/time-entries?startDate=${startDate}&endDate=${endDate}`),
+        cachedFetch<TimeEntry[]>(`/api/time-entries?startDate=${entriesFetchStart}&endDate=${endDate}`),
         cachedFetch<DailyNote[]>(`/api/daily-notes?startDate=${startDate}&endDate=${endDate}`),
         cachedFetch<SimpleExpense[]>(`/api/expenses?startDate=${startDate}&endDate=${endDate}`),
       ]);
@@ -151,7 +156,7 @@ export default function WeeklyPage() {
     } finally {
       setFetching(false);
     }
-  }, [startDate, endDate]);
+  }, [entriesFetchStart, startDate, endDate]);
 
   useEffect(() => {
     fetchData();
@@ -352,14 +357,17 @@ export default function WeeklyPage() {
   const showSpinner = fetching && !hasData.current;
 
   // Summary calculations (overlap-aware: 同一スロットに複数エントリがある場合、按分する)
+  // 日跨ぎ対応: slot >= 48 は翌日のスロットとして扱う。週/月の範囲外は除外する。
   const slotMap = new Map<string, Map<number, TimeEntry[]>>();
   entries.forEach((e) => {
     const dk = toJSTDateKey(e.date);
-    if (!slotMap.has(dk)) slotMap.set(dk, new Map());
-    const dayMap = slotMap.get(dk)!;
-    for (let s = e.startSlot; s < e.endSlot; s++) {
-      if (!dayMap.has(s)) dayMap.set(s, []);
-      dayMap.get(s)!.push(e);
+    const refs = expandEntrySlots(dk, e.startSlot, e.endSlot);
+    for (const ref of refs) {
+      if (ref.date < startDate || ref.date > endDate) continue; // 範囲外スキップ
+      if (!slotMap.has(ref.date)) slotMap.set(ref.date, new Map());
+      const dayMap = slotMap.get(ref.date)!;
+      if (!dayMap.has(ref.slot)) dayMap.set(ref.slot, []);
+      dayMap.get(ref.slot)!.push(e);
     }
   });
 
@@ -430,17 +438,21 @@ export default function WeeklyPage() {
     dailyExpenseTotals.set(dateKey, (dailyExpenseTotals.get(dateKey) || 0) + e.amount);
   });
 
-  // Per-day work slots — dedup overlapping, exclude summary-excluded categories
-  const dailyWorkSlots = new Map<string, number>();
-  for (const [dateKey, dayEntries] of entriesByDate) {
-    const slotSet = new Set<number>();
-    dayEntries
-      .filter((e) => !e.category.excludeFromSummary)
-      .forEach((e) => {
-        for (let i = e.startSlot; i < Math.min(e.endSlot, 48); i++) slotSet.add(i);
-      });
-    dailyWorkSlots.set(dateKey, slotSet.size);
+  // Per-day work slots — dedup overlapping, exclude summary-excluded categories.
+  // 日跨ぎ対応: slot >= 48 を翌日のスロットに振り分ける。
+  const dailyWorkSlots = new Map<string, Set<number>>();
+  for (const e of entries) {
+    if (e.category.excludeFromSummary) continue;
+    const dk = toJSTDateKey(e.date);
+    const refs = expandEntrySlots(dk, e.startSlot, e.endSlot);
+    for (const ref of refs) {
+      if (ref.date < startDate || ref.date > endDate) continue;
+      if (!dailyWorkSlots.has(ref.date)) dailyWorkSlots.set(ref.date, new Set());
+      dailyWorkSlots.get(ref.date)!.add(ref.slot);
+    }
   }
+  const dailyWorkSlotCount = new Map<string, number>();
+  for (const [k, set] of dailyWorkSlots) dailyWorkSlotCount.set(k, set.size);
 
   const timelineDates = period === "weekly"
     ? weekDates
@@ -809,7 +821,7 @@ export default function WeeklyPage() {
                   {weekDates.map((wd) => {
                     const dateKey = formatDate(wd);
                     const expenseTotal = dailyExpenseTotals.get(dateKey);
-                    const workSlots = dailyWorkSlots.get(dateKey) || 0;
+                    const workSlots = dailyWorkSlotCount.get(dateKey) || 0;
                     const workHoursDisplay = workSlots * 0.5;
                     const days = ["日", "月", "火", "水", "木", "金", "土"];
                     const dow = wd.getDay();
