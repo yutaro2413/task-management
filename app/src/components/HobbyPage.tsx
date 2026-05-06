@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { toJSTDateString } from "@/lib/utils";
+import { parseWeight, exerciseVolume } from "@/lib/workoutVolume";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -156,20 +157,7 @@ const CHART_COLORS = [
   "#a855f7", "#f43f5e", "#2563eb", "#65a30d", "#c026d3",
 ];
 
-const CIRCLED_NUMBERS: Record<string, number> = {
-  "①": 1, "②": 2, "③": 3, "④": 4, "⑤": 5,
-  "⑥": 6, "⑦": 7, "⑧": 8, "⑨": 9, "⑩": 10,
-  "⑪": 11, "⑫": 12, "⑬": 13, "⑭": 14, "⑮": 15,
-  "⑯": 16, "⑰": 17, "⑱": 18, "⑲": 19, "⑳": 20,
-};
-
-function parseWeight(w: string): number | null {
-  if (!w || !w.trim()) return null;
-  const trimmed = w.trim();
-  if (CIRCLED_NUMBERS[trimmed] !== undefined) return CIRCLED_NUMBERS[trimmed];
-  const num = parseFloat(trimmed.replace(/[kgKG㎏番]/g, ""));
-  return isNaN(num) ? null : num;
-}
+// parseWeight / exerciseVolume は @/lib/workoutVolume に切り出し済み
 
 function getWeekLabel(dateStr: string): string {
   const m = new Date(dateStr + "T00:00:00");
@@ -190,6 +178,10 @@ export default function HobbyPage() {
 
   // Workout chart state
   const [allWorkouts, setAllWorkouts] = useState<WorkoutLogEntry[]>([]);
+  const [chartMode, setChartMode] = useState<"weight" | "volume">("weight");
+  const [historyFilter, setHistoryFilter] = useState("");
+  const [historyLimit, setHistoryLimit] = useState(20);
+  const [savingExerciseKey, setSavingExerciseKey] = useState<string | null>(null);
 
   // Reading state
   const [bookTitles, setBookTitles] = useState<BookTitle[]>([]);
@@ -226,6 +218,80 @@ export default function HobbyPage() {
       setAllWorkouts(data);
     }
   }, []);
+
+  // 履歴の inline 編集: 指定された日のエクササイズ配列を patch して保存
+  const saveExercises = useCallback(
+    async (date: string, exercises: Exercise[], key: string) => {
+      setSavingExerciseKey(key);
+      try {
+        if (exercises.length === 0) {
+          await fetch(`/api/workout-logs?date=${date}`, { method: "DELETE" });
+        } else {
+          await fetch("/api/workout-logs", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ date, exercises }),
+          });
+        }
+        await fetchWorkouts();
+      } finally {
+        setSavingExerciseKey(null);
+      }
+    },
+    [fetchWorkouts],
+  );
+
+  const updateExerciseField = useCallback(
+    async (logDate: string, idx: number, patch: Partial<Exercise>) => {
+      const log = allWorkouts.find((l) => {
+        const dk = typeof l.date === "string" && l.date.includes("T") ? l.date.split("T")[0] : l.date;
+        return dk === logDate;
+      });
+      if (!log) return;
+      const next = log.exercises.map((ex, i) => (i === idx ? { ...ex, ...patch } : ex));
+      // 値が変わっていなければ何もしない
+      if (JSON.stringify(next[idx]) === JSON.stringify(log.exercises[idx])) return;
+      await saveExercises(logDate, next, `${logDate}-${idx}`);
+    },
+    [allWorkouts, saveExercises],
+  );
+
+  const deleteExerciseRow = useCallback(
+    async (logDate: string, idx: number) => {
+      const log = allWorkouts.find((l) => {
+        const dk = typeof l.date === "string" && l.date.includes("T") ? l.date.split("T")[0] : l.date;
+        return dk === logDate;
+      });
+      if (!log) return;
+      const next = log.exercises.filter((_, i) => i !== idx);
+      await saveExercises(logDate, next, `${logDate}-${idx}-del`);
+    },
+    [allWorkouts, saveExercises],
+  );
+
+  const deleteWholeWorkoutDay = useCallback(
+    async (logDate: string) => {
+      if (!confirm(`${logDate} の筋トレ記録を全て削除しますか？`)) return;
+      await saveExercises(logDate, [], `${logDate}-day-del`);
+    },
+    [saveExercises],
+  );
+
+  // 履歴セクションで表示するログ (フィルタ + ページネーション)
+  const filteredHistory = useMemo(() => {
+    const term = historyFilter.trim();
+    const matched = term
+      ? allWorkouts.filter((log) => log.exercises.some((e) => e.name.includes(term)))
+      : allWorkouts;
+    return matched.slice(0, historyLimit);
+  }, [allWorkouts, historyFilter, historyLimit]);
+
+  const filteredHistoryTotal = useMemo(() => {
+    const term = historyFilter.trim();
+    return term
+      ? allWorkouts.filter((log) => log.exercises.some((e) => e.name.includes(term))).length
+      : allWorkouts.length;
+  }, [allWorkouts, historyFilter]);
 
   const fetchReading = useCallback(async (d: string) => {
     const [booksData, logsData] = await Promise.all([
@@ -365,6 +431,9 @@ export default function HobbyPage() {
   };
 
   // ── Chart data ──
+  // chartMode により Y 軸の指標を切替:
+  //   "weight" : 週ごとのメニュー別最大重量 (kg)
+  //   "volume" : 週ごとのメニュー別最大ボリューム (重量 × 回数 × セット)
   const chartData = useMemo(() => {
     const weekMenuMax = new Map<string, Map<string, number>>();
     const menuNames = new Set<string>();
@@ -379,12 +448,12 @@ export default function HobbyPage() {
 
       for (const ex of log.exercises) {
         if (ex.type === "running") continue;
-        const w = parseWeight(ex.weight);
-        if (w === null) continue;
+        const value = chartMode === "volume" ? exerciseVolume(ex) : parseWeight(ex.weight);
+        if (value === null) continue;
         menuNames.add(ex.name);
         if (!weekMenuMax.has(wk)) weekMenuMax.set(wk, new Map());
         const menuMap = weekMenuMax.get(wk)!;
-        menuMap.set(ex.name, Math.max(menuMap.get(ex.name) || 0, w));
+        menuMap.set(ex.name, Math.max(menuMap.get(ex.name) || 0, value));
       }
     }
 
@@ -412,7 +481,7 @@ export default function HobbyPage() {
     }));
 
     return { labels, datasets };
-  }, [allWorkouts]);
+  }, [allWorkouts, chartMode]);
 
   // ── Sleep chart data ──
   const sleepChart = useMemo(() => {
@@ -619,7 +688,21 @@ export default function HobbyPage() {
             <>
               {chartData.datasets.length > 0 ? (
                 <div className="bg-white rounded-xl border border-slate-200 p-4">
-                  <h3 className="text-sm font-bold text-slate-700 mb-3">重量推移（週ごとの最大重量）</h3>
+                  <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+                    <h3 className="text-sm font-bold text-slate-700">
+                      {chartMode === "weight" ? "重量推移（週ごとの最大重量）" : "ボリューム推移（週ごとの最大 重量×回数×セット）"}
+                    </h3>
+                    <div className="flex bg-slate-100 rounded-md p-0.5">
+                      <button
+                        onClick={() => setChartMode("weight")}
+                        className={`px-2.5 py-1 text-[10px] font-bold rounded ${chartMode === "weight" ? "bg-white text-emerald-700 shadow-sm" : "text-slate-500"}`}
+                      >重量</button>
+                      <button
+                        onClick={() => setChartMode("volume")}
+                        className={`px-2.5 py-1 text-[10px] font-bold rounded ${chartMode === "volume" ? "bg-white text-emerald-700 shadow-sm" : "text-slate-500"}`}
+                      >ボリューム</button>
+                    </div>
+                  </div>
                   <div className="h-64">
                     <Line
                       data={chartData}
@@ -632,7 +715,11 @@ export default function HobbyPage() {
                             ticks: { font: { size: 10 }, maxRotation: 45 },
                           },
                           y: {
-                            title: { display: true, text: "重量", font: { size: 11 } },
+                            title: {
+                              display: true,
+                              text: chartMode === "weight" ? "重量 (kg)" : "ボリューム (kg × 回 × セット)",
+                              font: { size: 11 },
+                            },
                             ticks: { font: { size: 10 } },
                             beginAtZero: true,
                           },
@@ -656,6 +743,114 @@ export default function HobbyPage() {
                 <div className="text-center py-12">
                   <p className="text-sm text-slate-400">筋トレの記録がまだありません</p>
                   <p className="text-xs text-slate-300 mt-1">記録タブの「今日の一言」から記録してください</p>
+                </div>
+              )}
+
+              {/* ── 履歴 (inline 編集) ── */}
+              {allWorkouts.length > 0 && (
+                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-2 flex-wrap">
+                    <h3 className="text-sm font-bold text-slate-700">履歴</h3>
+                    <input
+                      value={historyFilter}
+                      onChange={(e) => { setHistoryFilter(e.target.value); setHistoryLimit(20); }}
+                      placeholder="メニュー名で絞り込み..."
+                      className="flex-1 min-w-[140px] px-2 py-1 rounded border border-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                    />
+                    <span className="text-[10px] text-slate-400">
+                      {filteredHistoryTotal > 0 ? `${Math.min(historyLimit, filteredHistoryTotal)}/${filteredHistoryTotal}件` : "0件"}
+                    </span>
+                  </div>
+                  <div className="divide-y divide-slate-100">
+                    {filteredHistory.length === 0 ? (
+                      <p className="px-4 py-6 text-center text-xs text-slate-400">該当する記録がありません</p>
+                    ) : (
+                      filteredHistory.map((log) => {
+                        const dateKey = typeof log.date === "string" && log.date.includes("T") ? log.date.split("T")[0] : log.date;
+                        return (
+                          <div key={log.id} className="px-4 py-3 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-slate-600">{dateKey}</span>
+                              <button onClick={() => deleteWholeWorkoutDay(dateKey)} className="text-[10px] text-slate-300 hover:text-red-500">日全体を削除</button>
+                            </div>
+                            {log.exercises.map((ex, idx) => {
+                              const key = `${dateKey}-${idx}`;
+                              const isSaving = savingExerciseKey === key;
+                              return ex.type === "running" ? (
+                                <div key={idx} className="flex items-center gap-1.5 text-xs">
+                                  <span className="text-[10px] px-1 py-0.5 rounded bg-sky-50 text-sky-700 font-medium flex-shrink-0">ラン</span>
+                                  <input
+                                    defaultValue={ex.name}
+                                    onBlur={(e) => updateExerciseField(dateKey, idx, { name: e.target.value })}
+                                    className="flex-1 min-w-0 px-1.5 py-0.5 rounded border border-slate-100 text-xs"
+                                  />
+                                  <input
+                                    defaultValue={ex.distance ?? ""}
+                                    onBlur={(e) => updateExerciseField(dateKey, idx, { distance: e.target.value })}
+                                    placeholder="距離"
+                                    className="w-14 px-1 py-0.5 rounded border border-slate-100 text-xs text-center"
+                                  />
+                                  <input
+                                    defaultValue={ex.duration ?? ""}
+                                    onBlur={(e) => updateExerciseField(dateKey, idx, { duration: e.target.value })}
+                                    placeholder="時間"
+                                    className="w-14 px-1 py-0.5 rounded border border-slate-100 text-xs text-center"
+                                  />
+                                  <button
+                                    onClick={() => deleteExerciseRow(dateKey, idx)}
+                                    className="text-slate-300 hover:text-red-500 text-xs px-1"
+                                    aria-label="削除"
+                                  >×</button>
+                                </div>
+                              ) : (
+                                <div key={idx} className="flex items-center gap-1.5 text-xs">
+                                  <input
+                                    defaultValue={ex.name}
+                                    onBlur={(e) => updateExerciseField(dateKey, idx, { name: e.target.value })}
+                                    className="flex-1 min-w-0 px-1.5 py-0.5 rounded border border-slate-100 text-xs font-medium"
+                                  />
+                                  <input
+                                    defaultValue={ex.weight}
+                                    onBlur={(e) => updateExerciseField(dateKey, idx, { weight: e.target.value })}
+                                    placeholder="kg"
+                                    className="w-12 px-1 py-0.5 rounded border border-slate-100 text-xs text-center"
+                                  />
+                                  <span className="text-[9px] text-slate-400">×</span>
+                                  <input
+                                    type="number"
+                                    defaultValue={ex.reps}
+                                    onBlur={(e) => updateExerciseField(dateKey, idx, { reps: Number(e.target.value) || 0 })}
+                                    className="w-10 px-1 py-0.5 rounded border border-slate-100 text-xs text-center"
+                                  />
+                                  <span className="text-[9px] text-slate-400">×</span>
+                                  <input
+                                    type="number"
+                                    defaultValue={ex.sets}
+                                    onBlur={(e) => updateExerciseField(dateKey, idx, { sets: Number(e.target.value) || 0 })}
+                                    className="w-10 px-1 py-0.5 rounded border border-slate-100 text-xs text-center"
+                                  />
+                                  <button
+                                    onClick={() => deleteExerciseRow(dateKey, idx)}
+                                    disabled={isSaving}
+                                    className="text-slate-300 hover:text-red-500 text-xs px-1 disabled:opacity-50"
+                                    aria-label="削除"
+                                  >×</button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                  {filteredHistoryTotal > historyLimit && (
+                    <button
+                      onClick={() => setHistoryLimit((n) => n + 20)}
+                      className="w-full py-2 text-xs text-emerald-600 font-medium border-t border-slate-100 hover:bg-slate-50"
+                    >
+                      もっと表示 (+20)
+                    </button>
+                  )}
                 </div>
               )}
             </>
