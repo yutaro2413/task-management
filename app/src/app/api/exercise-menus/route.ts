@@ -26,6 +26,16 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   const body = await request.json();
+
+  // Reorder support: { reorder: true, ids: [...] } で sortOrder を一括更新
+  if (body.reorder && Array.isArray(body.ids)) {
+    const updates = body.ids.map((id: string, index: number) =>
+      prisma.exerciseMenu.update({ where: { id }, data: { sortOrder: index } })
+    );
+    await prisma.$transaction(updates);
+    return NextResponse.json({ success: true });
+  }
+
   const menu = await prisma.exerciseMenu.update({
     where: { id: body.id },
     data: {

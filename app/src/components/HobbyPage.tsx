@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { toJSTDateString } from "@/lib/utils";
 import { parseWeight, exerciseVolume } from "@/lib/workoutVolume";
+import { moveItem } from "@/lib/reorder";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -265,6 +266,21 @@ export default function HobbyPage() {
       if (!log) return;
       const next = log.exercises.filter((_, i) => i !== idx);
       await saveExercises(logDate, next, `${logDate}-${idx}-del`);
+    },
+    [allWorkouts, saveExercises],
+  );
+
+  const moveExerciseRow = useCallback(
+    async (logDate: string, idx: number, dir: -1 | 1) => {
+      const log = allWorkouts.find((l) => {
+        const dk = typeof l.date === "string" && l.date.includes("T") ? l.date.split("T")[0] : l.date;
+        return dk === logDate;
+      });
+      if (!log) return;
+      const next = moveItem(log.exercises, idx, dir);
+      // 並びが変わっていなければ何もしない
+      if (next.every((e, i) => e === log.exercises[i])) return;
+      await saveExercises(logDate, next, `${logDate}-${idx}-move`);
     },
     [allWorkouts, saveExercises],
   );
@@ -776,6 +792,22 @@ export default function HobbyPage() {
                             {log.exercises.map((ex, idx) => {
                               const key = `${dateKey}-${idx}`;
                               const isSaving = savingExerciseKey === key;
+                              const moveButtons = (
+                                <>
+                                  <button
+                                    onClick={() => moveExerciseRow(dateKey, idx, -1)}
+                                    disabled={idx === 0 || isSaving}
+                                    aria-label="上へ移動"
+                                    className="text-slate-400 hover:text-slate-700 text-xs px-0.5 disabled:opacity-30"
+                                  >▲</button>
+                                  <button
+                                    onClick={() => moveExerciseRow(dateKey, idx, 1)}
+                                    disabled={idx === log.exercises.length - 1 || isSaving}
+                                    aria-label="下へ移動"
+                                    className="text-slate-400 hover:text-slate-700 text-xs px-0.5 disabled:opacity-30"
+                                  >▼</button>
+                                </>
+                              );
                               return ex.type === "running" ? (
                                 <div key={idx} className="flex items-center gap-1.5 text-xs">
                                   <span className="text-[10px] px-1 py-0.5 rounded bg-sky-50 text-sky-700 font-medium flex-shrink-0">ラン</span>
@@ -796,6 +828,7 @@ export default function HobbyPage() {
                                     placeholder="時間"
                                     className="w-14 px-1 py-0.5 rounded border border-slate-100 text-xs text-center"
                                   />
+                                  {moveButtons}
                                   <button
                                     onClick={() => deleteExerciseRow(dateKey, idx)}
                                     className="text-slate-300 hover:text-red-500 text-xs px-1"
@@ -829,6 +862,7 @@ export default function HobbyPage() {
                                     onBlur={(e) => updateExerciseField(dateKey, idx, { sets: Number(e.target.value) || 0 })}
                                     className="w-10 px-1 py-0.5 rounded border border-slate-100 text-xs text-center"
                                   />
+                                  {moveButtons}
                                   <button
                                     onClick={() => deleteExerciseRow(dateKey, idx)}
                                     disabled={isSaving}
