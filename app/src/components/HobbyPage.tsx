@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { toJSTDateString } from "@/lib/utils";
 import { parseWeight, exerciseVolume } from "@/lib/workoutVolume";
-import { moveItem } from "@/lib/reorder";
+import { SortableList, SortableItem } from "./SortableList";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -270,17 +270,17 @@ export default function HobbyPage() {
     [allWorkouts, saveExercises],
   );
 
-  const moveExerciseRow = useCallback(
-    async (logDate: string, idx: number, dir: -1 | 1) => {
+  // 長押しドラッグ並び替え (履歴の各日のエクササイズ)
+  const reorderHistoryExercises = useCallback(
+    async (logDate: string, newIds: string[]) => {
       const log = allWorkouts.find((l) => {
         const dk = typeof l.date === "string" && l.date.includes("T") ? l.date.split("T")[0] : l.date;
         return dk === logDate;
       });
       if (!log) return;
-      const next = moveItem(log.exercises, idx, dir);
-      // 並びが変わっていなければ何もしない
-      if (next.every((e, i) => e === log.exercises[i])) return;
-      await saveExercises(logDate, next, `${logDate}-${idx}-move`);
+      const newOrder = newIds.map((id) => log.exercises[parseInt(id.replace("ex-", ""), 10)]);
+      if (newOrder.every((e, i) => e === log.exercises[i])) return;
+      await saveExercises(logDate, newOrder, `${logDate}-reorder`);
     },
     [allWorkouts, saveExercises],
   );
@@ -789,89 +789,92 @@ export default function HobbyPage() {
                               <span className="text-xs font-bold text-slate-600">{dateKey}</span>
                               <button onClick={() => deleteWholeWorkoutDay(dateKey)} className="text-[10px] text-slate-300 hover:text-red-500">日全体を削除</button>
                             </div>
-                            {log.exercises.map((ex, idx) => {
-                              const key = `${dateKey}-${idx}`;
-                              const isSaving = savingExerciseKey === key;
-                              const moveButtons = (
-                                <>
-                                  <button
-                                    onClick={() => moveExerciseRow(dateKey, idx, -1)}
-                                    disabled={idx === 0 || isSaving}
-                                    aria-label="上へ移動"
-                                    className="text-slate-400 hover:text-slate-700 text-xs px-0.5 disabled:opacity-30"
-                                  >▲</button>
-                                  <button
-                                    onClick={() => moveExerciseRow(dateKey, idx, 1)}
-                                    disabled={idx === log.exercises.length - 1 || isSaving}
-                                    aria-label="下へ移動"
-                                    className="text-slate-400 hover:text-slate-700 text-xs px-0.5 disabled:opacity-30"
-                                  >▼</button>
-                                </>
-                              );
-                              return ex.type === "running" ? (
-                                <div key={idx} className="flex items-center gap-1.5 text-xs">
-                                  <span className="text-[10px] px-1 py-0.5 rounded bg-sky-50 text-sky-700 font-medium flex-shrink-0">ラン</span>
-                                  <input
-                                    defaultValue={ex.name}
-                                    onBlur={(e) => updateExerciseField(dateKey, idx, { name: e.target.value })}
-                                    className="flex-1 min-w-0 px-1.5 py-0.5 rounded border border-slate-100 text-xs"
-                                  />
-                                  <input
-                                    defaultValue={ex.distance ?? ""}
-                                    onBlur={(e) => updateExerciseField(dateKey, idx, { distance: e.target.value })}
-                                    placeholder="距離"
-                                    className="w-14 px-1 py-0.5 rounded border border-slate-100 text-xs text-center"
-                                  />
-                                  <input
-                                    defaultValue={ex.duration ?? ""}
-                                    onBlur={(e) => updateExerciseField(dateKey, idx, { duration: e.target.value })}
-                                    placeholder="時間"
-                                    className="w-14 px-1 py-0.5 rounded border border-slate-100 text-xs text-center"
-                                  />
-                                  {moveButtons}
-                                  <button
-                                    onClick={() => deleteExerciseRow(dateKey, idx)}
-                                    className="text-slate-300 hover:text-red-500 text-xs px-1"
-                                    aria-label="削除"
-                                  >×</button>
-                                </div>
-                              ) : (
-                                <div key={idx} className="flex items-center gap-1.5 text-xs">
-                                  <input
-                                    defaultValue={ex.name}
-                                    onBlur={(e) => updateExerciseField(dateKey, idx, { name: e.target.value })}
-                                    className="flex-1 min-w-0 px-1.5 py-0.5 rounded border border-slate-100 text-xs font-medium"
-                                  />
-                                  <input
-                                    defaultValue={ex.weight}
-                                    onBlur={(e) => updateExerciseField(dateKey, idx, { weight: e.target.value })}
-                                    placeholder="kg"
-                                    className="w-12 px-1 py-0.5 rounded border border-slate-100 text-xs text-center"
-                                  />
-                                  <span className="text-[9px] text-slate-400">×</span>
-                                  <input
-                                    type="number"
-                                    defaultValue={ex.reps}
-                                    onBlur={(e) => updateExerciseField(dateKey, idx, { reps: Number(e.target.value) || 0 })}
-                                    className="w-10 px-1 py-0.5 rounded border border-slate-100 text-xs text-center"
-                                  />
-                                  <span className="text-[9px] text-slate-400">×</span>
-                                  <input
-                                    type="number"
-                                    defaultValue={ex.sets}
-                                    onBlur={(e) => updateExerciseField(dateKey, idx, { sets: Number(e.target.value) || 0 })}
-                                    className="w-10 px-1 py-0.5 rounded border border-slate-100 text-xs text-center"
-                                  />
-                                  {moveButtons}
-                                  <button
-                                    onClick={() => deleteExerciseRow(dateKey, idx)}
-                                    disabled={isSaving}
-                                    className="text-slate-300 hover:text-red-500 text-xs px-1 disabled:opacity-50"
-                                    aria-label="削除"
-                                  >×</button>
-                                </div>
-                              );
-                            })}
+                            <SortableList
+                              ids={log.exercises.map((_, i) => `ex-${i}`)}
+                              onReorder={(newIds) => reorderHistoryExercises(dateKey, newIds)}
+                            >
+                              {log.exercises.map((ex, idx) => {
+                                const key = `${dateKey}-${idx}`;
+                                const isSaving = savingExerciseKey === key;
+                                return (
+                                  <SortableItem key={`ex-${idx}`} id={`ex-${idx}`}>
+                                    {({ listeners, setActivatorNodeRef, isDragging }) => {
+                                      const handle = (
+                                        <span
+                                          ref={setActivatorNodeRef}
+                                          {...listeners}
+                                          className="text-slate-300 text-xs leading-none cursor-grab active:cursor-grabbing select-none px-0.5"
+                                          title="長押ししてドラッグで並び替え"
+                                        >⋮⋮</span>
+                                      );
+                                      return ex.type === "running" ? (
+                                        <div className={`flex items-center gap-1.5 text-xs py-0.5 ${isDragging ? "bg-emerald-50 ring-1 ring-emerald-300 rounded" : ""}`}>
+                                          {handle}
+                                          <span className="text-[10px] px-1 py-0.5 rounded bg-sky-50 text-sky-700 font-medium flex-shrink-0">ラン</span>
+                                          <input
+                                            defaultValue={ex.name}
+                                            onBlur={(e) => updateExerciseField(dateKey, idx, { name: e.target.value })}
+                                            className="flex-1 min-w-0 px-1.5 py-0.5 rounded border border-slate-100 text-xs"
+                                          />
+                                          <input
+                                            defaultValue={ex.distance ?? ""}
+                                            onBlur={(e) => updateExerciseField(dateKey, idx, { distance: e.target.value })}
+                                            placeholder="距離"
+                                            className="w-14 px-1 py-0.5 rounded border border-slate-100 text-xs text-center"
+                                          />
+                                          <input
+                                            defaultValue={ex.duration ?? ""}
+                                            onBlur={(e) => updateExerciseField(dateKey, idx, { duration: e.target.value })}
+                                            placeholder="時間"
+                                            className="w-14 px-1 py-0.5 rounded border border-slate-100 text-xs text-center"
+                                          />
+                                          <button
+                                            onClick={() => deleteExerciseRow(dateKey, idx)}
+                                            className="text-slate-300 hover:text-red-500 text-xs px-1"
+                                            aria-label="削除"
+                                          >×</button>
+                                        </div>
+                                      ) : (
+                                        <div className={`flex items-center gap-1.5 text-xs py-0.5 ${isDragging ? "bg-emerald-50 ring-1 ring-emerald-300 rounded" : ""}`}>
+                                          {handle}
+                                          <input
+                                            defaultValue={ex.name}
+                                            onBlur={(e) => updateExerciseField(dateKey, idx, { name: e.target.value })}
+                                            className="flex-1 min-w-0 px-1.5 py-0.5 rounded border border-slate-100 text-xs font-medium"
+                                          />
+                                          <input
+                                            defaultValue={ex.weight}
+                                            onBlur={(e) => updateExerciseField(dateKey, idx, { weight: e.target.value })}
+                                            placeholder="kg"
+                                            className="w-12 px-1 py-0.5 rounded border border-slate-100 text-xs text-center"
+                                          />
+                                          <span className="text-[9px] text-slate-400">×</span>
+                                          <input
+                                            type="number"
+                                            defaultValue={ex.reps}
+                                            onBlur={(e) => updateExerciseField(dateKey, idx, { reps: Number(e.target.value) || 0 })}
+                                            className="w-10 px-1 py-0.5 rounded border border-slate-100 text-xs text-center"
+                                          />
+                                          <span className="text-[9px] text-slate-400">×</span>
+                                          <input
+                                            type="number"
+                                            defaultValue={ex.sets}
+                                            onBlur={(e) => updateExerciseField(dateKey, idx, { sets: Number(e.target.value) || 0 })}
+                                            className="w-10 px-1 py-0.5 rounded border border-slate-100 text-xs text-center"
+                                          />
+                                          <button
+                                            onClick={() => deleteExerciseRow(dateKey, idx)}
+                                            disabled={isSaving}
+                                            className="text-slate-300 hover:text-red-500 text-xs px-1 disabled:opacity-50"
+                                            aria-label="削除"
+                                          >×</button>
+                                        </div>
+                                      );
+                                    }}
+                                  </SortableItem>
+                                );
+                              })}
+                            </SortableList>
                           </div>
                         );
                       })

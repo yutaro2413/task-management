@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { NOTE_SECTIONS, NoteSections, parseNote, serializeNote } from "@/lib/dailyNote";
-import { moveItem } from "@/lib/reorder";
+import { SortableList, SortableItem } from "./SortableList";
 
 const DRAFT_KEY_PREFIX = "dailyNote-draft-";
 
@@ -95,7 +95,12 @@ function WorkoutSection({
 
   const removeExercise = (idx: number) => onUpdate(exercises.filter((_, i) => i !== idx));
 
-  const moveExercise = (idx: number, dir: -1 | 1) => onUpdate(moveItem(exercises, idx, dir));
+  // 各エクササイズに表示順依存の id を付与 (dnd-kit 用)。Drop 時に index ベースで再構成する。
+  const idFor = (idx: number) => `ex-${idx}`;
+  const reorderExercises = (newIds: string[]) => {
+    const newOrder = newIds.map((id) => exercises[parseInt(id.replace("ex-", ""), 10)]);
+    onUpdate(newOrder);
+  };
 
   return (
     <div className="rounded-lg border border-slate-200 overflow-hidden">
@@ -134,52 +139,50 @@ function WorkoutSection({
               <p className="text-xs text-slate-400">メニュー未入力</p>
             )
           ) : (
-            <>
+            <SortableList ids={exercises.map((_, i) => idFor(i))} onReorder={reorderExercises}>
               {exercises.map((ex, idx) => (
-                <div key={idx} className={`rounded border p-2 ${ex.type === "running" ? "border-orange-200 bg-orange-50/30" : "border-slate-100"}`}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-bold text-slate-600">{ex.name}</span>
-                    <div className="flex items-center gap-0.5">
-                      <button
-                        onClick={() => moveExercise(idx, -1)}
-                        disabled={idx === 0}
-                        aria-label="上へ移動"
-                        className="p-0.5 text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M5 15l7-7 7 7" /></svg>
-                      </button>
-                      <button
-                        onClick={() => moveExercise(idx, 1)}
-                        disabled={idx === exercises.length - 1}
-                        aria-label="下へ移動"
-                        className="p-0.5 text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M19 9l-7 7-7-7" /></svg>
-                      </button>
-                      <button onClick={() => removeExercise(idx)} className="p-0.5 text-slate-300 hover:text-red-500" aria-label="削除">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                  {ex.type === "running" ? (
-                    <div className="flex gap-1">
-                      <input type="text" value={ex.distance || ""} onChange={(e) => updateExercise(idx, { distance: e.target.value })} placeholder="距離" className="flex-1 min-w-0 px-1.5 py-1 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-orange-400" />
-                      <input type="text" value={ex.duration || ""} onChange={(e) => updateExercise(idx, { duration: e.target.value })} placeholder="時間" className="flex-1 min-w-0 px-1.5 py-1 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-orange-400" />
-                      <input type="text" value={ex.pace || ""} onChange={(e) => updateExercise(idx, { pace: e.target.value })} placeholder="ペース" className="flex-1 min-w-0 px-1.5 py-1 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-orange-400" />
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1">
-                      <input type="text" value={ex.weight} onChange={(e) => updateExercise(idx, { weight: e.target.value })} placeholder="重量" className="w-14 px-1.5 py-1 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-emerald-500" />
-                      <input type="number" value={ex.reps} onChange={(e) => updateExercise(idx, { reps: Math.max(0, Number(e.target.value)) })} className="w-12 px-1 py-1 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-emerald-500" />
-                      <span className="text-[10px] text-slate-400">回</span>
-                      <input type="number" value={ex.sets} onChange={(e) => updateExercise(idx, { sets: Math.max(0, Number(e.target.value)) })} className="w-10 px-1 py-1 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-emerald-500" />
-                      <span className="text-[10px] text-slate-400">set</span>
+                <SortableItem key={idFor(idx)} id={idFor(idx)}>
+                  {({ listeners, setActivatorNodeRef, isDragging }) => (
+                    <div className={`rounded border p-2 mb-2 ${ex.type === "running" ? "border-orange-200 bg-orange-50/30" : "border-slate-100"} ${isDragging ? "shadow-lg ring-2 ring-emerald-300" : ""}`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <div
+                          ref={setActivatorNodeRef}
+                          {...listeners}
+                          className="flex items-center gap-1.5 flex-1 min-w-0 cursor-grab active:cursor-grabbing select-none"
+                          title="長押ししてドラッグで並び替え"
+                        >
+                          <span className="text-slate-300 text-xs leading-none">⋮⋮</span>
+                          <span className="text-xs font-bold text-slate-600 truncate">{ex.name}</span>
+                        </div>
+                        <button onClick={() => removeExercise(idx)} className="p-0.5 text-slate-300 hover:text-red-500 flex-shrink-0" aria-label="削除">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                      {ex.type === "running" ? (
+                        <div className="flex gap-1">
+                          <input type="text" value={ex.distance || ""} onChange={(e) => updateExercise(idx, { distance: e.target.value })} placeholder="距離" className="flex-1 min-w-0 px-1.5 py-1 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                          <input type="text" value={ex.duration || ""} onChange={(e) => updateExercise(idx, { duration: e.target.value })} placeholder="時間" className="flex-1 min-w-0 px-1.5 py-1 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                          <input type="text" value={ex.pace || ""} onChange={(e) => updateExercise(idx, { pace: e.target.value })} placeholder="ペース" className="flex-1 min-w-0 px-1.5 py-1 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <input type="text" value={ex.weight} onChange={(e) => updateExercise(idx, { weight: e.target.value })} placeholder="重量" className="w-14 px-1.5 py-1 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+                          <input type="number" value={ex.reps} onChange={(e) => updateExercise(idx, { reps: Math.max(0, Number(e.target.value)) })} className="w-12 px-1 py-1 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+                          <span className="text-[10px] text-slate-400">回</span>
+                          <input type="number" value={ex.sets} onChange={(e) => updateExercise(idx, { sets: Math.max(0, Number(e.target.value)) })} className="w-10 px-1 py-1 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+                          <span className="text-[10px] text-slate-400">set</span>
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
+                </SortableItem>
               ))}
+            </SortableList>
+          )}
+          {!readOnly && (
+            <>
               <button
                 onClick={() => setShowPicker(true)}
                 className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"

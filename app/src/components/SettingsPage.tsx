@@ -5,6 +5,7 @@ import Link from "next/link";
 import ExpenseIcon, { EXPENSE_ICON_OPTIONS } from "./ExpenseIcon";
 import KindleSyncSetup from "./KindleSyncSetup";
 import WebClipperSetup from "./WebClipperSetup";
+import { SortableList, SortableItem } from "./SortableList";
 import { features } from "@/lib/features";
 
 type Category = { id: string; name: string; excludeFromSummary: boolean };
@@ -153,16 +154,14 @@ export default function SettingsPage() {
     if (!confirm("削除しますか？")) return;
     await fetch(`/api/exercise-menus?id=${id}`, { method: "DELETE" }); fetchData();
   };
-  const moveExerciseMenuOrder = async (index: number, dir: -1 | 1) => {
-    const list = [...exerciseMenus];
-    const t = index + dir;
-    if (t < 0 || t >= list.length) return;
-    [list[index], list[t]] = [list[t], list[index]];
-    setExerciseMenus(list);
+  // 長押しドラッグ並び替え (筋トレメニュー専用)。新しい順序の id 配列を受け取って bulk update。
+  const reorderExerciseMenus = async (newIds: string[]) => {
+    const ordered = newIds.map((id) => exerciseMenus.find((m) => m.id === id)!).filter(Boolean);
+    setExerciseMenus(ordered);
     await fetch("/api/exercise-menus", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reorder: true, ids: list.map((m) => m.id) }),
+      body: JSON.stringify({ reorder: true, ids: newIds }),
     });
   };
 
@@ -386,60 +385,71 @@ export default function SettingsPage() {
         {/* Exercise Menus */}
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="px-4 py-3 bg-slate-50 border-b border-slate-100"><h2 className="text-sm font-semibold">筋トレメニュー</h2></div>
-          <div className="divide-y divide-slate-100">
-            {exerciseMenus.map((menu, i) => (
-              <div key={menu.id} className="px-4 py-3">
-                {editingMenu?.id === menu.id ? (
-                  <div className="space-y-2">
-                    <input type="text" value={editingMenu.name} onChange={(e) => setEditingMenu({ ...editingMenu, name: e.target.value })} className="w-full px-2 py-1 rounded border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                    <div className="flex gap-1">
-                      <button onClick={() => setEditingMenu({ ...editingMenu, type: "strength" })} className={`px-3 py-1 rounded-full text-xs font-medium border ${editingMenu.type === "strength" ? "bg-emerald-100 text-emerald-700 border-emerald-300" : "bg-white text-slate-400 border-slate-200"}`}>筋トレ</button>
-                      <button onClick={() => setEditingMenu({ ...editingMenu, type: "running" })} className={`px-3 py-1 rounded-full text-xs font-medium border ${editingMenu.type === "running" ? "bg-blue-100 text-blue-700 border-blue-300" : "bg-white text-slate-400 border-slate-200"}`}>ランニング</button>
-                    </div>
-                    {editingMenu.type !== "running" && (
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1">
-                          <input type="text" value={editingMenu.defaultWeight} onChange={(e) => setEditingMenu({ ...editingMenu, defaultWeight: e.target.value })} placeholder="重量" className="w-16 px-2 py-1 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
-                          <span className="text-[10px] text-slate-400">kg</span>
+          <SortableList ids={exerciseMenus.map((m) => m.id)} onReorder={reorderExerciseMenus}>
+            <div className="divide-y divide-slate-100">
+              {exerciseMenus.map((menu) => (
+                <SortableItem key={menu.id} id={menu.id}>
+                  {({ listeners, setActivatorNodeRef, isDragging }) => (
+                    <div className={`px-4 py-3 ${isDragging ? "bg-indigo-50 shadow-lg" : "bg-white"}`}>
+                      {editingMenu?.id === menu.id ? (
+                        <div className="space-y-2">
+                          <input type="text" value={editingMenu.name} onChange={(e) => setEditingMenu({ ...editingMenu, name: e.target.value })} className="w-full px-2 py-1 rounded border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                          <div className="flex gap-1">
+                            <button onClick={() => setEditingMenu({ ...editingMenu, type: "strength" })} className={`px-3 py-1 rounded-full text-xs font-medium border ${editingMenu.type === "strength" ? "bg-emerald-100 text-emerald-700 border-emerald-300" : "bg-white text-slate-400 border-slate-200"}`}>筋トレ</button>
+                            <button onClick={() => setEditingMenu({ ...editingMenu, type: "running" })} className={`px-3 py-1 rounded-full text-xs font-medium border ${editingMenu.type === "running" ? "bg-blue-100 text-blue-700 border-blue-300" : "bg-white text-slate-400 border-slate-200"}`}>ランニング</button>
+                          </div>
+                          {editingMenu.type !== "running" && (
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1">
+                                <input type="text" value={editingMenu.defaultWeight} onChange={(e) => setEditingMenu({ ...editingMenu, defaultWeight: e.target.value })} placeholder="重量" className="w-16 px-2 py-1 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                                <span className="text-[10px] text-slate-400">kg</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <input type="number" value={editingMenu.defaultReps} onChange={(e) => setEditingMenu({ ...editingMenu, defaultReps: Math.max(0, Number(e.target.value)) })} className="w-14 px-2 py-1 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                                <span className="text-[10px] text-slate-400">回</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <input type="number" value={editingMenu.defaultSets} onChange={(e) => setEditingMenu({ ...editingMenu, defaultSets: Math.max(0, Number(e.target.value)) })} className="w-12 px-2 py-1 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                                <span className="text-[10px] text-slate-400">set</span>
+                              </div>
+                            </div>
+                          )}
+                          <div className="flex gap-2">
+                            <button onClick={updateExerciseMenu} className="text-xs text-indigo-600 font-medium">保存</button>
+                            <button onClick={() => setEditingMenu(null)} className="text-xs text-slate-400">取消</button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <input type="number" value={editingMenu.defaultReps} onChange={(e) => setEditingMenu({ ...editingMenu, defaultReps: Math.max(0, Number(e.target.value)) })} className="w-14 px-2 py-1 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
-                          <span className="text-[10px] text-slate-400">回</span>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <div
+                            ref={setActivatorNodeRef}
+                            {...listeners}
+                            className="flex items-center gap-2 flex-1 min-w-0 cursor-grab active:cursor-grabbing select-none"
+                            title="長押ししてドラッグで並び替え"
+                          >
+                            <span className="text-slate-300 text-base leading-none">⋮⋮</span>
+                            <span className="text-sm">{menu.name}</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${menu.type === "running" ? "bg-blue-100 text-blue-600" : "bg-emerald-100 text-emerald-600"}`}>
+                              {menu.type === "running" ? "ランニング" : "筋トレ"}
+                            </span>
+                            {menu.type !== "running" && (
+                              <span className="text-[10px] text-slate-400">
+                                {menu.defaultWeight && `${menu.defaultWeight}kg `}{menu.defaultReps}回×{menu.defaultSets}set
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button onClick={() => setEditingMenu(menu)} className="text-xs text-indigo-600">編集</button>
+                            <button onClick={() => deleteExerciseMenu(menu.id)} className="text-xs text-red-500">削除</button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <input type="number" value={editingMenu.defaultSets} onChange={(e) => setEditingMenu({ ...editingMenu, defaultSets: Math.max(0, Number(e.target.value)) })} className="w-12 px-2 py-1 rounded border border-slate-200 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
-                          <span className="text-[10px] text-slate-400">set</span>
-                        </div>
-                      </div>
-                    )}
-                    <div className="flex gap-2">
-                      <button onClick={updateExerciseMenu} className="text-xs text-indigo-600 font-medium">保存</button>
-                      <button onClick={() => setEditingMenu(null)} className="text-xs text-slate-400">取消</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <ArrowButtons index={i} total={exerciseMenus.length} onMove={moveExerciseMenuOrder} />
-                      <span className="text-sm">{menu.name}</span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${menu.type === "running" ? "bg-blue-100 text-blue-600" : "bg-emerald-100 text-emerald-600"}`}>
-                        {menu.type === "running" ? "ランニング" : "筋トレ"}
-                      </span>
-                      {menu.type !== "running" && (
-                        <span className="text-[10px] text-slate-400">
-                          {menu.defaultWeight && `${menu.defaultWeight}kg `}{menu.defaultReps}回×{menu.defaultSets}set
-                        </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => setEditingMenu(menu)} className="text-xs text-indigo-600">編集</button>
-                      <button onClick={() => deleteExerciseMenu(menu.id)} className="text-xs text-red-500">削除</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+                  )}
+                </SortableItem>
+              ))}
+            </div>
+          </SortableList>
           <div className="px-4 py-3 border-t border-slate-100 space-y-2">
             <div className="flex items-center gap-2">
               <input type="text" value={newMenuName} onChange={(e) => setNewMenuName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addExerciseMenu()} placeholder="新しいメニュー名" className="flex-1 px-2 py-1.5 rounded border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
