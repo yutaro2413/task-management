@@ -153,6 +153,18 @@ export default function SettingsPage() {
     if (!confirm("削除しますか？")) return;
     await fetch(`/api/exercise-menus?id=${id}`, { method: "DELETE" }); fetchData();
   };
+  const moveExerciseMenuOrder = async (index: number, dir: -1 | 1) => {
+    const list = [...exerciseMenus];
+    const t = index + dir;
+    if (t < 0 || t >= list.length) return;
+    [list[index], list[t]] = [list[t], list[index]];
+    setExerciseMenus(list);
+    await fetch("/api/exercise-menus", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reorder: true, ids: list.map((m) => m.id) }),
+    });
+  };
 
   const ArrowButtons = ({ index, total, onMove }: { index: number; total: number; onMove: (i: number, d: -1 | 1) => void }) => (
     <div className="flex flex-col gap-0.5">
@@ -375,7 +387,7 @@ export default function SettingsPage() {
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="px-4 py-3 bg-slate-50 border-b border-slate-100"><h2 className="text-sm font-semibold">筋トレメニュー</h2></div>
           <div className="divide-y divide-slate-100">
-            {exerciseMenus.map((menu) => (
+            {exerciseMenus.map((menu, i) => (
               <div key={menu.id} className="px-4 py-3">
                 {editingMenu?.id === menu.id ? (
                   <div className="space-y-2">
@@ -408,6 +420,7 @@ export default function SettingsPage() {
                 ) : (
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
+                      <ArrowButtons index={i} total={exerciseMenus.length} onMove={moveExerciseMenuOrder} />
                       <span className="text-sm">{menu.name}</span>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${menu.type === "running" ? "bg-blue-100 text-blue-600" : "bg-emerald-100 text-emerald-600"}`}>
                         {menu.type === "running" ? "ランニング" : "筋トレ"}

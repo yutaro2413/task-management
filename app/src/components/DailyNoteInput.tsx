@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { NOTE_SECTIONS, NoteSections, parseNote, serializeNote } from "@/lib/dailyNote";
+import { moveItem } from "@/lib/reorder";
 
 const DRAFT_KEY_PREFIX = "dailyNote-draft-";
 
@@ -94,6 +95,8 @@ function WorkoutSection({
 
   const removeExercise = (idx: number) => onUpdate(exercises.filter((_, i) => i !== idx));
 
+  const moveExercise = (idx: number, dir: -1 | 1) => onUpdate(moveItem(exercises, idx, dir));
+
   return (
     <div className="rounded-lg border border-slate-200 overflow-hidden">
       <button
@@ -136,11 +139,29 @@ function WorkoutSection({
                 <div key={idx} className={`rounded border p-2 ${ex.type === "running" ? "border-orange-200 bg-orange-50/30" : "border-slate-100"}`}>
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-bold text-slate-600">{ex.name}</span>
-                    <button onClick={() => removeExercise(idx)} className="p-0.5 text-slate-300 hover:text-red-500">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
+                    <div className="flex items-center gap-0.5">
+                      <button
+                        onClick={() => moveExercise(idx, -1)}
+                        disabled={idx === 0}
+                        aria-label="上へ移動"
+                        className="p-0.5 text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M5 15l7-7 7 7" /></svg>
+                      </button>
+                      <button
+                        onClick={() => moveExercise(idx, 1)}
+                        disabled={idx === exercises.length - 1}
+                        aria-label="下へ移動"
+                        className="p-0.5 text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M19 9l-7 7-7-7" /></svg>
+                      </button>
+                      <button onClick={() => removeExercise(idx)} className="p-0.5 text-slate-300 hover:text-red-500" aria-label="削除">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                   {ex.type === "running" ? (
                     <div className="flex gap-1">
