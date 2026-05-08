@@ -142,16 +142,17 @@ function WorkoutSection({
             <SortableList ids={exercises.map((_, i) => idFor(i))} onReorder={reorderExercises}>
               {exercises.map((ex, idx) => (
                 <SortableItem key={idFor(idx)} id={idFor(idx)}>
-                  {({ listeners, setActivatorNodeRef, isDragging }) => (
+                  {({ listeners, setActivatorNodeRef, isDragging, handleStyle }) => (
                     <div className={`rounded border p-2 mb-2 ${ex.type === "running" ? "border-orange-200 bg-orange-50/30" : "border-slate-100"} ${isDragging ? "shadow-lg ring-2 ring-emerald-300" : ""}`}>
                       <div className="flex items-center justify-between mb-1">
-                        <div
-                          ref={setActivatorNodeRef}
-                          {...listeners}
-                          className="flex items-center gap-1.5 flex-1 min-w-0 cursor-grab active:cursor-grabbing select-none"
-                          title="長押ししてドラッグで並び替え"
-                        >
-                          <span className="text-slate-300 text-xs leading-none">⋮⋮</span>
+                        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                          <span
+                            ref={setActivatorNodeRef}
+                            {...listeners}
+                            style={handleStyle}
+                            className="text-slate-400 text-base leading-none cursor-grab active:cursor-grabbing select-none px-1 py-1"
+                            title="長押ししてドラッグで並び替え"
+                          >⋮⋮</span>
                           <span className="text-xs font-bold text-slate-600 truncate">{ex.name}</span>
                         </div>
                         <button onClick={() => removeExercise(idx)} className="p-0.5 text-slate-300 hover:text-red-500 flex-shrink-0" aria-label="削除">
