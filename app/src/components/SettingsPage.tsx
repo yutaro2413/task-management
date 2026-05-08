@@ -389,7 +389,7 @@ export default function SettingsPage() {
             <div className="divide-y divide-slate-100">
               {exerciseMenus.map((menu) => (
                 <SortableItem key={menu.id} id={menu.id}>
-                  {({ listeners, setActivatorNodeRef, isDragging }) => (
+                  {({ listeners, setActivatorNodeRef, isDragging, handleStyle }) => (
                     <div className={`px-4 py-3 ${isDragging ? "bg-indigo-50 shadow-lg" : "bg-white"}`}>
                       {editingMenu?.id === menu.id ? (
                         <div className="space-y-2">
@@ -421,13 +421,14 @@ export default function SettingsPage() {
                         </div>
                       ) : (
                         <div className="flex items-center justify-between">
-                          <div
-                            ref={setActivatorNodeRef}
-                            {...listeners}
-                            className="flex items-center gap-2 flex-1 min-w-0 cursor-grab active:cursor-grabbing select-none"
-                            title="長押ししてドラッグで並び替え"
-                          >
-                            <span className="text-slate-300 text-base leading-none">⋮⋮</span>
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span
+                              ref={setActivatorNodeRef}
+                              {...listeners}
+                              style={handleStyle}
+                              className="text-slate-400 text-lg leading-none cursor-grab active:cursor-grabbing select-none px-1 py-1"
+                              title="長押ししてドラッグで並び替え"
+                            >⋮⋮</span>
                             <span className="text-sm">{menu.name}</span>
                             <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${menu.type === "running" ? "bg-blue-100 text-blue-600" : "bg-emerald-100 text-emerald-600"}`}>
                               {menu.type === "running" ? "ランニング" : "筋トレ"}

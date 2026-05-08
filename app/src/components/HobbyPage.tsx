@@ -798,12 +798,13 @@ export default function HobbyPage() {
                                 const isSaving = savingExerciseKey === key;
                                 return (
                                   <SortableItem key={`ex-${idx}`} id={`ex-${idx}`}>
-                                    {({ listeners, setActivatorNodeRef, isDragging }) => {
+                                    {({ listeners, setActivatorNodeRef, isDragging, handleStyle }) => {
                                       const handle = (
                                         <span
                                           ref={setActivatorNodeRef}
                                           {...listeners}
-                                          className="text-slate-300 text-xs leading-none cursor-grab active:cursor-grabbing select-none px-0.5"
+                                          style={handleStyle}
+                                          className="text-slate-400 text-base leading-none cursor-grab active:cursor-grabbing select-none px-1 py-1"
                                           title="長押ししてドラッグで並び替え"
                                         >⋮⋮</span>
                                       );
