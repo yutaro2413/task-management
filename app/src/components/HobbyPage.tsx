@@ -651,18 +651,18 @@ export default function HobbyPage() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="sticky top-0 bg-white border-b border-slate-200 z-40 px-4">
+      <header className="sticky top-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 z-40 px-4">
         <div className="max-w-lg lg:max-w-3xl mx-auto">
           <div className="py-2 text-center">
             <span className="text-base font-bold">趣味</span>
           </div>
 
           {/* Tabs */}
-          <div className="flex bg-slate-100 rounded-lg p-0.5 mb-2">
+          <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 mb-2">
             <button
               onClick={() => setTab("workout")}
               className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-colors ${
-                tab === "workout" ? "bg-white text-emerald-700 shadow-sm" : "text-slate-500"
+                tab === "workout" ? "bg-white dark:bg-slate-900 text-emerald-700 shadow-sm" : "text-slate-500 dark:text-slate-400"
               }`}
             >
               💪 筋トレ推移
@@ -670,7 +670,7 @@ export default function HobbyPage() {
             <button
               onClick={() => setTab("reading")}
               className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-colors ${
-                tab === "reading" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500"
+                tab === "reading" ? "bg-white dark:bg-slate-900 text-blue-700 shadow-sm" : "text-slate-500 dark:text-slate-400"
               }`}
             >
               📚 読書
@@ -678,7 +678,7 @@ export default function HobbyPage() {
             <button
               onClick={() => setTab("habit")}
               className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-colors ${
-                tab === "habit" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500"
+                tab === "habit" ? "bg-white dark:bg-slate-900 text-indigo-700 shadow-sm" : "text-slate-500 dark:text-slate-400"
               }`}
             >
               🎯 習慣
@@ -686,7 +686,7 @@ export default function HobbyPage() {
             <button
               onClick={() => setTab("sleep")}
               className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-colors ${
-                tab === "sleep" ? "bg-white text-sky-700 shadow-sm" : "text-slate-500"
+                tab === "sleep" ? "bg-white dark:bg-slate-900 text-sky-700 shadow-sm" : "text-slate-500 dark:text-slate-400"
               }`}
             >
               🌙 睡眠
@@ -703,19 +703,19 @@ export default function HobbyPage() {
           {tab === "workout" && (
             <>
               {chartData.datasets.length > 0 ? (
-                <div className="bg-white rounded-xl border border-slate-200 p-4">
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
                   <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-                    <h3 className="text-sm font-bold text-slate-700">
+                    <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200">
                       {chartMode === "weight" ? "重量推移（週ごとの最大重量）" : "ボリューム推移（週ごとの最大 重量×回数×セット）"}
                     </h3>
-                    <div className="flex bg-slate-100 rounded-md p-0.5">
+                    <div className="flex bg-slate-100 dark:bg-slate-800 rounded-md p-0.5">
                       <button
                         onClick={() => setChartMode("weight")}
-                        className={`px-2.5 py-1 text-[10px] font-bold rounded ${chartMode === "weight" ? "bg-white text-emerald-700 shadow-sm" : "text-slate-500"}`}
+                        className={`px-2.5 py-1 text-[10px] font-bold rounded ${chartMode === "weight" ? "bg-white dark:bg-slate-900 text-emerald-700 shadow-sm" : "text-slate-500 dark:text-slate-400"}`}
                       >重量</button>
                       <button
                         onClick={() => setChartMode("volume")}
-                        className={`px-2.5 py-1 text-[10px] font-bold rounded ${chartMode === "volume" ? "bg-white text-emerald-700 shadow-sm" : "text-slate-500"}`}
+                        className={`px-2.5 py-1 text-[10px] font-bold rounded ${chartMode === "volume" ? "bg-white dark:bg-slate-900 text-emerald-700 shadow-sm" : "text-slate-500 dark:text-slate-400"}`}
                       >ボリューム</button>
                     </div>
                   </div>
@@ -757,37 +757,37 @@ export default function HobbyPage() {
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <p className="text-sm text-slate-400">筋トレの記録がまだありません</p>
-                  <p className="text-xs text-slate-300 mt-1">記録タブの「今日の一言」から記録してください</p>
+                  <p className="text-sm text-slate-400 dark:text-slate-500">筋トレの記録がまだありません</p>
+                  <p className="text-xs text-slate-300 dark:text-slate-600 mt-1">記録タブの「今日の一言」から記録してください</p>
                 </div>
               )}
 
               {/* ── 履歴 (inline 編集) ── */}
               {allWorkouts.length > 0 && (
-                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                  <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-2 flex-wrap">
-                    <h3 className="text-sm font-bold text-slate-700">履歴</h3>
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <div className="px-4 py-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2 flex-wrap">
+                    <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200">履歴</h3>
                     <input
                       value={historyFilter}
                       onChange={(e) => { setHistoryFilter(e.target.value); setHistoryLimit(20); }}
                       placeholder="メニュー名で絞り込み..."
-                      className="flex-1 min-w-[140px] px-2 py-1 rounded border border-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                      className="flex-1 min-w-[140px] px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400"
                     />
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500">
                       {filteredHistoryTotal > 0 ? `${Math.min(historyLimit, filteredHistoryTotal)}/${filteredHistoryTotal}件` : "0件"}
                     </span>
                   </div>
-                  <div className="divide-y divide-slate-100">
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
                     {filteredHistory.length === 0 ? (
-                      <p className="px-4 py-6 text-center text-xs text-slate-400">該当する記録がありません</p>
+                      <p className="px-4 py-6 text-center text-xs text-slate-400 dark:text-slate-500">該当する記録がありません</p>
                     ) : (
                       filteredHistory.map((log) => {
                         const dateKey = typeof log.date === "string" && log.date.includes("T") ? log.date.split("T")[0] : log.date;
                         return (
                           <div key={log.id} className="px-4 py-3 space-y-1.5">
                             <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-slate-600">{dateKey}</span>
-                              <button onClick={() => deleteWholeWorkoutDay(dateKey)} className="text-[10px] text-slate-300 hover:text-red-500">日全体を削除</button>
+                              <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{dateKey}</span>
+                              <button onClick={() => deleteWholeWorkoutDay(dateKey)} className="text-[10px] text-slate-300 dark:text-slate-600 hover:text-red-500">日全体を削除</button>
                             </div>
                             <SortableList
                               ids={log.exercises.map((_, i) => `ex-${i}`)}
@@ -804,7 +804,7 @@ export default function HobbyPage() {
                                           ref={setActivatorNodeRef}
                                           {...listeners}
                                           style={handleStyle}
-                                          className="text-slate-400 text-base leading-none cursor-grab active:cursor-grabbing select-none px-1 py-1"
+                                          className="text-slate-400 dark:text-slate-500 text-base leading-none cursor-grab active:cursor-grabbing select-none px-1 py-1"
                                           title="長押ししてドラッグで並び替え"
                                         >⋮⋮</span>
                                       );
@@ -815,23 +815,23 @@ export default function HobbyPage() {
                                           <input
                                             defaultValue={ex.name}
                                             onBlur={(e) => updateExerciseField(dateKey, idx, { name: e.target.value })}
-                                            className="flex-1 min-w-0 px-1.5 py-0.5 rounded border border-slate-100 text-xs"
+                                            className="flex-1 min-w-0 px-1.5 py-0.5 rounded border border-slate-100 dark:border-slate-800 text-xs"
                                           />
                                           <input
                                             defaultValue={ex.distance ?? ""}
                                             onBlur={(e) => updateExerciseField(dateKey, idx, { distance: e.target.value })}
                                             placeholder="距離"
-                                            className="w-14 px-1 py-0.5 rounded border border-slate-100 text-xs text-center"
+                                            className="w-14 px-1 py-0.5 rounded border border-slate-100 dark:border-slate-800 text-xs text-center"
                                           />
                                           <input
                                             defaultValue={ex.duration ?? ""}
                                             onBlur={(e) => updateExerciseField(dateKey, idx, { duration: e.target.value })}
                                             placeholder="時間"
-                                            className="w-14 px-1 py-0.5 rounded border border-slate-100 text-xs text-center"
+                                            className="w-14 px-1 py-0.5 rounded border border-slate-100 dark:border-slate-800 text-xs text-center"
                                           />
                                           <button
                                             onClick={() => deleteExerciseRow(dateKey, idx)}
-                                            className="text-slate-300 hover:text-red-500 text-xs px-1"
+                                            className="text-slate-300 dark:text-slate-600 hover:text-red-500 text-xs px-1"
                                             aria-label="削除"
                                           >×</button>
                                         </div>
@@ -841,32 +841,32 @@ export default function HobbyPage() {
                                           <input
                                             defaultValue={ex.name}
                                             onBlur={(e) => updateExerciseField(dateKey, idx, { name: e.target.value })}
-                                            className="flex-1 min-w-0 px-1.5 py-0.5 rounded border border-slate-100 text-xs font-medium"
+                                            className="flex-1 min-w-0 px-1.5 py-0.5 rounded border border-slate-100 dark:border-slate-800 text-xs font-medium"
                                           />
                                           <input
                                             defaultValue={ex.weight}
                                             onBlur={(e) => updateExerciseField(dateKey, idx, { weight: e.target.value })}
                                             placeholder="kg"
-                                            className="w-12 px-1 py-0.5 rounded border border-slate-100 text-xs text-center"
+                                            className="w-12 px-1 py-0.5 rounded border border-slate-100 dark:border-slate-800 text-xs text-center"
                                           />
-                                          <span className="text-[9px] text-slate-400">×</span>
+                                          <span className="text-[9px] text-slate-400 dark:text-slate-500">×</span>
                                           <input
                                             type="number"
                                             defaultValue={ex.reps}
                                             onBlur={(e) => updateExerciseField(dateKey, idx, { reps: Number(e.target.value) || 0 })}
-                                            className="w-10 px-1 py-0.5 rounded border border-slate-100 text-xs text-center"
+                                            className="w-10 px-1 py-0.5 rounded border border-slate-100 dark:border-slate-800 text-xs text-center"
                                           />
-                                          <span className="text-[9px] text-slate-400">×</span>
+                                          <span className="text-[9px] text-slate-400 dark:text-slate-500">×</span>
                                           <input
                                             type="number"
                                             defaultValue={ex.sets}
                                             onBlur={(e) => updateExerciseField(dateKey, idx, { sets: Number(e.target.value) || 0 })}
-                                            className="w-10 px-1 py-0.5 rounded border border-slate-100 text-xs text-center"
+                                            className="w-10 px-1 py-0.5 rounded border border-slate-100 dark:border-slate-800 text-xs text-center"
                                           />
                                           <button
                                             onClick={() => deleteExerciseRow(dateKey, idx)}
                                             disabled={isSaving}
-                                            className="text-slate-300 hover:text-red-500 text-xs px-1 disabled:opacity-50"
+                                            className="text-slate-300 dark:text-slate-600 hover:text-red-500 text-xs px-1 disabled:opacity-50"
                                             aria-label="削除"
                                           >×</button>
                                         </div>
@@ -884,7 +884,7 @@ export default function HobbyPage() {
                   {filteredHistoryTotal > historyLimit && (
                     <button
                       onClick={() => setHistoryLimit((n) => n + 20)}
-                      className="w-full py-2 text-xs text-emerald-600 font-medium border-t border-slate-100 hover:bg-slate-50"
+                      className="w-full py-2 text-xs text-emerald-600 font-medium border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800"
                     >
                       もっと表示 (+20)
                     </button>
@@ -902,7 +902,7 @@ export default function HobbyPage() {
               </Link>
               {/* Date nav */}
               <div className="flex items-center justify-between py-1">
-                <button onClick={() => changeDate(-1)} className="p-2 rounded-lg hover:bg-slate-100">
+                <button onClick={() => changeDate(-1)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path d="M15 19l-7-7 7-7" />
                   </svg>
@@ -917,7 +917,7 @@ export default function HobbyPage() {
                     )}
                   </div>
                 </div>
-                <button onClick={() => changeDate(1)} className="p-2 rounded-lg hover:bg-slate-100">
+                <button onClick={() => changeDate(1)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path d="M9 5l7 7-7 7" />
                   </svg>
@@ -926,10 +926,10 @@ export default function HobbyPage() {
 
               {/* Reading entries for this date */}
               {readings.map((entry) => (
-                <div key={entry.id} className="rounded-lg border border-slate-200 overflow-hidden">
+                <div key={entry.id} className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
                   <div className="flex items-center justify-between px-3 py-2 bg-blue-50">
                     <span className="text-sm font-bold text-blue-800">{entry.bookTitle.title}</span>
-                    <button onClick={() => removeReading(entry.id)} className="text-slate-300 hover:text-red-500 p-1">
+                    <button onClick={() => removeReading(entry.id)} className="text-slate-300 dark:text-slate-600 hover:text-red-500 p-1">
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path d="M6 18L18 6M6 6l12 12" />
                       </svg>
@@ -941,7 +941,7 @@ export default function HobbyPage() {
                       onBlur={(e) => updateReview(entry, e.target.value)}
                       placeholder="感想・メモ..."
                       rows={3}
-                      className="w-full px-2 py-1.5 rounded border border-slate-200 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 resize-y leading-relaxed"
+                      className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 resize-y leading-relaxed"
                     />
                   </div>
                 </div>
@@ -956,7 +956,7 @@ export default function HobbyPage() {
                       value={newBookTitle}
                       onChange={(e) => setNewBookTitle(e.target.value)}
                       placeholder="本のタイトルを入力..."
-                      className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                       list="book-suggestions"
                     />
                     <datalist id="book-suggestions">
@@ -970,7 +970,7 @@ export default function HobbyPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => { setShowBookInput(false); setNewBookTitle(""); }}
-                      className="flex-1 py-1.5 rounded-lg text-xs text-slate-500 border border-slate-200"
+                      className="flex-1 py-1.5 rounded-lg text-xs text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
                     >
                       キャンセル
                     </button>
@@ -995,7 +995,7 @@ export default function HobbyPage() {
               {/* Registered book titles */}
               {bookTitles.length > 0 && (
                 <div className="pt-2">
-                  <p className="text-xs font-semibold text-slate-400 mb-2">登録済みの本</p>
+                  <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 mb-2">登録済みの本</p>
                   <div className="flex flex-wrap gap-1.5">
                     {bookTitles
                       .filter((b) => !readings.some((r) => r.bookTitleId === b.id))
@@ -1020,25 +1020,25 @@ export default function HobbyPage() {
               {/* Tracking grids per habit */}
               {habits.filter((h) => h.active).length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-sm text-slate-400">アクティブな習慣がまだありません</p>
-                  <p className="text-xs text-slate-300 mt-1">下の「習慣の管理」から追加してください</p>
+                  <p className="text-sm text-slate-400 dark:text-slate-500">アクティブな習慣がまだありません</p>
+                  <p className="text-xs text-slate-300 dark:text-slate-600 mt-1">下の「習慣の管理」から追加してください</p>
                 </div>
               ) : (
                 habits
                   .filter((h) => h.active)
                   .map((h) => (
-                    <div key={h.id} className="bg-white rounded-xl border border-slate-200 p-3">
+                    <div key={h.id} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
                       <div className="flex items-center gap-2 mb-2">
                         <span
                           className="w-3 h-3 rounded-full flex-shrink-0"
                           style={{ backgroundColor: h.color }}
                         />
-                        <span className="text-sm font-bold text-slate-700 flex-1 truncate">
+                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200 flex-1 truncate">
                           {h.name}
                         </span>
                         <button
                           onClick={() => openHabitEdit(h)}
-                          className="text-[10px] text-slate-400 hover:text-slate-600"
+                          className="text-[10px] text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
                         >
                           編集
                         </button>
@@ -1074,7 +1074,7 @@ export default function HobbyPage() {
                           </div>
                         ))}
                       </div>
-                      <div className="flex items-center justify-end gap-1 mt-2 text-[10px] text-slate-400">
+                      <div className="flex items-center justify-end gap-1 mt-2 text-[10px] text-slate-400 dark:text-slate-500">
                         <span>少</span>
                         {[1, 2, 3, 4, 5].map((lv) => (
                           <span
@@ -1090,9 +1090,9 @@ export default function HobbyPage() {
               )}
 
               {/* Management */}
-              <div className="bg-white rounded-xl border border-slate-200 p-3">
+              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-bold text-slate-700">習慣の管理</h3>
+                  <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200">習慣の管理</h3>
                   <button
                     onClick={openHabitAdd}
                     className="text-xs px-3 py-1 rounded-full bg-indigo-600 text-white font-bold hover:bg-indigo-700"
@@ -1101,11 +1101,11 @@ export default function HobbyPage() {
                   </button>
                 </div>
                 {habits.length === 0 ? (
-                  <p className="text-xs text-slate-400 text-center py-3">
+                  <p className="text-xs text-slate-400 dark:text-slate-500 text-center py-3">
                     習慣を追加して記録を始めましょう
                   </p>
                 ) : (
-                  <div className="divide-y divide-slate-100">
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
                     {habits.map((h) => (
                       <div key={h.id} className="py-2 flex items-center gap-2">
                         <span
@@ -1115,28 +1115,28 @@ export default function HobbyPage() {
                         <div className="flex-1 min-w-0">
                           <p
                             className={`text-sm font-medium truncate ${
-                              h.active ? "" : "text-slate-400"
+                              h.active ? "" : "text-slate-400 dark:text-slate-500"
                             }`}
                           >
                             {h.name}
                           </p>
                           {!h.active && (
-                            <p className="text-[10px] text-slate-400">非表示中</p>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500">非表示中</p>
                           )}
                         </div>
                         <button
                           onClick={() => toggleHabitActive(h)}
-                          className="text-[10px] px-2 py-1 rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50"
+                          className="text-[10px] px-2 py-1 rounded-full border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
                         >
                           {h.active ? "非表示" : "表示"}
                         </button>
                         <button
                           onClick={() => openHabitEdit(h)}
-                          className="p-1.5 rounded hover:bg-slate-100"
+                          className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
                           aria-label="編集"
                         >
                           <svg
-                            className="w-4 h-4 text-slate-400"
+                            className="w-4 h-4 text-slate-400 dark:text-slate-500"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -1151,7 +1151,7 @@ export default function HobbyPage() {
                           aria-label="削除"
                         >
                           <svg
-                            className="w-4 h-4 text-slate-300 hover:text-red-500"
+                            className="w-4 h-4 text-slate-300 dark:text-slate-600 hover:text-red-500"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -1173,22 +1173,22 @@ export default function HobbyPage() {
             <>
               {sleepSessions.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-sm text-slate-400">睡眠データがまだありません</p>
-                  <p className="text-xs text-slate-300 mt-1">
-                    iOSショートカットで <code className="bg-slate-100 px-1 rounded">/api/unlock-events</code> に POST してください
+                  <p className="text-sm text-slate-400 dark:text-slate-500">睡眠データがまだありません</p>
+                  <p className="text-xs text-slate-300 dark:text-slate-600 mt-1">
+                    iOSショートカットで <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">/api/unlock-events</code> に POST してください
                   </p>
                 </div>
               ) : (
                 <>
                   {/* Chart with view toggle */}
-                  <div className="bg-white rounded-xl border border-slate-200 p-4">
+                  <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
                     <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-                      <h3 className="text-sm font-bold text-slate-700">
+                      <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200">
                         {sleepView === "duration" && `睡眠時間（全${sleepChart.count}日 / 中央値 ${sleepChart.median.toFixed(2)}h）`}
                         {sleepView === "sleepAt" && "就寝時刻の推移"}
                         {sleepView === "wakeAt" && "起床時刻の推移"}
                       </h3>
-                      <div className="flex gap-1 bg-slate-100 rounded-lg p-0.5">
+                      <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
                         {[
                           { key: "duration", label: "時間" },
                           { key: "sleepAt", label: "就寝" },
@@ -1198,7 +1198,7 @@ export default function HobbyPage() {
                             key={v.key}
                             onClick={() => setSleepView(v.key as "duration" | "sleepAt" | "wakeAt")}
                             className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
-                              sleepView === v.key ? "bg-white text-sky-700 shadow-sm font-medium" : "text-slate-500"
+                              sleepView === v.key ? "bg-white dark:bg-slate-900 text-sky-700 shadow-sm font-medium" : "text-slate-500 dark:text-slate-400"
                             }`}
                           >
                             {v.label}
@@ -1332,9 +1332,9 @@ export default function HobbyPage() {
                   </div>
 
                   {/* Log list */}
-                  <div className="bg-white rounded-xl border border-slate-200">
-                    <h3 className="text-sm font-bold text-slate-700 px-3 pt-3">睡眠ログ</h3>
-                    <div className="divide-y divide-slate-100">
+                  <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 px-3 pt-3">睡眠ログ</h3>
+                    <div className="divide-y divide-slate-100 dark:divide-slate-800">
                       {[...sleepSessions].reverse().map((s) => {
                         const dateLabel = new Date(s.date + "T00:00:00").toLocaleDateString("ja-JP", {
                           month: "numeric", day: "numeric", weekday: "short",
@@ -1344,18 +1344,18 @@ export default function HobbyPage() {
                           <button
                             key={s.date}
                             onClick={() => openSleepEdit(s)}
-                            className="w-full text-left px-3 py-2.5 hover:bg-slate-50 active:bg-slate-100 transition-colors"
+                            className="w-full text-left px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 active:bg-slate-100 transition-colors"
                           >
                             <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs font-bold text-slate-600">{dateLabel}</span>
+                              <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{dateLabel}</span>
                               <span className="text-xs font-bold text-sky-700">{formatDurationHM(s.durationMinutes)}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-[11px] text-slate-500 mb-1">
+                            <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mb-1">
                               <span>🌙 {formatJSTHHMM(s.sleepAt)}</span>
-                              <span className="text-slate-300">→</span>
+                              <span className="text-slate-300 dark:text-slate-600">→</span>
                               <span>☀️ {formatJSTHHMM(s.wakeAt)}</span>
                             </div>
-                            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                               <div className="h-full bg-sky-400 rounded-full" style={{ width: `${widthPct}%` }} />
                             </div>
                           </button>
@@ -1371,12 +1371,12 @@ export default function HobbyPage() {
                 <button
                   onClick={runCleanup}
                   disabled={cleanupRunning}
-                  className="text-[11px] text-slate-400 hover:text-slate-600 underline disabled:opacity-50"
+                  className="text-[11px] text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 underline disabled:opacity-50"
                 >
                   {cleanupRunning ? "クリーンアップ中..." : "古いデータを集約して削除"}
                 </button>
                 {cleanupResult && (
-                  <p className="text-[10px] text-slate-400 mt-1">{cleanupResult}</p>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">{cleanupResult}</p>
                 )}
               </div>
             </>
@@ -1391,39 +1391,39 @@ export default function HobbyPage() {
           onClick={() => setEditingSleep(null)}
         >
           <div
-            className="bg-white rounded-2xl w-full max-w-sm p-5 shadow-xl"
+            className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-sm p-5 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-base font-bold mb-1">睡眠時刻を編集</h3>
-            <p className="text-xs text-slate-500 mb-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
               {new Date(editingSleep.date + "T00:00:00").toLocaleDateString("ja-JP", {
                 month: "numeric", day: "numeric", weekday: "short",
               })}
             </p>
             <div className="space-y-3">
               <label className="block">
-                <span className="text-xs text-slate-600 flex items-center gap-1">🌙 就寝時刻</span>
+                <span className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1">🌙 就寝時刻</span>
                 <input
                   type="time"
                   value={editSleepHM}
                   onChange={(e) => setEditSleepHM(e.target.value)}
-                  className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm"
                 />
               </label>
               <label className="block">
-                <span className="text-xs text-slate-600 flex items-center gap-1">☀️ 起床時刻</span>
+                <span className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1">☀️ 起床時刻</span>
                 <input
                   type="time"
                   value={editWakeHM}
                   onChange={(e) => setEditWakeHM(e.target.value)}
-                  className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm"
                 />
               </label>
             </div>
             <div className="flex gap-2 mt-5">
               <button
                 onClick={() => setEditingSleep(null)}
-                className="flex-1 py-2.5 rounded-lg text-sm text-slate-600 border border-slate-200 hover:bg-slate-50"
+                className="flex-1 py-2.5 rounded-lg text-sm text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 キャンセル
               </button>
@@ -1446,18 +1446,18 @@ export default function HobbyPage() {
           onClick={() => setHabitModalOpen(false)}
         >
           <div
-            className="bg-white rounded-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto shadow-xl"
+            className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-5 pt-4 pb-3 border-b border-slate-100">
+            <div className="px-5 pt-4 pb-3 border-b border-slate-100 dark:border-slate-800">
               <h3 className="text-base font-bold">
                 {editHabit ? "習慣を編集" : "習慣を追加"}
               </h3>
             </div>
             <div className="p-4 space-y-3">
               {/* Name */}
-              <div className="flex items-center bg-slate-50 rounded-lg px-3 py-2">
-                <span className="text-xs text-slate-500 w-16 flex-shrink-0">名前</span>
+              <div className="flex items-center bg-slate-50 dark:bg-slate-900 rounded-lg px-3 py-2">
+                <span className="text-xs text-slate-500 dark:text-slate-400 w-16 flex-shrink-0">名前</span>
                 <input
                   type="text"
                   value={hName}
@@ -1469,7 +1469,7 @@ export default function HobbyPage() {
 
               {/* Color */}
               <div>
-                <p className="text-xs font-semibold text-slate-500 mb-2">カラー</p>
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">カラー</p>
                 <div className="flex flex-wrap gap-2">
                   {HABIT_COLOR_PRESETS.map((c) => (
                     <button
@@ -1487,7 +1487,7 @@ export default function HobbyPage() {
 
               {/* Levels */}
               <div>
-                <p className="text-xs font-semibold text-slate-500 mb-2">
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">
                   レベル別ラベル（空欄は表示されません）
                 </p>
                 <div className="space-y-1.5">
@@ -1545,7 +1545,7 @@ export default function HobbyPage() {
               )}
               <button
                 onClick={() => setHabitModalOpen(false)}
-                className="w-full py-2 text-xs text-slate-500"
+                className="w-full py-2 text-xs text-slate-500 dark:text-slate-400"
               >
                 キャンセル
               </button>

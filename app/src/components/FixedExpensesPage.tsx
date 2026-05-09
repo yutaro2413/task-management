@@ -137,15 +137,15 @@ export default function FixedExpensesPage() {
       {saving && <LoadingOverlay />}
 
       {/* Header */}
-      <header className="sticky top-0 bg-white border-b border-slate-200 z-40 px-4 py-3">
+      <header className="sticky top-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 z-40 px-4 py-3">
         <div className="flex items-center justify-between max-w-lg mx-auto">
-          <Link href="/settings" className="p-2 rounded-lg hover:bg-slate-100">
+          <Link href="/settings" className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path d="M15 19l-7-7 7-7" />
             </svg>
           </Link>
           <h1 className="text-lg font-bold">固定費</h1>
-          <button onClick={openAdd} className="p-2 rounded-lg hover:bg-slate-100 text-indigo-600">
+          <button onClick={openAdd} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-indigo-600">
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path d="M12 5v14M5 12h14" />
             </svg>
@@ -155,9 +155,9 @@ export default function FixedExpensesPage() {
 
       <div className="flex-1 overflow-y-auto max-w-lg mx-auto w-full">
         {/* Monthly total */}
-        <div className="px-4 py-3 bg-slate-50 border-b border-slate-200">
+        <div className="px-4 py-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-slate-500">月額合計(支出)</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">月額合計(支出)</span>
             <span className="text-lg font-bold text-rose-600">{totalMonthly.toLocaleString()}円</span>
           </div>
         </div>
@@ -167,17 +167,17 @@ export default function FixedExpensesPage() {
             <div className="w-6 h-6 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
           </div>
         ) : items.length === 0 ? (
-          <p className="text-center text-sm text-slate-400 py-12">固定費が登録されていません</p>
+          <p className="text-center text-sm text-slate-400 dark:text-slate-500 py-12">固定費が登録されていません</p>
         ) : (
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {items.map((item, idx) => (
               <div key={item.id} className="px-4 py-3 flex items-center gap-3">
                 {/* Reorder */}
                 <div className="flex flex-col gap-0.5">
-                  <button onClick={() => moveOrder(idx, -1)} disabled={idx === 0} className="text-slate-400 hover:text-slate-600 disabled:opacity-20">
+                  <button onClick={() => moveOrder(idx, -1)} disabled={idx === 0} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-20">
                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M5 15l7-7 7 7" /></svg>
                   </button>
-                  <button onClick={() => moveOrder(idx, 1)} disabled={idx === items.length - 1} className="text-slate-400 hover:text-slate-600 disabled:opacity-20">
+                  <button onClick={() => moveOrder(idx, 1)} disabled={idx === items.length - 1} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-20">
                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M19 9l-7 7-7-7" /></svg>
                   </button>
                 </div>
@@ -186,13 +186,13 @@ export default function FixedExpensesPage() {
                 {item.category ? (
                   <ExpenseIcon icon={item.category.icon} color={item.category.color} size={24} />
                 ) : (
-                  <div className="w-6 h-6 rounded-full bg-slate-200" />
+                  <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700" />
                 )}
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{item.title}</p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-400 dark:text-slate-500">
                     {item.category?.name || "未分類"} ・ 毎月{item.day}日
                   </p>
                 </div>
@@ -206,13 +206,13 @@ export default function FixedExpensesPage() {
 
                 {/* Actions */}
                 <div className="flex items-center gap-1">
-                  <button onClick={() => openEdit(item)} className="p-1.5 rounded hover:bg-slate-100">
-                    <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <button onClick={() => openEdit(item)} className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <svg className="w-4 h-4 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                   </button>
                   <button onClick={() => handleDelete(item.id)} className="p-1.5 rounded hover:bg-red-50">
-                    <svg className="w-4 h-4 text-slate-300 hover:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="w-4 h-4 text-slate-300 dark:text-slate-600 hover:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
@@ -226,13 +226,13 @@ export default function FixedExpensesPage() {
       {/* Add/Edit Modal */}
       {showAdd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop px-4" onClick={() => setShowAdd(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
             {/* Type toggle */}
-            <div className="flex bg-slate-100 rounded-t-2xl">
+            <div className="flex bg-slate-100 dark:bg-slate-800 rounded-t-2xl">
               <button
                 onClick={() => setType("expense")}
                 className={`flex-1 py-3 text-sm font-bold rounded-tl-2xl transition-colors ${
-                  type === "expense" ? "bg-rose-500 text-white" : "text-slate-500"
+                  type === "expense" ? "bg-rose-500 text-white" : "text-slate-500 dark:text-slate-400"
                 }`}
               >
                 支出
@@ -240,7 +240,7 @@ export default function FixedExpensesPage() {
               <button
                 onClick={() => setType("income")}
                 className={`flex-1 py-3 text-sm font-bold rounded-tr-2xl transition-colors ${
-                  type === "income" ? "bg-green-500 text-white" : "text-slate-500"
+                  type === "income" ? "bg-green-500 text-white" : "text-slate-500 dark:text-slate-400"
                 }`}
               >
                 収入
@@ -249,8 +249,8 @@ export default function FixedExpensesPage() {
 
             <div className="p-4 space-y-3">
               {/* Title */}
-              <div className="flex items-center bg-slate-50 rounded-lg px-3 py-2">
-                <span className="text-xs text-slate-500 w-16 flex-shrink-0">タイトル</span>
+              <div className="flex items-center bg-slate-50 dark:bg-slate-900 rounded-lg px-3 py-2">
+                <span className="text-xs text-slate-500 dark:text-slate-400 w-16 flex-shrink-0">タイトル</span>
                 <input
                   type="text"
                   value={title}
@@ -261,8 +261,8 @@ export default function FixedExpensesPage() {
               </div>
 
               {/* Amount */}
-              <div className="flex items-center bg-slate-50 rounded-lg px-3 py-2">
-                <span className="text-xs text-slate-500 w-16 flex-shrink-0">金額</span>
+              <div className="flex items-center bg-slate-50 dark:bg-slate-900 rounded-lg px-3 py-2">
+                <span className="text-xs text-slate-500 dark:text-slate-400 w-16 flex-shrink-0">金額</span>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -275,12 +275,12 @@ export default function FixedExpensesPage() {
                   placeholder="0"
                   className="flex-1 text-lg font-bold bg-transparent focus:outline-none text-right"
                 />
-                <span className="text-sm text-slate-500 ml-1">円</span>
+                <span className="text-sm text-slate-500 dark:text-slate-400 ml-1">円</span>
               </div>
 
               {/* Day */}
-              <div className="flex items-center bg-slate-50 rounded-lg px-3 py-2">
-                <span className="text-xs text-slate-500 w-16 flex-shrink-0">引落日</span>
+              <div className="flex items-center bg-slate-50 dark:bg-slate-900 rounded-lg px-3 py-2">
+                <span className="text-xs text-slate-500 dark:text-slate-400 w-16 flex-shrink-0">引落日</span>
                 <span className="text-sm flex-1">毎月</span>
                 <select
                   value={day}
@@ -296,7 +296,7 @@ export default function FixedExpensesPage() {
               {/* Category */}
               {categories.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 mb-2">カテゴリー</p>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">カテゴリー</p>
                   <div className="grid grid-cols-3 gap-2">
                     {categories.map((cat) => (
                       <button
@@ -305,11 +305,11 @@ export default function FixedExpensesPage() {
                         className={`py-2 px-2 rounded-lg border text-center transition-all flex flex-col items-center gap-1 ${
                           categoryId === cat.id
                             ? "border-indigo-500 bg-indigo-50"
-                            : "border-slate-200 hover:bg-slate-50"
+                            : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
                         }`}
                       >
                         <ExpenseIcon icon={cat.icon} color={cat.color} size={20} />
-                        <span className="text-[10px] font-medium text-slate-700 leading-tight">{cat.name}</span>
+                        <span className="text-[10px] font-medium text-slate-700 dark:text-slate-200 leading-tight">{cat.name}</span>
                       </button>
                     ))}
                   </div>

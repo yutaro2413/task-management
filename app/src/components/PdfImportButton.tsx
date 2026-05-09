@@ -97,55 +97,55 @@ export default function PdfImportButton({ onImported }: { onImported?: () => voi
 
       {status.kind !== "idle" && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-end lg:items-center justify-center" onClick={reset}>
-          <div className="bg-white w-full lg:max-w-lg lg:rounded-xl rounded-t-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white z-10">
+          <div className="bg-white dark:bg-slate-900 w-full lg:max-w-lg lg:rounded-xl rounded-t-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between sticky top-0 bg-white dark:bg-slate-900 z-10">
               <h2 className="text-base font-bold">PDF 取込</h2>
-              <button onClick={reset} className="text-slate-400 text-sm">×</button>
+              <button onClick={reset} className="text-slate-400 dark:text-slate-500 text-sm">×</button>
             </div>
 
             <div className="px-4 py-4 space-y-3">
               {status.kind === "parsing" && (
-                <p className="text-sm text-slate-500">解析中: {status.fileName}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">解析中: {status.fileName}</p>
               )}
 
               {status.kind === "preview" && (
                 <>
                   <div>
-                    <label className="text-xs text-slate-500">タイトル</label>
+                    <label className="text-xs text-slate-500 dark:text-slate-400">タイトル</label>
                     <input
                       value={titleEdit}
                       onChange={(e) => setTitleEdit(e.target.value)}
-                      className="w-full px-3 py-2 rounded border border-slate-200 text-sm"
+                      className="w-full px-3 py-2 rounded border border-slate-200 dark:border-slate-700 text-sm"
                     />
-                    <p className="text-[10px] text-slate-400 mt-0.5">元ファイル: {status.fileName} · {status.pageCount} ページ</p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">元ファイル: {status.fileName} · {status.pageCount} ページ</p>
                   </div>
-                  <div className="border border-slate-200 rounded-lg p-3 space-y-2">
-                    <p className="text-xs font-bold text-slate-600">
+                  <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
+                    <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
                       抽出されたハイライト: {status.highlights.length} 件
                       {status.highlights.filter((h) => !h.text).length > 0 && (
-                        <span className="text-slate-400 font-normal">（うち本文無し: {status.highlights.filter((h) => !h.text).length} 件はスキップ）</span>
+                        <span className="text-slate-400 dark:text-slate-500 font-normal">（うち本文無し: {status.highlights.filter((h) => !h.text).length} 件はスキップ）</span>
                       )}
                     </p>
                     {status.highlights.length === 0 ? (
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-slate-400 dark:text-slate-500">
                         この PDF には /Highlight 注釈が見つかりませんでした。<br />
                         Preview / Acrobat / Goodnotes 等でハイライト付けされている PDF が対象です。スキャン PDF・画像のみの PDF からは取得できません。
                       </p>
                     ) : (
                       <ul className="max-h-60 overflow-y-auto space-y-1">
                         {status.highlights.slice(0, 30).map((h, i) => (
-                          <li key={i} className="text-[11px] text-slate-600 border-l-2 border-amber-400 pl-2">
-                            <span className="text-slate-400">p.{h.page}</span> {h.text || <em className="text-slate-400">（本文無し）</em>}
+                          <li key={i} className="text-[11px] text-slate-600 dark:text-slate-300 border-l-2 border-amber-400 pl-2">
+                            <span className="text-slate-400 dark:text-slate-500">p.{h.page}</span> {h.text || <em className="text-slate-400 dark:text-slate-500">（本文無し）</em>}
                           </li>
                         ))}
                         {status.highlights.length > 30 && (
-                          <li className="text-[10px] text-slate-400 italic">...他 {status.highlights.length - 30} 件</li>
+                          <li className="text-[10px] text-slate-400 dark:text-slate-500 italic">...他 {status.highlights.length - 30} 件</li>
                         )}
                       </ul>
                     )}
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={reset} className="flex-1 py-2 rounded-lg border border-slate-200 text-slate-500 text-sm">キャンセル</button>
+                    <button onClick={reset} className="flex-1 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-sm">キャンセル</button>
                     <button
                       onClick={onConfirm}
                       disabled={status.highlights.filter((h) => h.text).length === 0}
@@ -158,17 +158,17 @@ export default function PdfImportButton({ onImported }: { onImported?: () => voi
               )}
 
               {status.kind === "uploading" && (
-                <p className="text-sm text-slate-500">送信中...</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">送信中...</p>
               )}
 
               {status.kind === "done" && (
                 <div className="space-y-3 text-center py-4">
                   <p className="text-2xl">✅</p>
-                  <p className="text-sm font-bold text-slate-700">取込完了</p>
-                  <p className="text-xs text-slate-500">新規 {status.created} 件 / 既存 {status.existed} 件</p>
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">取込完了</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">新規 {status.created} 件 / 既存 {status.existed} 件</p>
                   <div className="flex gap-2 justify-center">
                     <a href={`/books/${status.bookId}`} className="px-4 py-2 rounded-lg bg-violet-600 text-white text-xs font-bold">書籍を見る</a>
-                    <button onClick={reset} className="px-4 py-2 rounded-lg border border-slate-200 text-xs text-slate-500">閉じる</button>
+                    <button onClick={reset} className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">閉じる</button>
                   </div>
                 </div>
               )}
@@ -177,8 +177,8 @@ export default function PdfImportButton({ onImported }: { onImported?: () => voi
                 <div className="space-y-3 text-center py-4">
                   <p className="text-2xl">⚠️</p>
                   <p className="text-sm font-bold text-red-600">エラー</p>
-                  <p className="text-xs text-slate-500 whitespace-pre-wrap">{status.message}</p>
-                  <button onClick={reset} className="px-4 py-2 rounded-lg border border-slate-200 text-xs text-slate-500">閉じる</button>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 whitespace-pre-wrap">{status.message}</p>
+                  <button onClick={reset} className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">閉じる</button>
                 </div>
               )}
             </div>

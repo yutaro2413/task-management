@@ -34,7 +34,7 @@ const SOURCE_LABEL: Record<string, string> = {
 
 const SOURCE_COLOR: Record<string, string> = {
   kindle: "bg-amber-50 text-amber-700",
-  paper: "bg-slate-100 text-slate-600",
+  paper: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300",
   manga: "bg-pink-50 text-pink-700",
   anime: "bg-sky-50 text-sky-700",
   web: "bg-emerald-50 text-emerald-700",
@@ -100,7 +100,7 @@ export default function BooksPage() {
 
   return (
     <div className="flex-1 flex flex-col">
-      <header className="sticky top-0 bg-white border-b border-slate-200 z-40 px-4 py-3">
+      <header className="sticky top-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 z-40 px-4 py-3">
         <div className="max-w-lg lg:max-w-5xl mx-auto">
           <h1 className="text-lg font-bold text-center mb-2">書籍</h1>
           <div className="flex gap-1 mb-2 flex-wrap">
@@ -113,14 +113,14 @@ export default function BooksPage() {
               ...(features.webClipper ? [{ v: "web", label: "Web" }] : []),
               ...(features.pdfImport ? [{ v: "pdf", label: "PDF" }] : []),
             ].map((t) => (
-              <button key={t.v} onClick={() => setFilter(t.v)} className={`flex-1 min-w-[55px] py-1.5 text-xs font-bold rounded-md transition-colors ${filter === t.v ? "bg-indigo-100 text-indigo-700" : "text-slate-500 bg-slate-50"}`}>{t.label}</button>
+              <button key={t.v} onClick={() => setFilter(t.v)} className={`flex-1 min-w-[55px] py-1.5 text-xs font-bold rounded-md transition-colors ${filter === t.v ? "bg-indigo-100 text-indigo-700" : "text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900"}`}>{t.label}</button>
             ))}
           </div>
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="タイトル検索..."
-            className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
           />
         </div>
       </header>
@@ -129,22 +129,22 @@ export default function BooksPage() {
         <div className="max-w-lg lg:max-w-5xl mx-auto py-4 space-y-3">
           <div className="flex gap-2">
             <button onClick={() => setShowForm(true)} className="flex-1 py-2 rounded-lg border-2 border-dashed border-indigo-300 text-indigo-600 text-sm font-medium hover:bg-indigo-50">+ 書籍を追加</button>
-            <button onClick={() => setShowSeriesForm(!showSeriesForm)} className="px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-500">シリーズ管理</button>
+            <button onClick={() => setShowSeriesForm(!showSeriesForm)} className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">シリーズ管理</button>
           </div>
           {features.pdfImport && <PdfImportButton onImported={load} />}
 
           {showSeriesForm && (
-            <div className="bg-white rounded-lg border border-slate-200 p-3 space-y-2">
+            <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-2">
               <div className="flex gap-2">
-                <input value={newSeriesName} onChange={(e) => setNewSeriesName(e.target.value)} placeholder="シリーズ名（例: ワンピース）" className="flex-1 px-2 py-1.5 rounded border border-slate-200 text-sm" />
+                <input value={newSeriesName} onChange={(e) => setNewSeriesName(e.target.value)} placeholder="シリーズ名（例: ワンピース）" className="flex-1 px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 text-sm" />
                 <button onClick={addSeries} disabled={!newSeriesName.trim()} className="px-3 py-1.5 rounded text-xs font-bold text-white bg-indigo-600 disabled:bg-slate-300">追加</button>
               </div>
               {seriesList.length > 0 && (
-                <ul className="text-xs text-slate-500 space-y-1">
+                <ul className="text-xs text-slate-500 dark:text-slate-400 space-y-1">
                   {seriesList.map((s) => (
                     <li key={s.id} className="flex justify-between">
                       <span>{s.name}</span>
-                      <span className="text-slate-400">{s._count?.books ?? 0}巻</span>
+                      <span className="text-slate-400 dark:text-slate-500">{s._count?.books ?? 0}巻</span>
                     </li>
                   ))}
                 </ul>
@@ -153,29 +153,29 @@ export default function BooksPage() {
           )}
 
           {loading ? (
-            <p className="text-center text-sm text-slate-400 py-8">読み込み中...</p>
+            <p className="text-center text-sm text-slate-400 dark:text-slate-500 py-8">読み込み中...</p>
           ) : displayBooks.length === 0 ? (
-            <p className="text-center text-sm text-slate-400 py-8">まだ書籍がありません</p>
+            <p className="text-center text-sm text-slate-400 dark:text-slate-500 py-8">まだ書籍がありません</p>
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-2 lg:gap-3">
               {displayBooks.map((b) => (
-                <Link key={b.id} href={`/books/${b.id}`} className="bg-white rounded-lg border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
-                  <div className="aspect-[2/3] bg-slate-100 flex items-center justify-center overflow-hidden">
+                <Link key={b.id} href={`/books/${b.id}`} className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-md transition-shadow">
+                  <div className="aspect-[2/3] bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
                     {b.coverUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={b.coverUrl} alt={b.title} loading="lazy" className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-2xl text-slate-300">📖</span>
+                      <span className="text-2xl text-slate-300 dark:text-slate-600">📖</span>
                     )}
                   </div>
                   <div className="p-1.5 space-y-0.5">
                     <div className="flex items-center gap-1">
-                      <span className={`text-[8px] px-1 py-0.5 rounded-full font-medium ${SOURCE_COLOR[b.source] ?? "bg-slate-100 text-slate-500"}`}>{SOURCE_LABEL[b.source] ?? b.source}</span>
-                      {b.series && <span className="text-[8px] text-slate-400 truncate">{b.series.name}</span>}
+                      <span className={`text-[8px] px-1 py-0.5 rounded-full font-medium ${SOURCE_COLOR[b.source] ?? "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"}`}>{SOURCE_LABEL[b.source] ?? b.source}</span>
+                      {b.series && <span className="text-[8px] text-slate-400 dark:text-slate-500 truncate">{b.series.name}</span>}
                     </div>
-                    <p className="text-[11px] font-bold text-slate-700 line-clamp-2 leading-tight">{b.title}</p>
-                    {b.author && <p className="text-[9px] text-slate-400 line-clamp-1">{b.author}</p>}
-                    <div className="flex items-center gap-1 text-[9px] text-slate-400">
+                    <p className="text-[11px] font-bold text-slate-700 dark:text-slate-200 line-clamp-2 leading-tight">{b.title}</p>
+                    {b.author && <p className="text-[9px] text-slate-400 dark:text-slate-500 line-clamp-1">{b.author}</p>}
+                    <div className="flex items-center gap-1 text-[9px] text-slate-400 dark:text-slate-500">
                       {typeof b.rating === "number" && b.rating > 0 && <span className="text-amber-400">{"★".repeat(b.rating)}</span>}
                       {b._count && b._count.highlights > 0 && <span>📝{b._count.highlights}</span>}
                       {b._count && b._count.bookmarks > 0 && <span>🔖{b._count.bookmarks}</span>}

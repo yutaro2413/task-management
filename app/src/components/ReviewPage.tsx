@@ -88,10 +88,10 @@ export default function ReviewPage() {
 
   return (
     <div className="flex-1 flex flex-col">
-      <header className="sticky top-0 bg-white border-b border-slate-200 z-40 px-4 py-3">
+      <header className="sticky top-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 z-40 px-4 py-3">
         <div className="max-w-lg lg:max-w-2xl mx-auto flex items-center justify-between">
           <h1 className="text-lg font-bold">復習</h1>
-          <div className="flex items-center gap-3 text-xs text-slate-500">
+          <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
             <span>本日: <b className="text-indigo-600">{reviewedToday}</b></span>
             <span>残り: <b>{dueCount + (queue.length > dueCount ? newCount : 0)}</b></span>
           </div>
@@ -105,22 +105,22 @@ export default function ReviewPage() {
           ) : (
             <>
               {/* カード */}
-              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                 <div className={`flex`}>
                   <div className={`w-1 flex-shrink-0 ${COLOR_BAR[current.color ?? "yellow"] ?? "bg-amber-400"}`} />
                   <div className="flex-1 p-4 space-y-3">
-                    <Link href={`/books/${current.book.id}`} className="flex items-center gap-2 text-[10px] text-slate-400 hover:text-indigo-600">
+                    <Link href={`/books/${current.book.id}`} className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-500 hover:text-indigo-600">
                       {current.book.coverUrl && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={current.book.coverUrl} alt="" className="w-6 h-9 object-cover rounded" />
                       )}
                       <div className="min-w-0">
-                        <p className="font-bold text-slate-600 truncate">{current.book.title}</p>
+                        <p className="font-bold text-slate-600 dark:text-slate-300 truncate">{current.book.title}</p>
                         {current.book.author && <p className="truncate">{current.book.author}</p>}
                       </div>
                     </Link>
 
-                    <div className="text-[10px] text-slate-400 flex items-center gap-2">
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-2">
                       {current.page != null && <span>p.{current.page}</span>}
                       {current.location && <span>{current.location}</span>}
                       {current.reviewReps === 0 && <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold">NEW</span>}
@@ -128,25 +128,25 @@ export default function ReviewPage() {
 
                     {current.imageUrl && current.type === "image" ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={current.imageUrl} alt="figure" className="w-full rounded border border-slate-100" />
+                      <img src={current.imageUrl} alt="figure" className="w-full rounded border border-slate-100 dark:border-slate-800" />
                     ) : null}
 
                     {/* メモが先に出る (思い出すフックとして) */}
                     {current.note && (
-                      <div className="bg-slate-50 rounded-md p-3 text-xs text-slate-600 italic">
+                      <div className="bg-slate-50 dark:bg-slate-900 rounded-md p-3 text-xs text-slate-600 dark:text-slate-300 italic">
                         💭 {current.note}
                       </div>
                     )}
 
                     {/* テキストはタップで開示 */}
                     {reveal ? (
-                      <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">
+                      <p className="text-sm text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-wrap">
                         {current.text}
                       </p>
                     ) : (
                       <button
                         onClick={() => setReveal(true)}
-                        className="w-full py-6 rounded-lg border-2 border-dashed border-slate-300 text-slate-400 text-sm font-medium hover:bg-slate-50"
+                        className="w-full py-6 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800"
                       >
                         本文を表示（タップ）
                       </button>
@@ -172,7 +172,7 @@ export default function ReviewPage() {
                 </div>
               )}
 
-              <p className="text-center text-[10px] text-slate-400">
+              <p className="text-center text-[10px] text-slate-400 dark:text-slate-500">
                 残り {queue.length} 件 · 期限切れ {dueCount} · 未学習 {newCount}
               </p>
             </>
@@ -180,18 +180,18 @@ export default function ReviewPage() {
 
           {/* 統計 */}
           {stats && (
-            <details className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <summary className="px-4 py-3 text-xs font-bold text-slate-500 cursor-pointer">統計</summary>
-              <div className="px-4 py-3 space-y-2 border-t border-slate-100">
+            <details className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <summary className="px-4 py-3 text-xs font-bold text-slate-500 dark:text-slate-400 cursor-pointer">統計</summary>
+              <div className="px-4 py-3 space-y-2 border-t border-slate-100 dark:border-slate-800">
                 <div className="grid grid-cols-4 gap-2 text-center">
-                  <Stat label="未学習" n={stats.totals.new} color="text-slate-500" />
+                  <Stat label="未学習" n={stats.totals.new} color="text-slate-500 dark:text-slate-400" />
                   <Stat label="学習中" n={stats.totals.learning} color="text-amber-600" />
                   <Stat label="習熟" n={stats.totals.mature} color="text-green-600" />
                   <Stat label="復習済" n={stats.totals.reviewed} color="text-indigo-600" />
                 </div>
                 {stats.days.length > 0 && (
                   <div>
-                    <p className="text-[10px] text-slate-400 mb-1">過去30日の復習件数</p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mb-1">過去30日の復習件数</p>
                     <div className="flex gap-0.5 items-end h-12">
                       {stats.days.map((d) => (
                         <div key={d.date} className="flex-1 bg-indigo-200 rounded-sm" style={{ height: `${Math.min(100, d.total * 5)}%` }} title={`${d.date}: ${d.total}件`} />
@@ -212,7 +212,7 @@ function Stat({ label, n, color }: { label: string; n: number; color: string }) 
   return (
     <div>
       <div className={`text-lg font-bold ${color}`}>{n}</div>
-      <div className="text-[10px] text-slate-400">{label}</div>
+      <div className="text-[10px] text-slate-400 dark:text-slate-500">{label}</div>
     </div>
   );
 }
@@ -221,18 +221,18 @@ function EmptyState({ newCount, stats, onReload }: { newCount: number; stats: St
   return (
     <div className="text-center py-12 space-y-3">
       <p className="text-4xl">🎉</p>
-      <p className="text-sm font-bold text-slate-700">本日の復習は完了しました</p>
+      <p className="text-sm font-bold text-slate-700 dark:text-slate-200">本日の復習は完了しました</p>
       {newCount > 0 && (
-        <p className="text-xs text-slate-500">未学習のハイライトが {newCount} 件あります</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">未学習のハイライトが {newCount} 件あります</p>
       )}
       {stats && stats.totals.reviewed > 0 && (
-        <p className="text-xs text-slate-400">これまでに {stats.totals.reviewed} 件のハイライトを復習しています</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500">これまでに {stats.totals.reviewed} 件のハイライトを復習しています</p>
       )}
       <div className="flex gap-2 justify-center pt-2">
         <button onClick={onReload} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700">
           再読込
         </button>
-        <Link href="/books" className="px-4 py-2 rounded-lg border border-slate-200 text-slate-500 text-xs font-medium hover:bg-slate-50">
+        <Link href="/books" className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800">
           書籍ライブラリへ
         </Link>
       </div>

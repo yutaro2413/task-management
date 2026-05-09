@@ -77,9 +77,9 @@ function TimeGrid({
           <div key={`row-${slotIndex}`} className="contents">
             <div
               data-slot={slotIndex}
-              className={`flex items-center justify-center text-[10px] font-mono border-b border-slate-100 ${
+              className={`flex items-center justify-center text-[10px] font-mono border-b border-slate-100 dark:border-slate-800 ${
                 isCurrent ? "bg-indigo-50" : ""
-              } ${slotIndex % 2 === 0 ? "text-slate-600 font-semibold" : "text-slate-400"}`}
+              } ${slotIndex % 2 === 0 ? "text-slate-600 dark:text-slate-300 font-semibold" : "text-slate-400 dark:text-slate-500"}`}
               style={{ gridRow: localRow, gridColumn: 1 }}
             >
               {slotToTime(slotIndex)}
@@ -87,20 +87,20 @@ function TimeGrid({
             {!isOccupied && (
               <button
                 onClick={() => onSlotClick(slotIndex)}
-                className={`flex items-center pl-2 border-b border-slate-100 transition-colors text-left ${
-                  isCurrent ? "bg-indigo-50 hover:bg-indigo-100" : "hover:bg-slate-50 active:bg-slate-100"
+                className={`flex items-center pl-2 border-b border-slate-100 dark:border-slate-800 transition-colors text-left ${
+                  isCurrent ? "bg-indigo-50 hover:bg-indigo-100" : "hover:bg-slate-50 dark:hover:bg-slate-800 active:bg-slate-100"
                 }`}
                 style={{ gridRow: localRow, gridColumn: 2 }}
               >
-                <span className="text-slate-300 text-xs">-</span>
+                <span className="text-slate-300 dark:text-slate-600 text-xs">-</span>
               </button>
             )}
             {/* Right-side strip: always visible, click to add new entry at this slot */}
             <button
               onClick={(e) => { e.stopPropagation(); onNewEntry(slotIndex); }}
               title="ここから新規登録"
-              className={`border-b border-slate-100 border-l border-l-slate-100 transition-colors ${
-                isCurrent ? "bg-indigo-50 hover:bg-indigo-200" : "bg-slate-50 hover:bg-indigo-100"
+              className={`border-b border-slate-100 dark:border-slate-800 border-l border-l-slate-100 transition-colors ${
+                isCurrent ? "bg-indigo-50 hover:bg-indigo-200" : "bg-slate-50 dark:bg-slate-900 hover:bg-indigo-100"
               }`}
               style={{ gridRow: localRow, gridColumn: 3 }}
             />
@@ -144,7 +144,7 @@ function TimeGrid({
               {spanSlots === 1 ? (
                 <div className="flex items-center gap-1 min-w-0">
                   {(entry.recurrenceRule || entry.parentRecurrenceId) && (
-                    <svg className="w-2.5 h-2.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <svg className="w-2.5 h-2.5 text-slate-400 dark:text-slate-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
                   )}
@@ -154,18 +154,18 @@ function TimeGrid({
                   >
                     {entry.genre.name}
                   </span>
-                  <span className="text-[10px] text-slate-500 flex-shrink-0">{entry.category.name}</span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 flex-shrink-0">{entry.category.name}</span>
                   {entry.title && <span className="text-[10px] font-medium truncate">{entry.title}</span>}
                 </div>
               ) : (
                 <>
                   <div className="flex items-center gap-1 flex-wrap">
                     {(entry.recurrenceRule || entry.parentRecurrenceId) && (
-                      <svg className="w-3 h-3 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <svg className="w-3 h-3 text-slate-400 dark:text-slate-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                         <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                       </svg>
                     )}
-                    <span className="text-[10px] text-slate-500 font-medium">{entry.category.name}</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{entry.category.name}</span>
                     <span
                       className="text-[10px] px-1 py-px rounded-full text-white font-medium leading-none"
                       style={{ backgroundColor: entry.genre.color }}
@@ -173,7 +173,7 @@ function TimeGrid({
                       {entry.genre.name}
                     </span>
                     {!isOverlap && (
-                      <span className="text-[10px] text-slate-400">
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500">
                         {slotToTime(entry.startSlot)}-{slotToTimeLabel(entry.endSlot)}
                       </span>
                     )}
@@ -184,7 +184,7 @@ function TimeGrid({
                     </p>
                   )}
                   {entry.detail && spanSlots >= 4 && !isOverlap && (
-                    <p className="text-[10px] text-slate-400 truncate">{entry.detail}</p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{entry.detail}</p>
                   )}
                 </>
               )}
@@ -506,12 +506,12 @@ export default function TimelinePage() {
       {saving && <LoadingOverlay />}
 
       {/* Header */}
-      <header className="sticky top-0 bg-white border-b border-slate-200 z-40 px-4">
+      <header className="sticky top-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 z-40 px-4">
         <div className="max-w-lg mx-auto lg:max-w-none">
           <div className="flex items-center justify-between py-2">
             <button
               onClick={() => changeDate(-1)}
-              className="p-2 rounded-lg hover:bg-slate-100 active:bg-slate-200"
+              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path d="M15 19l-7-7 7-7" />
@@ -560,7 +560,7 @@ export default function TimelinePage() {
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setShowSearch(!showSearch)}
-                className="p-2 rounded-lg hover:bg-slate-100"
+                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <circle cx="11" cy="11" r="8" />
@@ -569,7 +569,7 @@ export default function TimelinePage() {
               </button>
               <button
                 onClick={() => changeDate(1)}
-                className="p-2 rounded-lg hover:bg-slate-100 active:bg-slate-200"
+                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path d="M9 5l7 7-7 7" />
@@ -597,8 +597,8 @@ export default function TimelinePage() {
           >
             <div className="flex">
               {/* AM column 00:00–12:00 */}
-              <div className="flex-1 border-r border-slate-200 px-0.5">
-                <div className="text-center text-[10px] font-semibold text-slate-400 py-1 border-b border-slate-100 sticky top-0 bg-white z-10">
+              <div className="flex-1 border-r border-slate-200 dark:border-slate-700 px-0.5">
+                <div className="text-center text-[10px] font-semibold text-slate-400 dark:text-slate-500 py-1 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
                   午前
                 </div>
                 <TimeGrid
@@ -617,7 +617,7 @@ export default function TimelinePage() {
               </div>
               {/* PM column 12:00–24:00 */}
               <div className="flex-1 px-0.5">
-                <div className="text-center text-[10px] font-semibold text-slate-400 py-1 border-b border-slate-100 sticky top-0 bg-white z-10">
+                <div className="text-center text-[10px] font-semibold text-slate-400 dark:text-slate-500 py-1 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
                   午後
                 </div>
                 <TimeGrid
@@ -643,10 +643,10 @@ export default function TimelinePage() {
           <div ref={landscapeScrollRef} className="flex-1 overflow-y-auto pb-16 lg:hidden" {...swipeHandlers}>
             {/* Sticky day headers */}
             <div
-              className="sticky top-0 z-20 grid bg-white border-b border-slate-200"
+              className="sticky top-0 z-20 grid bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700"
               style={{ gridTemplateColumns: "2rem repeat(7, 1fr)" }}
             >
-              <div className="border-r border-slate-100" />
+              <div className="border-r border-slate-100 dark:border-slate-800" />
               {weekDates.map((wd) => {
                 const dk = formatDate(wd);
                 const isTodayCol = dk === toJSTDateString();
@@ -654,8 +654,8 @@ export default function TimelinePage() {
                 return (
                   <div
                     key={dk}
-                    className={`text-center py-1 border-r border-slate-100 text-[10px] font-semibold leading-tight ${
-                      isTodayCol ? "text-indigo-600 bg-indigo-50" : dow === 0 ? "text-red-500" : dow === 6 ? "text-blue-500" : "text-slate-600"
+                    className={`text-center py-1 border-r border-slate-100 dark:border-slate-800 text-[10px] font-semibold leading-tight ${
+                      isTodayCol ? "text-indigo-600 bg-indigo-50" : dow === 0 ? "text-red-500" : dow === 6 ? "text-blue-500" : "text-slate-600 dark:text-slate-300"
                     }`}
                   >
                     {wd.getMonth() + 1}/{wd.getDate()}
@@ -695,7 +695,7 @@ export default function TimelinePage() {
               {Array.from({ length: 24 }, (_, h) => (
                 <div
                   key={`h${h}`}
-                  className="flex items-start justify-center text-[8px] font-mono text-slate-400 border-b border-slate-100"
+                  className="flex items-start justify-center text-[8px] font-mono text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800"
                   style={{ gridRow: `${h * 2 + 1} / ${h * 2 + 3}`, gridColumn: 1 }}
                 >
                   {h}
@@ -707,7 +707,7 @@ export default function TimelinePage() {
                 Array.from({ length: 48 }, (_, rowIdx) => (
                   <div
                     key={`c${colIdx}r${rowIdx}`}
-                    className={`border-r border-slate-100 ${rowIdx % 2 === 0 ? "border-b border-b-slate-100" : "border-b border-b-slate-50"}`}
+                    className={`border-r border-slate-100 dark:border-slate-800 ${rowIdx % 2 === 0 ? "border-b border-b-slate-100" : "border-b border-b-slate-50"}`}
                     style={{ gridRow: rowIdx + 1, gridColumn: colIdx + 2 }}
                   />
                 ))
@@ -767,8 +767,8 @@ export default function TimelinePage() {
         {/* ── PC: AM/PM side-by-side + right panel ── */}
         <div className="hidden lg:flex flex-1 overflow-hidden" {...swipeHandlers}>
           {/* AM column 00:00–12:00 */}
-          <div className="flex-1 overflow-y-auto border-r border-slate-100 px-1">
-            <div className="text-center text-[10px] font-semibold text-slate-400 py-1 border-b border-slate-100">
+          <div className="flex-1 overflow-y-auto border-r border-slate-100 dark:border-slate-800 px-1">
+            <div className="text-center text-[10px] font-semibold text-slate-400 dark:text-slate-500 py-1 border-b border-slate-100 dark:border-slate-800">
               午前
             </div>
             <TimeGrid
@@ -787,8 +787,8 @@ export default function TimelinePage() {
           </div>
 
           {/* PM column 12:00–24:00 */}
-          <div className="flex-1 overflow-y-auto border-r border-slate-100 px-1">
-            <div className="text-center text-[10px] font-semibold text-slate-400 py-1 border-b border-slate-100">
+          <div className="flex-1 overflow-y-auto border-r border-slate-100 dark:border-slate-800 px-1">
+            <div className="text-center text-[10px] font-semibold text-slate-400 dark:text-slate-500 py-1 border-b border-slate-100 dark:border-slate-800">
               午後
             </div>
             <TimeGrid
@@ -807,14 +807,14 @@ export default function TimelinePage() {
           </div>
 
           {/* Right panel */}
-          <div className="w-80 flex-shrink-0 border-l border-slate-200 bg-white flex flex-col overflow-hidden">
+          <div className="w-80 flex-shrink-0 border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex flex-col overflow-hidden">
             {/* Panel header */}
-            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
-              <h3 className="text-sm font-semibold text-slate-700">
+            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between flex-shrink-0">
+              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                 {panelHasContent ? panelTitle : "詳細"}
               </h3>
               {panelHasContent && (
-                <button onClick={closePanel} className="p-1 rounded-lg hover:bg-slate-100">
+                <button onClick={closePanel} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -848,7 +848,7 @@ export default function TimelinePage() {
             )}
             {!panelHasContent && (
               <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6">
-                <p className="text-xs text-slate-400 text-center">
+                <p className="text-xs text-slate-400 dark:text-slate-500 text-center">
                   タイムラインをクリックして<br />記録を追加
                 </p>
                 <button
