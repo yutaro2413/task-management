@@ -184,18 +184,18 @@ export default function HabitModal() {
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center modal-backdrop px-4">
       <div
-        className="bg-white rounded-2xl w-full max-w-md shadow-xl flex flex-col max-h-[85dvh]"
+        className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-xl flex flex-col max-h-[85dvh]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-5 pt-5 pb-3 border-b border-slate-100 flex-shrink-0">
+        <div className="px-5 pt-5 pb-3 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
           <h3 className="text-base font-bold">{titleLabel}</h3>
-          <p className="text-xs text-slate-400 mt-0.5">達成したレベルをタップしてください</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">達成したレベルをタップしてください</p>
           {sleep && (
-            <p className="text-[11px] text-slate-500 mt-1.5 flex items-center gap-1">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 flex items-center gap-1">
               <span>🌙 {formatJSTTime(sleep.sleepAt)}</span>
-              <span className="text-slate-300">→</span>
+              <span className="text-slate-300 dark:text-slate-600">→</span>
               <span>☀️ {formatJSTTime(sleep.wakeAt)}</span>
-              <span className="ml-1 text-slate-400">({formatDuration(sleep.durationMinutes)})</span>
+              <span className="ml-1 text-slate-400 dark:text-slate-500">({formatDuration(sleep.durationMinutes)})</span>
             </p>
           )}
         </div>
@@ -212,7 +212,7 @@ export default function HabitModal() {
                     className="w-3 h-3 rounded-full flex-shrink-0"
                     style={{ backgroundColor: habit.color }}
                   />
-                  <span className="text-sm font-bold text-slate-700">{habit.name}</span>
+                  <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{habit.name}</span>
                 </div>
                 <div className="space-y-1">
                   {levels.map((label, i) => {
@@ -279,10 +279,10 @@ export default function HabitModal() {
                       <button
                         key={0}
                         onClick={() => handleSelect(habit.id, 0)}
-                        className={`w-full px-3 py-2 rounded-lg text-left transition-all border-2 flex items-center gap-2 bg-slate-100 ${
+                        className={`w-full px-3 py-2 rounded-lg text-left transition-all border-2 flex items-center gap-2 bg-slate-100 dark:bg-slate-800 ${
                           isSelected
                             ? "ring-2 ring-offset-1 ring-slate-400 border-slate-400"
-                            : "border-slate-200"
+                            : "border-slate-200 dark:border-slate-700"
                         }`}
                       >
                         <span
@@ -298,7 +298,7 @@ export default function HabitModal() {
                             </svg>
                           )}
                         </span>
-                        <span className="flex-1 text-slate-500">
+                        <span className="flex-1 text-slate-500 dark:text-slate-400">
                           <span className="text-[10px] font-bold opacity-60">Lv.0</span>
                           <span className="text-xs font-medium ml-2">できなかった</span>
                         </span>
@@ -311,11 +311,11 @@ export default function HabitModal() {
           })}
         </div>
 
-        <div className="px-5 py-3 border-t border-slate-100 flex-shrink-0">
+        <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 flex-shrink-0">
           <div className="flex gap-2">
             <button
               onClick={handleSkip}
-              className="flex-1 py-2.5 rounded-lg text-sm text-slate-600 border border-slate-200 hover:bg-slate-50"
+              className="flex-1 py-2.5 rounded-lg text-sm text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
             >
               スキップ
             </button>

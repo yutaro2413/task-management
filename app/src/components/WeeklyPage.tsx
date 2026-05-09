@@ -468,9 +468,9 @@ export default function WeeklyPage() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <header className="sticky top-0 bg-white border-b border-slate-200 z-40 px-4 py-3">
+      <header className="sticky top-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 z-40 px-4 py-3">
         <div className="flex items-center justify-between max-w-lg mx-auto lg:max-w-none" {...swipeHandlers}>
-          <button onClick={() => changePeriod(-1)} className="p-2 rounded-lg hover:bg-slate-100">
+          <button onClick={() => changePeriod(-1)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path d="M15 19l-7-7 7-7" />
             </svg>
@@ -499,7 +499,7 @@ export default function WeeklyPage() {
               <div className="w-3.5 h-3.5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
             )}
           </div>
-          <button onClick={() => changePeriod(1)} className="p-2 rounded-lg hover:bg-slate-100">
+          <button onClick={() => changePeriod(1)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path d="M9 5l7 7-7 7" />
             </svg>
@@ -507,17 +507,17 @@ export default function WeeklyPage() {
         </div>
 
         <div className="max-w-lg mx-auto lg:max-w-none mt-2 space-y-1.5">
-          <div className="flex gap-1 bg-slate-100 rounded-lg p-0.5">
-            <button onClick={() => setPeriod("weekly")} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${period === "weekly" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}>週次</button>
-            <button onClick={() => setPeriod("monthly")} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${period === "monthly" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}>月次</button>
+          <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
+            <button onClick={() => setPeriod("weekly")} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${period === "weekly" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm" : "text-slate-500 dark:text-slate-400"}`}>週次</button>
+            <button onClick={() => setPeriod("monthly")} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${period === "monthly" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm" : "text-slate-500 dark:text-slate-400"}`}>月次</button>
           </div>
-          <div className="flex gap-1 bg-slate-100 rounded-lg p-0.5">
-            <button onClick={() => setView("summary")} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${view === "summary" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}>サマリー</button>
-            <button onClick={() => setView("timeline")} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${view === "timeline" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}>タイムライン</button>
+          <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
+            <button onClick={() => setView("summary")} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${view === "summary" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm" : "text-slate-500 dark:text-slate-400"}`}>サマリー</button>
+            <button onClick={() => setView("timeline")} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${view === "timeline" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm" : "text-slate-500 dark:text-slate-400"}`}>タイムライン</button>
             {/* Calendar tab: PC only, weekly only */}
             <button
               onClick={() => setView("calendar")}
-              className={`hidden lg:block flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${view === "calendar" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"} ${period !== "weekly" ? "opacity-40 cursor-not-allowed" : ""}`}
+              className={`hidden lg:block flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${view === "calendar" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm" : "text-slate-500 dark:text-slate-400"} ${period !== "weekly" ? "opacity-40 cursor-not-allowed" : ""}`}
               disabled={period !== "weekly"}
             >
               カレンダー
@@ -531,19 +531,19 @@ export default function WeeklyPage() {
         <div className="flex-1 overflow-y-auto px-4 py-4 pb-20 max-w-lg mx-auto w-full lg:max-w-none" {...swipeHandlers}>
           {view === "summary" ? (
             <div className="space-y-4">
-              <div className="bg-white rounded-xl p-4 border border-slate-200">
+              <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
                 {showSpinner ? <CardSpinner /> : (
                   <>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       {period === "weekly" ? "今週" : "今月"}の稼働時間
-                      <span className="text-slate-400 ml-1">(サマリ除外カテゴリ除く)</span>
+                      <span className="text-slate-400 dark:text-slate-500 ml-1">(サマリ除外カテゴリ除く)</span>
                     </p>
                     <p className="text-3xl font-bold text-indigo-600">{totalWorkHours}h</p>
                     <div className="flex items-center gap-3 mt-1">
-                      <p className="text-xs text-slate-400">{totalWorkSlots}スロット</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">{totalWorkSlots}スロット</p>
                       <p className="text-xs text-indigo-500 font-medium">
                         1日平均 {avgH}時間{avgM > 0 ? `${avgM}分` : ""}
-                        <span className="text-slate-400 ml-1">({period === "weekly" ? "5" : "20"}日換算)</span>
+                        <span className="text-slate-400 dark:text-slate-500 ml-1">({period === "weekly" ? "5" : "20"}日換算)</span>
                       </p>
                     </div>
                   </>
@@ -551,42 +551,42 @@ export default function WeeklyPage() {
               </div>
 
               {/* 投資 / 経費 */}
-              <div className="bg-white rounded-xl p-4 border border-slate-200">
+              <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
                 {showSpinner ? <CardSpinner /> : (
                   <>
-                    <p className="text-xs text-slate-500 mb-2">投資 / 経費</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">投資 / 経費</p>
                     <div className="flex items-end gap-4 mb-2">
                       <button className="text-left hover:opacity-70 transition-opacity" onClick={() => { setFilterType("投資"); setFilterCategoryId(null); setFilterGenreId(null); setView("timeline"); }}>
                         <p className="text-xs text-blue-500 font-medium">投資</p>
                         <p className="text-xl font-bold text-blue-600">{investHours}h</p>
                       </button>
                       <button className="text-left hover:opacity-70 transition-opacity" onClick={() => { setFilterType("経費"); setFilterCategoryId(null); setFilterGenreId(null); setView("timeline"); }}>
-                        <p className="text-xs text-slate-400 font-medium">経費</p>
-                        <p className="text-xl font-bold text-slate-500">{costHours}h</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">経費</p>
+                        <p className="text-xl font-bold text-slate-500 dark:text-slate-400">{costHours}h</p>
                       </button>
                       <div className="ml-auto text-right">
-                        <p className="text-xs text-slate-400">投資率 <span className="text-sm font-bold text-blue-600">{investPct}%</span></p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">投資率 <span className="text-sm font-bold text-blue-600">{investPct}%</span></p>
                         {totalNatureSlots > 0 && investNaturePct !== investPct && (
-                          <p className="text-[10px] text-slate-400">(性質 <span className="font-bold text-blue-500">{investNaturePct}%</span>)</p>
+                          <p className="text-[10px] text-slate-400 dark:text-slate-500">(性質 <span className="font-bold text-blue-500">{investNaturePct}%</span>)</p>
                         )}
                       </div>
                     </div>
-                    <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex">
+                    <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex">
                       <div className="h-full bg-blue-500 rounded-l-full transition-all" style={{ width: `${investPct}%` }} />
                       <div className="h-full bg-slate-300 flex-1" />
                     </div>
                     {totalNatureSlots > 0 && investNaturePct !== investPct && (
-                      <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden flex mt-1">
+                      <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex mt-1">
                         <div className="h-full bg-blue-300 rounded-l-full transition-all" style={{ width: `${investNaturePct}%` }} />
                         <div className="h-full bg-amber-200 flex-1" />
                       </div>
                     )}
                     <div className="flex items-center gap-2 mt-1.5">
                       {lossSlots > 0 && (
-                        <p className="text-[10px] text-slate-400">(付随 {lossHours}h) ※投資率の算出に含まず</p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500">(付随 {lossHours}h) ※投資率の算出に含まず</p>
                       )}
                       {totalNatureSlots > 0 && investNaturePct !== investPct && (
-                        <p className="text-[10px] text-slate-400 ml-auto">(投資的 {fmtHours(investNatureSlots)}h / 経費的 {fmtHours(costNatureSlots)}h)</p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 ml-auto">(投資的 {fmtHours(investNatureSlots)}h / 経費的 {fmtHours(costNatureSlots)}h)</p>
                       )}
                     </div>
                   </>
@@ -595,17 +595,17 @@ export default function WeeklyPage() {
 
               {/* PC: カテゴリ別 / ジャンル別 を横並び */}
               <div className="lg:grid lg:grid-cols-2 lg:gap-4 space-y-4 lg:space-y-0">
-                <div className="bg-white rounded-xl p-4 border border-slate-200">
-                  <h3 className="text-sm font-semibold text-slate-700 mb-3">カテゴリ別</h3>
+                <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                  <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">カテゴリ別</h3>
                   {showSpinner ? <CardSpinner /> : categorySummary.size === 0 ? (
-                    <p className="text-sm text-slate-400">記録なし</p>
+                    <p className="text-sm text-slate-400 dark:text-slate-500">記録なし</p>
                   ) : (
                     <div className="space-y-2">
                       {Array.from(categorySummary.entries()).sort((a, b) => b[1].count - a[1].count).map(([cId, c]) => (
-                        <button key={cId} className="flex items-center gap-2 w-full text-left hover:bg-slate-50 rounded -mx-1 px-1 py-0.5 transition-colors" onClick={() => { setFilterCategoryId(cId); setFilterGenreId(null); setView("timeline"); }}>
+                        <button key={cId} className="flex items-center gap-2 w-full text-left hover:bg-slate-50 dark:hover:bg-slate-800 rounded -mx-1 px-1 py-0.5 transition-colors" onClick={() => { setFilterCategoryId(cId); setFilterGenreId(null); setView("timeline"); }}>
                           <span className="text-sm flex-1 min-w-0 truncate">{c.name}</span>
                           <span className="text-sm font-medium tabular-nums flex-shrink-0">{fmtHours(c.count)}h</span>
-                          <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden flex-shrink-0">
+                          <div className="w-16 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex-shrink-0">
                             <div className="h-full rounded-full bg-indigo-500" style={{ width: `${allSlots > 0 ? (c.count / allSlots) * 100 : 0}%` }} />
                           </div>
                         </button>
@@ -614,22 +614,22 @@ export default function WeeklyPage() {
                   )}
                 </div>
 
-                <div className="bg-white rounded-xl p-4 border border-slate-200">
-                  <h3 className="text-sm font-semibold text-slate-700 mb-3">ジャンル別</h3>
+                <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                  <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">ジャンル別</h3>
                   {showSpinner ? <CardSpinner /> : genreSummary.size === 0 ? (
-                    <p className="text-sm text-slate-400">記録なし</p>
+                    <p className="text-sm text-slate-400 dark:text-slate-500">記録なし</p>
                   ) : (
                     <div className="space-y-2">
                       {Array.from(genreSummary.entries()).sort((a, b) => b[1].count - a[1].count).map(([gId, g]) => (
-                        <button key={gId} className="flex items-center gap-2 w-full text-left hover:bg-slate-50 rounded -mx-1 px-1 py-0.5 transition-colors" onClick={() => { setFilterGenreId(gId); setFilterCategoryId(null); setView("timeline"); }}>
+                        <button key={gId} className="flex items-center gap-2 w-full text-left hover:bg-slate-50 dark:hover:bg-slate-800 rounded -mx-1 px-1 py-0.5 transition-colors" onClick={() => { setFilterGenreId(gId); setFilterCategoryId(null); setView("timeline"); }}>
                           <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} />
                           <span className="text-sm flex-1 min-w-0 truncate">{g.name}</span>
-                          <span className={`text-[10px] px-1 py-0 rounded-full flex-shrink-0 ${g.type === "投資" ? "bg-blue-100 text-blue-600" : g.type === "付随" ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-500"}`}>{g.type || "経費"}</span>
+                          <span className={`text-[10px] px-1 py-0 rounded-full flex-shrink-0 ${g.type === "投資" ? "bg-blue-100 text-blue-600" : g.type === "付随" ? "bg-red-100 text-red-600" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"}`}>{g.type || "経費"}</span>
                           {g.type !== "付随" && g.subType && (
                             <span className={`text-[9px] px-1 py-0 rounded-full flex-shrink-0 ${g.subType === "投資的" ? "bg-blue-50 text-blue-500" : "bg-amber-50 text-amber-500"}`}>{g.subType}</span>
                           )}
                           <span className="text-sm font-medium tabular-nums flex-shrink-0">{fmtHours(g.count)}h</span>
-                          <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden flex-shrink-0">
+                          <div className="w-16 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex-shrink-0">
                             <div className="h-full rounded-full" style={{ backgroundColor: g.color, width: `${allSlots > 0 ? (g.count / allSlots) * 100 : 0}%` }} />
                           </div>
                         </button>
@@ -640,8 +640,8 @@ export default function WeeklyPage() {
               </div>
 
               {!showSpinner && notes.length > 0 && (
-                <div className="bg-white rounded-xl p-4 border border-slate-200">
-                  <h3 className="text-sm font-semibold text-slate-700 mb-3">日記</h3>
+                <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                  <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">日記</h3>
                   <div className="space-y-3">
                     {notes.map((n) => {
                       const noteDate = toJSTDateKey(n.date);
@@ -649,13 +649,13 @@ export default function WeeklyPage() {
                       const dow = d.getDay();
                       const days = ["日","月","火","水","木","金","土"];
                       const label = `${d.getMonth() + 1}/${d.getDate()}`;
-                      const dowColor = dow === 0 ? "text-red-500" : dow === 6 ? "text-blue-500" : "text-slate-400";
+                      const dowColor = dow === 0 ? "text-red-500" : dow === 6 ? "text-blue-500" : "text-slate-400 dark:text-slate-500";
                       const parsed = parseNote(n.content);
                       const filledSections = NOTE_SECTIONS.filter((s) => parsed[s.key]?.trim());
                       return (
                         <div key={n.date} className="flex gap-2 group">
                           <span className="text-xs flex-shrink-0 pt-0.5 w-10 text-center">
-                            <span className="text-slate-400">{label}</span>
+                            <span className="text-slate-400 dark:text-slate-500">{label}</span>
                             <br />
                             <span className={dowColor}>{days[dow]}</span>
                           </span>
@@ -663,14 +663,14 @@ export default function WeeklyPage() {
                             {filledSections.map((s) => (
                               <div key={s.key}>
                                 <p className="text-[10px] font-semibold text-indigo-600">★{s.label}</p>
-                                <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed pl-2 border-l-2 border-slate-100">{parsed[s.key]}</p>
+                                <p className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed pl-2 border-l-2 border-slate-100 dark:border-slate-800">{parsed[s.key]}</p>
                               </div>
                             ))}
                             {parsed._free && (
-                              <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{parsed._free}</p>
+                              <p className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{parsed._free}</p>
                             )}
                             {filledSections.length === 0 && !parsed._free && (
-                              <p className="text-sm text-slate-400">（内容なし）</p>
+                              <p className="text-sm text-slate-400 dark:text-slate-500">（内容なし）</p>
                             )}
                           </div>
                           <button
@@ -680,7 +680,7 @@ export default function WeeklyPage() {
                               setEditingNote(n);
                               setNoteDraft(stored && serializeNote(stored) !== n.content ? stored : parseNote(n.content));
                             }}
-                            className="text-slate-300 hover:text-indigo-500 flex-shrink-0 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity p-0.5 self-start"
+                            className="text-slate-300 dark:text-slate-600 hover:text-indigo-500 flex-shrink-0 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity p-0.5 self-start"
                             title="編集"
                           >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -712,7 +712,7 @@ export default function WeeklyPage() {
                         const val = t === "すべて" ? null : t;
                         const active = filterType === val;
                         return (
-                          <button key={t} onClick={() => setFilterType(val)} className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${active ? (t === "投資" ? "bg-blue-100 text-blue-700 border-blue-300" : t === "付随" ? "bg-red-100 text-red-700 border-red-300" : t === "経費" ? "bg-slate-200 text-slate-700 border-slate-300" : "bg-indigo-100 text-indigo-700 border-indigo-300") : "bg-white text-slate-400 border-slate-200"}`}>{t}</button>
+                          <button key={t} onClick={() => setFilterType(val)} className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${active ? (t === "投資" ? "bg-blue-100 text-blue-700 border-blue-300" : t === "付随" ? "bg-red-100 text-red-700 border-red-300" : t === "経費" ? "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600" : "bg-indigo-100 text-indigo-700 border-indigo-300") : "bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700"}`}>{t}</button>
                         );
                       })}
                       <span className="text-sm font-bold text-indigo-600 flex-shrink-0 whitespace-nowrap ml-auto">{totalH}h</span>
@@ -721,7 +721,7 @@ export default function WeeklyPage() {
                       <select
                         value={filterCategoryId ?? ""}
                         onChange={(e) => setFilterCategoryId(e.target.value || null)}
-                        className="flex-1 min-w-0 text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-700"
+                        className="flex-1 min-w-0 text-xs border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"
                       >
                         <option value="">カテゴリ: すべて</option>
                         {Array.from(categorySummary.entries()).sort((a, b) => b[1].count - a[1].count).map(([cId, c]) => (
@@ -731,7 +731,7 @@ export default function WeeklyPage() {
                       <select
                         value={filterGenreId ?? ""}
                         onChange={(e) => setFilterGenreId(e.target.value || null)}
-                        className="flex-1 min-w-0 text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-700"
+                        className="flex-1 min-w-0 text-xs border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"
                       >
                         <option value="">ジャンル: すべて</option>
                         {Array.from(genreSummary.entries()).sort((a, b) => b[1].count - a[1].count).map(([gId, g]) => (
@@ -743,7 +743,7 @@ export default function WeeklyPage() {
                 );
               })()}
               {showSpinner ? (
-                <div className="bg-white rounded-xl p-4 border border-slate-200"><CardSpinner /></div>
+                <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-700"><CardSpinner /></div>
               ) : (
                 timelineDates.map((wd) => {
                   const dateKey = formatDate(wd);
@@ -758,20 +758,20 @@ export default function WeeklyPage() {
                   dayEntries.forEach((e) => { for (let i = e.startSlot; i < e.endSlot; i++) daySlotSet.add(i); });
                   const dayTotalH = daySlotSet.size * 0.5;
                   return (
-                    <div key={dateKey} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                      <div className="px-3 py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                    <div key={dateKey} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                      <div className="px-3 py-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                         <p className="text-sm font-semibold">{getDayLabel(wd)}</p>
                         {dayTotalH > 0 && <span className="text-xs font-medium text-indigo-500">{dayTotalH}h</span>}
                       </div>
                       {dayEntries.length === 0 ? (
-                        <p className="px-3 py-3 text-xs text-slate-400">記録なし</p>
+                        <p className="px-3 py-3 text-xs text-slate-400 dark:text-slate-500">記録なし</p>
                       ) : (
                         <div className="divide-y divide-slate-50">
                           {dayEntries.map((e) => (
-                            <button key={e.id} onClick={() => setEditingTimeEntry(e)} className="w-full px-3 py-1.5 flex items-center gap-1 hover:bg-slate-50 active:bg-slate-100 transition-colors text-left">
-                              <span className="text-xs text-slate-400 font-mono w-[5.75rem] flex-shrink-0">{slotToTime(e.startSlot)}-{slotToTime(e.endSlot)}</span>
+                            <button key={e.id} onClick={() => setEditingTimeEntry(e)} className="w-full px-3 py-1.5 flex items-center gap-1 hover:bg-slate-50 dark:hover:bg-slate-800 active:bg-slate-100 transition-colors text-left">
+                              <span className="text-xs text-slate-400 dark:text-slate-500 font-mono w-[5.75rem] flex-shrink-0">{slotToTime(e.startSlot)}-{slotToTime(e.endSlot)}</span>
                               <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: e.genre.color }} />
-                              <span className="text-xs text-slate-500 flex-shrink-0">{e.category.name}</span>
+                              <span className="text-xs text-slate-500 dark:text-slate-400 flex-shrink-0">{e.category.name}</span>
                               <span className="text-sm flex-1 truncate min-w-0">{e.title || e.genre.name}</span>
                             </button>
                           ))}
@@ -807,15 +807,15 @@ export default function WeeklyPage() {
             {/* Sticky day header — 午前 / 午後 を 2列で並べる */}
             <div
               data-calheader
-              className="sticky top-0 z-20 flex bg-white border-b border-slate-200"
+              className="sticky top-0 z-20 flex bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700"
             >
               {(["am", "pm"] as const).map((half) => (
                 <div
                   key={`hdr-${half}`}
-                  className={`flex-1 grid ${half === "pm" ? "border-l-2 border-slate-300" : ""}`}
+                  className={`flex-1 grid ${half === "pm" ? "border-l-2 border-slate-300 dark:border-slate-600" : ""}`}
                   style={{ gridTemplateColumns: `3.5rem repeat(7, 1fr)` }}
                 >
-                  <div className="border-r border-slate-100 flex items-center justify-center text-[10px] text-slate-400 font-semibold">
+                  <div className="border-r border-slate-100 dark:border-slate-800 flex items-center justify-center text-[10px] text-slate-400 dark:text-slate-500 font-semibold">
                     {half === "am" ? "午前" : "午後"}
                   </div>
                   {weekDates.map((wd) => {
@@ -827,8 +827,8 @@ export default function WeeklyPage() {
                     const dow = wd.getDay();
                     const isWeekend = dow === 0 || dow === 6;
                     return (
-                      <div key={`${half}-${dateKey}`} className="border-r border-slate-100 px-1 py-1.5 text-center">
-                        <p className={`text-xs font-semibold leading-tight ${isWeekend ? (dow === 0 ? "text-red-500" : "text-blue-500") : "text-slate-700"}`}>
+                      <div key={`${half}-${dateKey}`} className="border-r border-slate-100 dark:border-slate-800 px-1 py-1.5 text-center">
+                        <p className={`text-xs font-semibold leading-tight ${isWeekend ? (dow === 0 ? "text-red-500" : "text-blue-500") : "text-slate-700 dark:text-slate-200"}`}>
                           {wd.getMonth() + 1}/{wd.getDate()}({days[dow]})
                         </p>
                         {workSlots > 0 ? (
@@ -836,14 +836,14 @@ export default function WeeklyPage() {
                             {workHoursDisplay}h
                           </p>
                         ) : (
-                          <p className="text-[10px] text-slate-300 leading-tight mt-0.5">—</p>
+                          <p className="text-[10px] text-slate-300 dark:text-slate-600 leading-tight mt-0.5">—</p>
                         )}
                         {expenseTotal ? (
                           <p className="text-[10px] text-rose-500 font-medium leading-tight">
                             -{expenseTotal >= 10000 ? `${Math.round(expenseTotal / 1000)}k` : expenseTotal.toLocaleString()}円
                           </p>
                         ) : (
-                          <p className="text-[10px] text-slate-300 leading-tight">—</p>
+                          <p className="text-[10px] text-slate-300 dark:text-slate-600 leading-tight">—</p>
                         )}
                       </div>
                     );
@@ -860,7 +860,7 @@ export default function WeeklyPage() {
                   <div
                     key={`grid-${half}`}
                     data-timegrid={half}
-                    className={`flex-1 grid ${half === "pm" ? "border-l-2 border-slate-300" : ""}`}
+                    className={`flex-1 grid ${half === "pm" ? "border-l-2 border-slate-300 dark:border-slate-600" : ""}`}
                     style={{
                       gridTemplateColumns: `3.5rem repeat(7, 1fr)`,
                       gridTemplateRows: `repeat(24, ${CAL_ROW_REM}rem)`,
@@ -870,7 +870,7 @@ export default function WeeklyPage() {
                     {Array.from({ length: 12 }, (_, h) => (
                       <div
                         key={`${half}-h-${h}`}
-                        className="flex items-start justify-end pr-1 pt-px border-b border-slate-100 text-[9px] text-slate-400 font-mono"
+                        className="flex items-start justify-end pr-1 pt-px border-b border-slate-100 dark:border-slate-800 text-[9px] text-slate-400 dark:text-slate-500 font-mono"
                         style={{ gridRow: `${h * 2 + 1} / ${h * 2 + 3}`, gridColumn: 1 }}
                       >
                         {String(h + slotOffset / 2).padStart(2, "0")}:00
@@ -881,7 +881,7 @@ export default function WeeklyPage() {
                     {Array.from({ length: 24 }, (_, i) => (
                       <div
                         key={`${half}-tl-${i}`}
-                        className={`border-b ${i % 2 === 0 ? "border-slate-100" : "border-slate-50"}`}
+                        className={`border-b ${i % 2 === 0 ? "border-slate-100 dark:border-slate-800" : "border-slate-50"}`}
                         style={{ gridRow: i + 1, gridColumn: 1 }}
                       />
                     ))}
@@ -898,7 +898,7 @@ export default function WeeklyPage() {
                               if (dragEntry) return;
                               setNewEntryContext({ date: dateKey, startSlot: slotIdx });
                             }}
-                            className={`border-r border-slate-100 hover:bg-indigo-50/50 transition-colors cursor-pointer ${rowIdx % 2 === 0 ? "border-b border-slate-100" : "border-b border-slate-50"}`}
+                            className={`border-r border-slate-100 dark:border-slate-800 hover:bg-indigo-50/50 transition-colors cursor-pointer ${rowIdx % 2 === 0 ? "border-b border-slate-100 dark:border-slate-800" : "border-b border-slate-50"}`}
                             style={{ gridRow: rowIdx + 1, gridColumn: colIdx + 2 }}
                             title={`${dateKey} ${slotToTime(slotIdx)} に新規作成`}
                           />
@@ -978,14 +978,14 @@ export default function WeeklyPage() {
                               >
                                 {entry.title || entry.genre.name}
                               </p>
-                              <p className="text-[8px] text-slate-500 truncate leading-tight mt-0.5">
+                              <p className="text-[8px] text-slate-500 dark:text-slate-400 truncate leading-tight mt-0.5">
                                 <span
                                   className={`inline-block px-0.5 rounded-sm mr-0.5 font-semibold ${
                                     entry.genre.type === "投資"
                                       ? "bg-blue-100 text-blue-600"
                                       : entry.genre.type === "付随"
                                       ? "bg-red-100 text-red-600"
-                                      : "bg-slate-200 text-slate-600"
+                                      : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
                                   }`}
                                 >
                                   {(entry.genre.type || "経")[0]}
@@ -1021,7 +1021,7 @@ export default function WeeklyPage() {
                 <p className="text-[10px] font-semibold truncate" style={{ color: touchGhost.entry.genre.color }}>
                   {touchGhost.entry.title || touchGhost.entry.category.name}
                 </p>
-                <p className="text-[9px] text-slate-500">
+                <p className="text-[9px] text-slate-500 dark:text-slate-400">
                   {slotToTime(touchGhost.entry.startSlot)}–{slotToTime(touchGhost.entry.endSlot)}
                 </p>
               </div>
@@ -1036,11 +1036,11 @@ export default function WeeklyPage() {
           className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop px-4 pb-16"
           onClick={() => { setEditingNote(null); }}
         >
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl flex flex-col max-h-[80dvh]" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg shadow-xl flex flex-col max-h-[80dvh]" onClick={(e) => e.stopPropagation()}>
 
-            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100 flex-shrink-0">
+            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
               <h3 className="text-base font-bold">日記を編集</h3>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-slate-400 dark:text-slate-500">
                 {new Date(toJSTDateKey(editingNote.date) + "T00:00:00").toLocaleDateString("ja-JP", {
                   year: "numeric", month: "long", day: "numeric", weekday: "short",
                 })}
@@ -1062,13 +1062,13 @@ export default function WeeklyPage() {
                     }}
                     placeholder={s.placeholder}
                     rows={2}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-y leading-relaxed"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-y leading-relaxed"
                   />
                 </div>
               ))}
               {noteDraft._free && (
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">メモ（旧形式の内容）</label>
+                  <label className="block text-xs font-semibold text-slate-400 dark:text-slate-500 mb-1">メモ（旧形式の内容）</label>
                   <textarea
                     value={noteDraft._free || ""}
                     onChange={(e) => {
@@ -1080,15 +1080,15 @@ export default function WeeklyPage() {
                       });
                     }}
                     rows={3}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-y leading-relaxed"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-y leading-relaxed"
                   />
                 </div>
               )}
             </div>
-            <div className="flex gap-2 px-5 py-3 border-t border-slate-100 flex-shrink-0">
+            <div className="flex gap-2 px-5 py-3 border-t border-slate-100 dark:border-slate-800 flex-shrink-0">
               <button
                 onClick={() => { setEditingNote(null); }}
-                className="flex-1 py-2.5 rounded-lg text-sm text-slate-600 border border-slate-200 hover:bg-slate-50"
+                className="flex-1 py-2.5 rounded-lg text-sm text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 キャンセル
               </button>

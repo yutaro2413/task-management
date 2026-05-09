@@ -62,7 +62,7 @@ const icons: Record<string, React.ReactNode> = {
 export default function Sidebar() {
   const pathname = usePathname();
   return (
-    <nav className="hidden lg:flex fixed left-0 top-0 h-full w-16 bg-white border-r border-slate-200 z-50 flex-col items-center py-6 gap-1">
+    <nav className="hidden lg:flex fixed left-0 top-0 h-full w-16 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 z-50 flex-col items-center py-6 gap-1">
       {navItems.map((item) => {
         const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
         return (
@@ -72,7 +72,7 @@ export default function Sidebar() {
             className={`flex flex-col items-center gap-1 p-2 rounded-xl w-12 transition-colors ${
               isActive
                 ? "bg-indigo-50 text-indigo-600"
-                : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+                : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
             }`}
           >
             {icons[item.icon]}

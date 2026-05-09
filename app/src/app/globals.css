@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Class-based dark mode (Tailwind v4): <html class="dark"> で起動 */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --font-sans: var(--font-geist-sans);
 }
@@ -7,6 +10,11 @@
 body {
   font-family: var(--font-sans), system-ui, sans-serif;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Theme transition: 切替時に色が滑らかに変わる */
+html, body, [class*="bg-"], [class*="text-"], [class*="border-"] {
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
 }
 
 .safe-area-bottom {
@@ -24,3 +32,24 @@ body {
   background-color: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
 }
+
+/* ダークモード時のフォームコントロール既定値: 個別 className で上書きされなければ
+   これが効く。明示的な bg-X / text-X 指定があるところは Tailwind が勝つ。 */
+.dark {
+  color-scheme: dark;
+}
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: rgb(15 23 42); /* slate-900 */
+  color: rgb(241 245 249); /* slate-100 */
+}
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: rgb(100 116 139); /* slate-500 */
+}
+.dark code {
+  background-color: rgb(30 41 59); /* slate-800 */
+  color: rgb(226 232 240); /* slate-200 */
+}
+

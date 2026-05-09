@@ -77,7 +77,7 @@ export default function BookDetail({ bookId }: { bookId: string }) {
   if (!book) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p className="text-sm text-slate-400">読み込み中...</p>
+        <p className="text-sm text-slate-400 dark:text-slate-500">読み込み中...</p>
       </div>
     );
   }
@@ -137,9 +137,9 @@ export default function BookDetail({ bookId }: { bookId: string }) {
 
   return (
     <div className="flex-1 flex flex-col">
-      <header className="sticky top-0 bg-white border-b border-slate-200 z-40 px-4 py-3">
+      <header className="sticky top-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 z-40 px-4 py-3">
         <div className="flex items-center max-w-lg lg:max-w-3xl mx-auto">
-          <Link href="/books" className="text-slate-400 text-sm">← 戻る</Link>
+          <Link href="/books" className="text-slate-400 dark:text-slate-500 text-sm">← 戻る</Link>
           <h1 className="flex-1 text-base font-bold text-center truncate px-2">{book.title}</h1>
           <button onClick={() => setEditing(true)} className="text-xs text-indigo-600">編集</button>
         </div>
@@ -147,28 +147,28 @@ export default function BookDetail({ bookId }: { bookId: string }) {
 
       <div className="flex-1 overflow-y-auto pb-24 px-4">
         <div className="max-w-lg lg:max-w-3xl mx-auto py-4 space-y-4">
-          <div className="bg-white rounded-xl border border-slate-200 p-3 flex gap-3">
-            <div className="w-24 aspect-[2/3] bg-slate-100 rounded overflow-hidden flex-shrink-0 flex items-center justify-center">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-3 flex gap-3">
+            <div className="w-24 aspect-[2/3] bg-slate-100 dark:bg-slate-800 rounded overflow-hidden flex-shrink-0 flex items-center justify-center">
               {book.coverUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={book.coverUrl} alt={book.title} className="w-full h-full object-cover" />
               ) : (
-                <span className="text-3xl text-slate-300">📖</span>
+                <span className="text-3xl text-slate-300 dark:text-slate-600">📖</span>
               )}
             </div>
             <div className="flex-1 min-w-0 space-y-1">
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">{SOURCE_LABEL[book.source] ?? book.source}</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">{SOURCE_LABEL[book.source] ?? book.source}</span>
               {book.series && (
-                <p className="text-[10px] text-slate-400">{book.series.name}{book.volume != null ? ` 第${book.volume}巻` : ""}</p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500">{book.series.name}{book.volume != null ? ` 第${book.volume}巻` : ""}</p>
               )}
-              {book.author && <p className="text-xs text-slate-500">{book.author}</p>}
-              {book.publisher && <p className="text-[10px] text-slate-400">{book.publisher}</p>}
+              {book.author && <p className="text-xs text-slate-500 dark:text-slate-400">{book.author}</p>}
+              {book.publisher && <p className="text-[10px] text-slate-400 dark:text-slate-500">{book.publisher}</p>}
               <div className="flex gap-1 pt-1">
                 {[1, 2, 3, 4, 5].map((n) => (
-                  <button key={n} onClick={() => updateRating(n)} className={`text-lg ${(book.rating ?? 0) >= n ? "text-amber-400" : "text-slate-300"}`}>★</button>
+                  <button key={n} onClick={() => updateRating(n)} className={`text-lg ${(book.rating ?? 0) >= n ? "text-amber-400" : "text-slate-300 dark:text-slate-600"}`}>★</button>
                 ))}
               </div>
-              <div className="text-[10px] text-slate-400 space-y-0.5 pt-1">
+              <div className="text-[10px] text-slate-400 dark:text-slate-500 space-y-0.5 pt-1">
                 {book.purchasedAt && <p>購入: {book.purchasedAt.slice(0, 10)}</p>}
                 {book.finishedAt && <p>読了: {book.finishedAt.slice(0, 10)}</p>}
                 {book.asin && <p>ASIN: {book.asin}</p>}
@@ -181,29 +181,29 @@ export default function BookDetail({ bookId }: { bookId: string }) {
                 )}
               </div>
               {book.excerpt && (
-                <p className="text-[10px] text-slate-500 mt-1 line-clamp-3">{book.excerpt}</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-3">{book.excerpt}</p>
               )}
             </div>
           </div>
 
           {book.notes && (
-            <div className="bg-white rounded-xl border border-slate-200 p-3">
-              <p className="text-xs text-slate-400 mb-1">メモ</p>
-              <p className="text-sm text-slate-700 whitespace-pre-wrap">{book.notes}</p>
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+              <p className="text-xs text-slate-400 dark:text-slate-500 mb-1">メモ</p>
+              <p className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap">{book.notes}</p>
             </div>
           )}
 
           <div className="flex gap-2">
-            <button onClick={refreshMeta} disabled={refreshing} className="flex-1 py-2 rounded-lg text-xs border border-slate-200 text-slate-500 disabled:opacity-50">
+            <button onClick={refreshMeta} disabled={refreshing} className="flex-1 py-2 rounded-lg text-xs border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 disabled:opacity-50">
               {refreshing ? "取得中..." : "🔄 Google Books でメタ再取得"}
             </button>
             <button onClick={removeBook} className="px-3 py-2 rounded-lg text-xs border border-red-200 text-red-500">削除</button>
           </div>
 
-          <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
-            <button onClick={() => setTab("highlights")} className={`flex-1 py-1.5 text-xs font-bold rounded-md ${tab === "highlights" ? "bg-white text-slate-700 shadow-sm" : "text-slate-500"}`}>ハイライト ({book.highlights.length})</button>
-            <button onClick={() => setTab("bookmarks")} className={`flex-1 py-1.5 text-xs font-bold rounded-md ${tab === "bookmarks" ? "bg-white text-slate-700 shadow-sm" : "text-slate-500"}`}>しおり ({book.bookmarks.length})</button>
-            <button onClick={() => setTab("logs")} className={`flex-1 py-1.5 text-xs font-bold rounded-md ${tab === "logs" ? "bg-white text-slate-700 shadow-sm" : "text-slate-500"}`}>読書日 ({book.readingLogs.length})</button>
+          <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+            <button onClick={() => setTab("highlights")} className={`flex-1 py-1.5 text-xs font-bold rounded-md ${tab === "highlights" ? "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-sm" : "text-slate-500 dark:text-slate-400"}`}>ハイライト ({book.highlights.length})</button>
+            <button onClick={() => setTab("bookmarks")} className={`flex-1 py-1.5 text-xs font-bold rounded-md ${tab === "bookmarks" ? "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-sm" : "text-slate-500 dark:text-slate-400"}`}>しおり ({book.bookmarks.length})</button>
+            <button onClick={() => setTab("logs")} className={`flex-1 py-1.5 text-xs font-bold rounded-md ${tab === "logs" ? "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-sm" : "text-slate-500 dark:text-slate-400"}`}>読書日 ({book.readingLogs.length})</button>
           </div>
 
           {tab === "highlights" && (
@@ -215,13 +215,13 @@ export default function BookDetail({ bookId }: { bookId: string }) {
           )}
           {tab === "bookmarks" && (
             book.bookmarks.length === 0 ? (
-              <p className="text-center text-sm text-slate-400 py-6">しおりはまだありません</p>
+              <p className="text-center text-sm text-slate-400 dark:text-slate-500 py-6">しおりはまだありません</p>
             ) : (
               <ul className="space-y-1">
                 {book.bookmarks.map((b) => (
-                  <li key={b.id} className="bg-white rounded-lg border border-slate-200 px-3 py-2 flex items-center justify-between text-xs">
-                    <span className="text-slate-600">{b.page != null ? `p.${b.page}` : ""} {b.location ?? ""}</span>
-                    <button onClick={() => deleteBookmark(b.id)} className="text-slate-300 hover:text-red-500">削除</button>
+                  <li key={b.id} className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 flex items-center justify-between text-xs">
+                    <span className="text-slate-600 dark:text-slate-300">{b.page != null ? `p.${b.page}` : ""} {b.location ?? ""}</span>
+                    <button onClick={() => deleteBookmark(b.id)} className="text-slate-300 dark:text-slate-600 hover:text-red-500">削除</button>
                   </li>
                 ))}
               </ul>
@@ -229,13 +229,13 @@ export default function BookDetail({ bookId }: { bookId: string }) {
           )}
           {tab === "logs" && (
             book.readingLogs.length === 0 ? (
-              <p className="text-center text-sm text-slate-400 py-6">読書ログはまだありません</p>
+              <p className="text-center text-sm text-slate-400 dark:text-slate-500 py-6">読書ログはまだありません</p>
             ) : (
               <ul className="space-y-1">
                 {book.readingLogs.map((l) => (
-                  <li key={l.id} className="bg-white rounded-lg border border-slate-200 px-3 py-2 text-xs">
-                    <p className="font-medium text-slate-600">{l.date.slice(0, 10)}</p>
-                    {l.review && <p className="text-slate-500 mt-1 whitespace-pre-wrap">{l.review}</p>}
+                  <li key={l.id} className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs">
+                    <p className="font-medium text-slate-600 dark:text-slate-300">{l.date.slice(0, 10)}</p>
+                    {l.review && <p className="text-slate-500 dark:text-slate-400 mt-1 whitespace-pre-wrap">{l.review}</p>}
                   </li>
                 ))}
               </ul>
@@ -244,12 +244,12 @@ export default function BookDetail({ bookId }: { bookId: string }) {
 
           {/* Kindle 側で削除されたハイライト（アプリ側のメモ・復習履歴を保持するため archived として残している） */}
           {(book.archivedHighlights?.length ?? 0) > 0 && (
-            <details className="border border-slate-300 rounded-xl overflow-hidden">
-              <summary className="bg-slate-100 px-4 py-2 text-xs font-bold text-slate-600 cursor-pointer">
+            <details className="border border-slate-300 dark:border-slate-600 rounded-xl overflow-hidden">
+              <summary className="bg-slate-100 dark:bg-slate-800 px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer">
                 🗑 Kindle で削除されたハイライト ({book.archivedHighlights!.length} 件)
               </summary>
-              <div className="p-3 bg-slate-50 space-y-2">
-                <p className="text-[10px] text-slate-500">
+              <div className="p-3 bg-slate-50 dark:bg-slate-900 space-y-2">
+                <p className="text-[10px] text-slate-500 dark:text-slate-400">
                   これらのハイライトは Kindle 側で削除されたが、アプリ側のメモや復習履歴を保持するため残してある。<br />
                   Kindle で再度ハイライトを追加すると次回の同期で自動的に復活する。
                 </p>

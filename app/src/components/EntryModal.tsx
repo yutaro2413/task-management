@@ -96,7 +96,7 @@ function RecurrencePicker({
 
   return (
     <div className="space-y-2">
-      <label className="text-xs font-semibold text-slate-500 block">繰り返し</label>
+      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">繰り返し</label>
 
       {/* Type selector */}
       <div className="flex flex-wrap gap-1.5">
@@ -117,7 +117,7 @@ function RecurrencePicker({
               className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
                 selectedType === opt.value
                   ? "bg-indigo-600 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
               }`}
             >
               {label}
@@ -128,7 +128,7 @@ function RecurrencePicker({
 
       {/* Custom settings */}
       {showCustom && (
-        <div className="bg-slate-50 rounded-lg p-3 space-y-2">
+        <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-3 space-y-2">
           <div className="flex items-center gap-2">
             <input
               type="number"
@@ -136,7 +136,7 @@ function RecurrencePicker({
               max={99}
               value={interval}
               onChange={(e) => updateCustom({ interval: Math.max(1, Number(e.target.value)) })}
-              className="w-16 px-2 py-1 rounded border border-slate-200 text-sm text-center"
+              className="w-16 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-sm text-center"
             />
             <div className="flex gap-1">
               {(["day", "week"] as const).map((u) => (
@@ -144,7 +144,7 @@ function RecurrencePicker({
                   key={u}
                   onClick={() => updateCustom({ customUnit: u })}
                   className={`px-2.5 py-1 rounded text-xs font-medium ${
-                    customUnit === u ? "bg-indigo-600 text-white" : "bg-white text-slate-600 border border-slate-200"
+                    customUnit === u ? "bg-indigo-600 text-white" : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
                   }`}
                 >
                   {u === "day" ? "日" : "週"}ごと
@@ -159,7 +159,7 @@ function RecurrencePicker({
                   key={i}
                   onClick={() => toggleDay(i)}
                   className={`w-8 h-8 rounded-full text-xs font-medium ${
-                    daysOfWeek.includes(i) ? "bg-indigo-600 text-white" : "bg-white text-slate-600 border border-slate-200"
+                    daysOfWeek.includes(i) ? "bg-indigo-600 text-white" : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
                   }`}
                 >
                   {name}
@@ -173,17 +173,17 @@ function RecurrencePicker({
       {/* End date */}
       {selectedType !== "none" && (
         <div className="flex items-center gap-2">
-          <label className="text-xs text-slate-500">終了日:</label>
+          <label className="text-xs text-slate-500 dark:text-slate-400">終了日:</label>
           <input
             type="date"
             value={recurrenceEnd}
             onChange={(e) => onChange(rule, e.target.value)}
-            className="px-2 py-1 rounded border border-slate-200 text-xs"
+            className="px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-xs"
           />
           {recurrenceEnd && (
             <button
               onClick={() => onChange(rule, "")}
-              className="text-xs text-slate-400 hover:text-slate-600"
+              className="text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
             >
               なし
             </button>
@@ -205,29 +205,29 @@ function ScopeDialog({
 }) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center modal-backdrop px-4" onClick={onCancel}>
-      <div className="bg-white rounded-2xl w-full max-w-sm p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-sm p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-bold mb-4">{title}</h3>
         <div className="space-y-2">
           <button
             onClick={() => onSelect("single")}
-            className="w-full py-2.5 rounded-lg text-sm font-medium bg-slate-100 hover:bg-slate-200 text-left px-4"
+            className="w-full py-2.5 rounded-lg text-sm font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-left px-4"
           >
             この予定だけ
           </button>
           <button
             onClick={() => onSelect("future")}
-            className="w-full py-2.5 rounded-lg text-sm font-medium bg-slate-100 hover:bg-slate-200 text-left px-4"
+            className="w-full py-2.5 rounded-lg text-sm font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-left px-4"
           >
             これ以降の予定
           </button>
           <button
             onClick={() => onSelect("all")}
-            className="w-full py-2.5 rounded-lg text-sm font-medium bg-slate-100 hover:bg-slate-200 text-left px-4"
+            className="w-full py-2.5 rounded-lg text-sm font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-left px-4"
           >
             すべての予定
           </button>
         </div>
-        <button onClick={onCancel} className="w-full mt-3 py-2 text-sm text-slate-500 hover:text-slate-700">
+        <button onClick={onCancel} className="w-full mt-3 py-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
           キャンセル
         </button>
       </div>
@@ -345,7 +345,7 @@ export default function EntryModal({
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          {date && <p className="text-[11px] text-slate-400 font-medium">{new Date(date + "T00:00:00").toLocaleDateString("ja-JP", { month: "short", day: "numeric", weekday: "short" })}</p>}
+          {date && <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">{new Date(date + "T00:00:00").toLocaleDateString("ja-JP", { month: "short", day: "numeric", weekday: "short" })}</p>}
           <h2 className="text-lg font-bold">
             {slotToTime(startSlot)} - {slotToTimeLabel(endSlot)}
           </h2>
@@ -355,11 +355,11 @@ export default function EntryModal({
                 <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
               {recurrenceLabel}
-              {recurrenceEnd && <span className="text-slate-400">〜{recurrenceEnd}</span>}
+              {recurrenceEnd && <span className="text-slate-400 dark:text-slate-500">〜{recurrenceEnd}</span>}
             </p>
           )}
         </div>
-        <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-100">
+        <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path d="M6 18L18 6M6 6l12 12" />
           </svg>
@@ -368,7 +368,7 @@ export default function EntryModal({
 
       {/* Time range */}
       <div className="mb-3">
-        <label className="text-xs font-semibold text-slate-500 mb-1.5 block">時間</label>
+        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">時間</label>
         <div className="flex items-center gap-2">
           <select
             value={startSlot}
@@ -377,17 +377,17 @@ export default function EntryModal({
               setStartSlot(val);
               if (val >= endSlot) setEndSlot(val + 1);
             }}
-            className="flex-1 px-2 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="flex-1 px-2 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             {slotOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
-          <span className="text-slate-400">〜</span>
+          <span className="text-slate-400 dark:text-slate-500">〜</span>
           <select
             value={endSlot}
             onChange={(e) => setEndSlot(Number(e.target.value))}
-            className="flex-1 px-2 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="flex-1 px-2 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             {endSlotOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -398,7 +398,7 @@ export default function EntryModal({
 
       {/* Category */}
       <div className="mb-3">
-        <label className="text-xs font-semibold text-slate-500 mb-1.5 block">カテゴリ</label>
+        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">カテゴリ</label>
         <div className="flex flex-wrap gap-2">
           {categories.map((cat) => (
             <button
@@ -407,7 +407,7 @@ export default function EntryModal({
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 categoryId === cat.id
                   ? "bg-indigo-600 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200"
               }`}
             >
               {cat.name}
@@ -418,7 +418,7 @@ export default function EntryModal({
 
       {/* Genre */}
       <div className="mb-3">
-        <label className="text-xs font-semibold text-slate-500 mb-1.5 block">ジャンル</label>
+        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">ジャンル</label>
         <div className="flex flex-wrap gap-2">
           {genres.map((genre) => (
             <button
@@ -427,7 +427,7 @@ export default function EntryModal({
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
                 genreId === genre.id
                   ? "text-white shadow-md scale-105"
-                  : "text-slate-700 bg-slate-100 hover:bg-slate-200"
+                  : "text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200"
               }`}
               style={genreId === genre.id ? { backgroundColor: genre.color } : {}}
             >
@@ -439,15 +439,15 @@ export default function EntryModal({
 
       {/* Title */}
       <div className="mb-3">
-        <label className="text-xs font-semibold text-slate-500 mb-1.5 block">
-          やったこと <span className="text-slate-400 font-normal">（任意）</span>
+        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">
+          やったこと <span className="text-slate-400 dark:text-slate-500 font-normal">（任意）</span>
         </label>
         <input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="何をしていましたか？"
-          className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
         />
       </div>
 
@@ -458,15 +458,15 @@ export default function EntryModal({
         </button>
       ) : (
         <div className="mb-3">
-          <label className="text-xs font-semibold text-slate-500 mb-1.5 block">
-            詳細 <span className="text-slate-400 font-normal">（任意）</span>
+          <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">
+            詳細 <span className="text-slate-400 dark:text-slate-500 font-normal">（任意）</span>
           </label>
           <textarea
             value={detail}
             onChange={(e) => setDetail(e.target.value)}
             placeholder="詳細メモ"
             rows={2}
-            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+            className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
           />
         </div>
       )}
@@ -537,7 +537,7 @@ export default function EntryModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl w-full max-w-lg p-5 max-h-[90vh] overflow-y-auto shadow-xl"
+        className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg p-5 max-h-[90vh] overflow-y-auto shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {formContent}

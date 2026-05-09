@@ -100,12 +100,12 @@ export default function ExpenseModal({ date, editExpense, onSave, onDelete, onCl
       {saving && <LoadingOverlay />}
 
       {/* Type toggle */}
-      <div className={`flex bg-slate-100 ${panelMode ? "rounded-xl" : "rounded-t-2xl"}`}>
+      <div className={`flex bg-slate-100 dark:bg-slate-800 ${panelMode ? "rounded-xl" : "rounded-t-2xl"}`}>
         <button
           onClick={() => setType("expense")}
           className={`flex-1 py-3 text-sm font-bold transition-colors ${
             panelMode ? "rounded-l-xl" : "rounded-tl-2xl"
-          } ${type === "expense" ? "bg-rose-500 text-white" : "text-slate-500"}`}
+          } ${type === "expense" ? "bg-rose-500 text-white" : "text-slate-500 dark:text-slate-400"}`}
         >
           支出
         </button>
@@ -113,7 +113,7 @@ export default function ExpenseModal({ date, editExpense, onSave, onDelete, onCl
           onClick={() => setType("income")}
           className={`flex-1 py-3 text-sm font-bold transition-colors ${
             panelMode ? "rounded-r-xl" : "rounded-tr-2xl"
-          } ${type === "income" ? "bg-green-500 text-white" : "text-slate-500"}`}
+          } ${type === "income" ? "bg-green-500 text-white" : "text-slate-500 dark:text-slate-400"}`}
         >
           収入
         </button>
@@ -121,8 +121,8 @@ export default function ExpenseModal({ date, editExpense, onSave, onDelete, onCl
 
       <div className="p-4 space-y-3">
         {/* Date selector */}
-        <div className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2">
-          <span className="text-xs text-slate-500">日付</span>
+        <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900 rounded-lg px-3 py-2">
+          <span className="text-xs text-slate-500 dark:text-slate-400">日付</span>
           <div className="flex items-center gap-2">
             <button onClick={() => changeDate(-1)} className="p-1 hover:bg-slate-200 rounded">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -147,8 +147,8 @@ export default function ExpenseModal({ date, editExpense, onSave, onDelete, onCl
 
         {/* Memo + Save */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center bg-slate-50 rounded-lg px-3 py-2 flex-1">
-            <span className="text-xs text-slate-500 w-10">メモ</span>
+          <div className="flex items-center bg-slate-50 dark:bg-slate-900 rounded-lg px-3 py-2 flex-1">
+            <span className="text-xs text-slate-500 dark:text-slate-400 w-10">メモ</span>
             <input
               type="text"
               value={memo}
@@ -171,7 +171,7 @@ export default function ExpenseModal({ date, editExpense, onSave, onDelete, onCl
         </div>
 
         {/* Amount — text input with numeric keyboard, no spinner arrows */}
-        <div className="flex items-center bg-slate-50 rounded-lg px-3 py-2">
+        <div className="flex items-center bg-slate-50 dark:bg-slate-900 rounded-lg px-3 py-2">
           <span className={`text-xs font-bold w-10 ${type === "expense" ? "text-rose-500" : "text-green-500"}`}>
             {type === "expense" ? "支出" : "収入"}
           </span>
@@ -187,13 +187,13 @@ export default function ExpenseModal({ date, editExpense, onSave, onDelete, onCl
             placeholder="0"
             className="flex-1 text-lg font-bold bg-transparent focus:outline-none text-right"
           />
-          <span className="text-sm text-slate-500 ml-1">円</span>
+          <span className="text-sm text-slate-500 dark:text-slate-400 ml-1">円</span>
         </div>
 
         {/* Category grid */}
         {categories.length > 0 && (
           <div>
-            <p className="text-xs font-semibold text-slate-500 mb-2">カテゴリー</p>
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">カテゴリー</p>
             <div className="grid grid-cols-3 gap-2">
               {categories.map((cat) => (
                 <button
@@ -202,11 +202,11 @@ export default function ExpenseModal({ date, editExpense, onSave, onDelete, onCl
                   className={`py-2.5 px-2 rounded-lg border text-center transition-all flex flex-col items-center gap-1 ${
                     categoryId === cat.id
                       ? "border-indigo-500 bg-indigo-50"
-                      : "border-slate-200 hover:bg-slate-50"
+                      : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
                   }`}
                 >
                   <ExpenseIcon icon={cat.icon} color={cat.color} size={22} />
-                  <span className="text-[10px] font-medium text-slate-700 leading-tight">{cat.name}</span>
+                  <span className="text-[10px] font-medium text-slate-700 dark:text-slate-200 leading-tight">{cat.name}</span>
                 </button>
               ))}
             </div>
@@ -238,7 +238,7 @@ export default function ExpenseModal({ date, editExpense, onSave, onDelete, onCl
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl"
+        className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {formContent}
