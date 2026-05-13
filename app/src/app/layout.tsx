@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import SleepTracker from "@/components/SleepTracker";
@@ -35,8 +34,12 @@ export default function RootLayout({
   return (
     <html lang="ja" className="h-full antialiased">
       <head>
-        {/* FOUC 防止: 初期化スクリプトをレイアウトより先に同期実行して dark クラスを付ける */}
-        <Script id="theme-init" strategy="beforeInteractive">{themeInitScript}</Script>
+        {/*
+          FOUC 防止: 素の <script> として HTML に直接埋め込み、body 描画より前に同期実行する。
+          next/script の beforeInteractive はルートレイアウトでは初回ロード時に確実に
+          実行されないケースがあるため、ここでは inline script を使う (next-themes と同じ手法)。
+        */}
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="min-h-full flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans lg:pl-16">
         <Sidebar />
