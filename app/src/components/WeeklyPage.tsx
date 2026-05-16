@@ -5,6 +5,7 @@ import { getWeekDates, getDayLabel, formatDate, slotToTime, getMonthDates, getMo
 import { cachedFetch, invalidateCache } from "@/lib/cache";
 import { NOTE_SECTIONS, NoteSections, parseNote, serializeNote } from "@/lib/dailyNote";
 import { addDaysIso, expandEntrySlots } from "@/lib/slotExpansion";
+import { calcGymStats, GYM_START_DATE, fmtAvg } from "@/lib/gymStats";
 import { useSwipe } from "@/hooks/useSwipe";
 import EntryModal from "./EntryModal";
 
@@ -118,6 +119,7 @@ export default function WeeklyPage() {
   const [newEntryContext, setNewEntryContext] = useState<{ date: string; startSlot: number } | null>(null);
   const [masterCategories, setMasterCategories] = useState<{ id: string; name: string }[]>([]);
   const [masterGenres, setMasterGenres] = useState<{ id: string; name: string; color: string; type: string; subType: string }[]>([]);
+  const [workoutDates, setWorkoutDates] = useState<string[]>([]);
   const hasData = useRef(false);
 
   // ── D&D / long-press state ──────────────────────────────────────────────
@@ -161,6 +163,25 @@ export default function WeeklyPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // ジム通いカウント用に WorkoutLog の日付一覧を全期間 fetch (1 回だけ)
+  // 冒頭の setLoading(true) は react-hooks/set-state-in-effect ルールを満たすため
+  const [, setWorkoutLoading] = useState(false);
+  const fetchWorkoutDates = useCallback(async () => {
+    setWorkoutLoading(true);
+    try {
+      const data = await fetch("/api/workout-logs?startDate=2020-01-01&endDate=2099-12-31").then((r) => r.json());
+      if (Array.isArray(data)) {
+        const dates: string[] = data
+          .map((w: { date: string }) => (w.date.includes("T") ? w.date.split("T")[0] : w.date))
+          .filter((d): d is string => typeof d === "string");
+        setWorkoutDates(dates);
+      }
+    } finally {
+      setWorkoutLoading(false);
+    }
+  }, []);
+  useEffect(() => { fetchWorkoutDates(); }, [fetchWorkoutDates]);
 
   // Fetch master data for edit modal
   useEffect(() => {
@@ -531,6 +552,35 @@ export default function WeeklyPage() {
         <div className="flex-1 overflow-y-auto px-4 py-4 pb-20 max-w-lg mx-auto w-full lg:max-w-none" {...swipeHandlers}>
           {view === "summary" ? (
             <div className="space-y-4">
+              {/* ジム通いカウント */}
+              <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                {(() => {
+                  const g = calcGymStats(workoutDates);
+                  return (
+                    <>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">💪 ジム通いカウント</p>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500">{GYM_START_DATE}〜 ({g.daysElapsed}日)</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div>
+                          <div className="text-2xl font-bold text-emerald-600">{g.visits}</div>
+                          <div className="text-[10px] text-slate-400 dark:text-slate-500">通った回数</div>
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold text-emerald-600">{fmtAvg(g.weeklyAvg)}</div>
+                          <div className="text-[10px] text-slate-400 dark:text-slate-500">週平均 (回/週)</div>
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold text-emerald-600">{fmtAvg(g.monthlyAvg)}</div>
+                          <div className="text-[10px] text-slate-400 dark:text-slate-500">月平均 (回/月)</div>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+
               <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
                 {showSpinner ? <CardSpinner /> : (
                   <>
