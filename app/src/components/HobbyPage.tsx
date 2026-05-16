@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { toJSTDateString } from "@/lib/utils";
 import { parseWeight, exerciseVolume } from "@/lib/workoutVolume";
+import { calcGymStats, GYM_START_DATE, fmtAvg } from "@/lib/gymStats";
 import { SortableList, SortableItem } from "./SortableList";
 import { Line } from "react-chartjs-2";
 import {
@@ -308,6 +309,14 @@ export default function HobbyPage() {
       ? allWorkouts.filter((log) => log.exercises.some((e) => e.name.includes(term))).length
       : allWorkouts.length;
   }, [allWorkouts, historyFilter]);
+
+  // ジム通いカウント (開始日 2026-04-19 以降)
+  const gymStats = useMemo(() => {
+    const dates = allWorkouts
+      .map((l) => (typeof l.date === "string" && l.date.includes("T") ? l.date.split("T")[0] : l.date))
+      .filter((d): d is string => typeof d === "string");
+    return calcGymStats(dates);
+  }, [allWorkouts]);
 
   const fetchReading = useCallback(async (d: string) => {
     const [booksData, logsData] = await Promise.all([
@@ -702,6 +711,28 @@ export default function HobbyPage() {
           {/* ══ Workout trend chart ══ */}
           {tab === "workout" && (
             <>
+              {/* ジム通いカウント (開始: 2026-04-19) */}
+              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200">💪 ジム通いカウント</h3>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500">{GYM_START_DATE} 〜 ({gymStats.daysElapsed}日)</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <div className="text-2xl font-bold text-emerald-600">{gymStats.visits}</div>
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500">通った回数</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-emerald-600">{fmtAvg(gymStats.weeklyAvg)}</div>
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500">週平均 (回/週)</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-emerald-600">{fmtAvg(gymStats.monthlyAvg)}</div>
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500">月平均 (回/月)</div>
+                  </div>
+                </div>
+              </div>
+
               {chartData.datasets.length > 0 ? (
                 <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
                   <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
