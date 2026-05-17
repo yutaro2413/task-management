@@ -195,32 +195,29 @@ export default function WeeklyPage() {
   }, []);
 
   // ── D&D helpers ────────────────────────────────────────────────────────
-  /** グリッド要素からスクロール座標でセルを特定する。AM/PM 2グリッド対応。 */
+  /** グリッド要素からスクロール座標でセルを特定する。日ごとに 午前→午後 のサブ列が並んでいる単一グリッド対応。 */
   const getTargetFromPosition = useCallback((clientX: number, clientY: number): { colIdx: number; slot: number } | null => {
     const scrollEl = calendarScrollRef.current;
     if (!scrollEl) return null;
-    const grids: Array<{ el: HTMLElement | null; offset: number }> = [
-      { el: scrollEl.querySelector("[data-timegrid='am']") as HTMLElement | null, offset: 0 },
-      { el: scrollEl.querySelector("[data-timegrid='pm']") as HTMLElement | null, offset: 24 },
-    ];
-    for (const { el, offset } of grids) {
-      if (!el) continue;
-      const rect = el.getBoundingClientRect();
-      if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) continue;
-      const rowH = el.offsetHeight / 24;
-      if (rowH === 0) continue;
-      const timeColPx = 56; // 3.5rem (固定)
-      const relX = clientX - rect.left - timeColPx;
-      const relY = clientY - rect.top;
-      if (relX < 0 || relY < 0) continue;
-      const dayW = (rect.width - timeColPx) / 7;
-      const colIdx = Math.floor(relX / dayW);
-      const localSlot = Math.floor(relY / rowH);
-      const slot = localSlot + offset;
-      if (colIdx < 0 || colIdx > 6 || slot < 0 || slot > 47) continue;
-      return { colIdx, slot };
-    }
-    return null;
+    const el = scrollEl.querySelector("[data-timegrid='combined']") as HTMLElement | null;
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) return null;
+    const rowH = el.offsetHeight / 24;
+    if (rowH === 0) return null;
+    const timeColPx = 56; // 3.5rem (固定)
+    const relX = clientX - rect.left - timeColPx;
+    const relY = clientY - rect.top;
+    if (relX < 0 || relY < 0) return null;
+    const subColW = (rect.width - timeColPx) / 14; // 7日 × 2 (午前/午後)
+    const subColIdx = Math.floor(relX / subColW);
+    if (subColIdx < 0 || subColIdx >= 14) return null;
+    const colIdx = Math.floor(subColIdx / 2);
+    const isPm = subColIdx % 2 === 1;
+    const localSlot = Math.floor(relY / rowH);
+    const slot = localSlot + (isPm ? 24 : 0);
+    if (colIdx < 0 || colIdx > 6 || slot < 0 || slot > 47) return null;
+    return { colIdx, slot };
   }, []);
 
   /** エントリを新しい位置に移動して保存 */
@@ -854,201 +851,211 @@ export default function WeeklyPage() {
             onDragLeave={() => setDropCell(null)}
             onDragEnd={() => { setDragEntry(null); setDropCell(null); }}
           >
-            {/* Sticky day header — 午前 / 午後 を 2列で並べる */}
+            {/* Sticky day header — 日ごとに 午前→午後 のサブ列が並ぶ */}
             <div
               data-calheader
-              className="sticky top-0 z-20 flex bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700"
+              className="sticky top-0 z-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 grid"
+              style={{ gridTemplateColumns: `3.5rem repeat(14, minmax(0, 1fr))` }}
             >
-              {(["am", "pm"] as const).map((half) => (
-                <div
-                  key={`hdr-${half}`}
-                  className={`flex-1 grid ${half === "pm" ? "border-l-2 border-slate-300 dark:border-slate-600" : ""}`}
-                  style={{ gridTemplateColumns: `3.5rem repeat(7, 1fr)` }}
-                >
-                  <div className="border-r border-slate-100 dark:border-slate-800 flex items-center justify-center text-[10px] text-slate-400 dark:text-slate-500 font-semibold">
-                    {half === "am" ? "午前" : "午後"}
-                  </div>
-                  {weekDates.map((wd) => {
-                    const dateKey = formatDate(wd);
-                    const expenseTotal = dailyExpenseTotals.get(dateKey);
-                    const workSlots = dailyWorkSlotCount.get(dateKey) || 0;
-                    const workHoursDisplay = workSlots * 0.5;
-                    const days = ["日", "月", "火", "水", "木", "金", "土"];
-                    const dow = wd.getDay();
-                    const isWeekend = dow === 0 || dow === 6;
-                    return (
-                      <div key={`${half}-${dateKey}`} className="border-r border-slate-100 dark:border-slate-800 px-1 py-1.5 text-center">
+              {/* 左上の空セル */}
+              <div className="border-r border-slate-100 dark:border-slate-800" />
+              {weekDates.map((wd) => {
+                const dateKey = formatDate(wd);
+                const expenseTotal = dailyExpenseTotals.get(dateKey);
+                const workSlots = dailyWorkSlotCount.get(dateKey) || 0;
+                const workHoursDisplay = workSlots * 0.5;
+                const days = ["日", "月", "火", "水", "木", "金", "土"];
+                const dow = wd.getDay();
+                const isWeekend = dow === 0 || dow === 6;
+                return (["am", "pm"] as const).map((half) => (
+                  <div
+                    key={`hdr-${dateKey}-${half}`}
+                    className={`px-1 py-1.5 text-center ${half === "am" ? "border-l-2 border-slate-300 dark:border-slate-600" : "border-r border-slate-100 dark:border-slate-800"}`}
+                  >
+                    {half === "am" ? (
+                      <>
                         <p className={`text-xs font-semibold leading-tight ${isWeekend ? (dow === 0 ? "text-red-500" : "text-blue-500") : "text-slate-700 dark:text-slate-200"}`}>
                           {wd.getMonth() + 1}/{wd.getDate()}({days[dow]})
                         </p>
+                        <p className="text-[9px] text-slate-400 dark:text-slate-500 leading-tight">午前</p>
                         {workSlots > 0 ? (
-                          <p className="text-[10px] text-indigo-600 font-medium leading-tight mt-0.5">
-                            {workHoursDisplay}h
-                          </p>
-                        ) : (
-                          <p className="text-[10px] text-slate-300 dark:text-slate-600 leading-tight mt-0.5">—</p>
-                        )}
+                          <p className="text-[10px] text-indigo-600 font-medium leading-tight">{workHoursDisplay}h</p>
+                        ) : null}
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs leading-tight opacity-0 select-none">.</p>
+                        <p className="text-[9px] text-slate-400 dark:text-slate-500 leading-tight">午後</p>
                         {expenseTotal ? (
                           <p className="text-[10px] text-rose-500 font-medium leading-tight">
                             -{expenseTotal >= 10000 ? `${Math.round(expenseTotal / 1000)}k` : expenseTotal.toLocaleString()}円
                           </p>
-                        ) : (
-                          <p className="text-[10px] text-slate-300 dark:text-slate-600 leading-tight">—</p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
+                        ) : null}
+                      </>
+                    )}
+                  </div>
+                ));
+              })}
             </div>
 
-            {/* Time grid — 午前 (00:00–12:00) / 午後 (12:00–24:00) を 2列で並べる */}
-            <div className="flex">
-              {(["am", "pm"] as const).map((half) => {
-                const slotOffset = half === "am" ? 0 : 24;
-                return (
-                  <div
-                    key={`grid-${half}`}
-                    data-timegrid={half}
-                    className={`flex-1 grid ${half === "pm" ? "border-l-2 border-slate-300 dark:border-slate-600" : ""}`}
-                    style={{
-                      gridTemplateColumns: `3.5rem repeat(7, 1fr)`,
-                      gridTemplateRows: `repeat(24, ${CAL_ROW_REM}rem)`,
-                    }}
-                  >
-                    {/* Hour labels (12 per half) */}
-                    {Array.from({ length: 12 }, (_, h) => (
-                      <div
-                        key={`${half}-h-${h}`}
-                        className="flex items-start justify-end pr-1 pt-px border-b border-slate-100 dark:border-slate-800 text-[9px] text-slate-400 dark:text-slate-500 font-mono"
-                        style={{ gridRow: `${h * 2 + 1} / ${h * 2 + 3}`, gridColumn: 1 }}
-                      >
-                        {String(h + slotOffset / 2).padStart(2, "0")}:00
-                      </div>
-                    ))}
-
-                    {/* Half-hour grid lines (time column filler) */}
-                    {Array.from({ length: 24 }, (_, i) => (
-                      <div
-                        key={`${half}-tl-${i}`}
-                        className={`border-b ${i % 2 === 0 ? "border-slate-100 dark:border-slate-800" : "border-slate-50"}`}
-                        style={{ gridRow: i + 1, gridColumn: 1 }}
-                      />
-                    ))}
-
-                    {/* Day columns: clickable cells */}
-                    {weekDates.map((wd, colIdx) => {
-                      const dateKey = formatDate(wd);
-                      return Array.from({ length: 24 }, (_, rowIdx) => {
-                        const slotIdx = rowIdx + slotOffset;
-                        return (
-                          <div
-                            key={`${half}-cell-${colIdx}-${rowIdx}`}
-                            onClick={() => {
-                              if (dragEntry) return;
-                              setNewEntryContext({ date: dateKey, startSlot: slotIdx });
-                            }}
-                            className={`border-r border-slate-100 dark:border-slate-800 hover:bg-indigo-50/50 transition-colors cursor-pointer ${rowIdx % 2 === 0 ? "border-b border-slate-100 dark:border-slate-800" : "border-b border-slate-50"}`}
-                            style={{ gridRow: rowIdx + 1, gridColumn: colIdx + 2 }}
-                            title={`${dateKey} ${slotToTime(slotIdx)} に新規作成`}
-                          />
-                        );
-                      });
-                    })}
-
-                    {/* Drop preview — only the portion within this half */}
-                    {dragEntry && dropCell && (() => {
-                      const duration = dragEntry.endSlot - dragEntry.startSlot;
-                      const previewStart = Math.min(dropCell.slot, 48 - duration);
-                      const previewEnd = previewStart + duration;
-                      const localStart = Math.max(previewStart, slotOffset);
-                      const localEnd = Math.min(previewEnd, slotOffset + 24);
-                      if (localEnd <= localStart) return null;
-                      return (
-                        <div
-                          className="pointer-events-none z-20 rounded mx-0.5 opacity-60"
-                          style={{
-                            gridRow: `${localStart - slotOffset + 1} / ${localEnd - slotOffset + 1}`,
-                            gridColumn: dropCell.colIdx + 2,
-                            backgroundColor: `${dragEntry.genre.color}30`,
-                            border: `2px dashed ${dragEntry.genre.color}`,
-                          }}
-                        />
-                      );
-                    })()}
-
-                    {/* Entry blocks — split entries that span AM↔PM */}
-                    {weekDates.map((wd, colIdx) => {
-                      const dateKey = formatDate(wd);
-                      const dayEntries = entriesByDate.get(dateKey) || [];
-                      const layout = computeEntryLayout(dayEntries);
-                      return dayEntries.map((entry) => {
-                        const localStart = Math.max(entry.startSlot, slotOffset);
-                        const localEnd = Math.min(entry.endSlot, slotOffset + 24);
-                        if (localEnd <= localStart) return null;
-                        const isDragging = dragEntry?.id === entry.id;
-                        const lane = layout.get(entry.id) || { col: 0, total: 1 };
-                        const widthPct = 100 / lane.total;
-                        const leftPct = lane.col * widthPct;
-                        return (
-                          <div
-                            key={`${half}-${entry.id}`}
-                            draggable
-                            onClick={(e) => {
-                              if (dragEntry) return;
-                              e.stopPropagation();
-                              setEditingTimeEntry(entry);
-                            }}
-                            onDragStart={(e) => {
-                              e.dataTransfer.effectAllowed = "move";
-                              setDragEntry(entry);
-                              setDropCell(null);
-                            }}
-                            onDragEnd={() => { setDragEntry(null); setDropCell(null); }}
-                            onTouchStart={(e) => handleEntryTouchStart(e, entry)}
-                            onTouchMove={handleEntryTouchMove}
-                            onTouchEnd={handleEntryTouchEnd}
-                            className={`rounded overflow-hidden z-10 cursor-pointer active:cursor-grabbing transition-opacity select-none ${
-                              isDragging ? "opacity-30" : "opacity-100"
-                            }`}
-                            style={{
-                              gridRow: `${localStart - slotOffset + 1} / ${localEnd - slotOffset + 1}`,
-                              gridColumn: colIdx + 2,
-                              backgroundColor: `${entry.genre.color}20`,
-                              borderLeft: `3px solid ${entry.genre.color}`,
-                              width: `calc(${widthPct}% - 2px)`,
-                              marginLeft: `calc(${leftPct}% + 1px)`,
-                            }}
-                            title={`${entry.recurrenceRule || entry.parentRecurrenceId ? "🔁 " : ""}${slotToTime(entry.startSlot)}–${slotToTime(entry.endSlot)} [${entry.genre.type || "経費"}${entry.genre.subType ? `/${entry.genre.subType}` : ""}] ${entry.category.name} / ${entry.genre.name}${entry.title ? ` — ${entry.title}` : ""}`}
-                          >
-                            <div className="px-1 py-px overflow-hidden h-full leading-none">
-                              <p
-                                className="text-[9px] font-semibold truncate leading-tight"
-                                style={{ color: entry.genre.color }}
-                              >
-                                {entry.title || entry.genre.name}
-                              </p>
-                              <p className="text-[8px] text-slate-500 dark:text-slate-400 truncate leading-tight mt-0.5">
-                                <span
-                                  className={`inline-block px-0.5 rounded-sm mr-0.5 font-semibold ${
-                                    entry.genre.type === "投資"
-                                      ? "bg-blue-100 text-blue-600"
-                                      : entry.genre.type === "付随"
-                                      ? "bg-red-100 text-red-600"
-                                      : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
-                                  }`}
-                                >
-                                  {(entry.genre.type || "経")[0]}
-                                </span>
-                                {entry.category.name}・{entry.genre.name}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      });
-                    })}
+            {/* Time grid — 日ごとに 午前→午後 のサブ列が並ぶ単一グリッド */}
+            <div
+              data-timegrid="combined"
+              className="grid"
+              style={{
+                gridTemplateColumns: `3.5rem repeat(14, minmax(0, 1fr))`,
+                gridTemplateRows: `repeat(24, ${CAL_ROW_REM}rem)`,
+              }}
+            >
+              {/* Hour labels (左端固定列): AM/PM を同じ行に併記 */}
+              {Array.from({ length: 12 }, (_, h) => (
+                <div
+                  key={`h-${h}`}
+                  className="flex items-start justify-end pr-1 pt-px border-b border-slate-100 dark:border-slate-800 text-[9px] text-slate-400 dark:text-slate-500 font-mono leading-tight"
+                  style={{ gridRow: `${h * 2 + 1} / ${h * 2 + 3}`, gridColumn: 1 }}
+                >
+                  <div className="text-right">
+                    <div>{String(h).padStart(2, "0")}:00</div>
+                    <div className="opacity-60">{String(h + 12).padStart(2, "0")}:00</div>
                   </div>
-                );
+                </div>
+              ))}
+
+              {/* 30 分グリッド線 (時間列の埋め) */}
+              {Array.from({ length: 24 }, (_, i) => (
+                <div
+                  key={`tl-${i}`}
+                  className={`border-b ${i % 2 === 0 ? "border-slate-100 dark:border-slate-800" : "border-slate-50"}`}
+                  style={{ gridRow: i + 1, gridColumn: 1 }}
+                />
+              ))}
+
+              {/* 日 × (午前/午後) サブ列のセル */}
+              {weekDates.map((wd, colIdx) => {
+                const dateKey = formatDate(wd);
+                return (["am", "pm"] as const).flatMap((half) => {
+                  const slotOffset = half === "am" ? 0 : 24;
+                  const subColIdx = colIdx * 2 + (half === "pm" ? 1 : 0);
+                  const gridCol = subColIdx + 2; // +1 (time col) +1 (1-indexed)
+                  return Array.from({ length: 24 }, (_, rowIdx) => {
+                    const slotIdx = rowIdx + slotOffset;
+                    return (
+                      <div
+                        key={`cell-${dateKey}-${half}-${rowIdx}`}
+                        onClick={() => {
+                          if (dragEntry) return;
+                          setNewEntryContext({ date: dateKey, startSlot: slotIdx });
+                        }}
+                        className={`hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 transition-colors cursor-pointer ${rowIdx % 2 === 0 ? "border-b border-slate-100 dark:border-slate-800" : "border-b border-slate-50"} ${half === "pm" ? "border-r border-slate-100 dark:border-slate-800" : "border-l-2 border-slate-300 dark:border-slate-600"}`}
+                        style={{ gridRow: rowIdx + 1, gridColumn: gridCol }}
+                        title={`${dateKey} ${slotToTime(slotIdx)} に新規作成`}
+                      />
+                    );
+                  });
+                });
+              })}
+
+              {/* Drop preview — AM/PM 跨ぎは 2 ボックスに分割 */}
+              {dragEntry && dropCell && (() => {
+                const duration = dragEntry.endSlot - dragEntry.startSlot;
+                const previewStart = Math.min(dropCell.slot, 48 - duration);
+                const previewEnd = previewStart + duration;
+                return (["am", "pm"] as const).map((half) => {
+                  const slotOffset = half === "am" ? 0 : 24;
+                  const localStart = Math.max(previewStart, slotOffset);
+                  const localEnd = Math.min(previewEnd, slotOffset + 24);
+                  if (localEnd <= localStart) return null;
+                  const subColIdx = dropCell.colIdx * 2 + (half === "pm" ? 1 : 0);
+                  const gridCol = subColIdx + 2;
+                  return (
+                    <div
+                      key={`preview-${half}`}
+                      className="pointer-events-none z-20 rounded mx-0.5 opacity-60"
+                      style={{
+                        gridRow: `${localStart - slotOffset + 1} / ${localEnd - slotOffset + 1}`,
+                        gridColumn: gridCol,
+                        backgroundColor: `${dragEntry.genre.color}30`,
+                        border: `2px dashed ${dragEntry.genre.color}`,
+                      }}
+                    />
+                  );
+                });
+              })()}
+
+              {/* Entry blocks — AM/PM 跨ぎは 2 ボックスに分割 */}
+              {weekDates.map((wd, colIdx) => {
+                const dateKey = formatDate(wd);
+                const dayEntries = entriesByDate.get(dateKey) || [];
+                const layout = computeEntryLayout(dayEntries);
+                return dayEntries.flatMap((entry) => {
+                  const isDragging = dragEntry?.id === entry.id;
+                  const lane = layout.get(entry.id) || { col: 0, total: 1 };
+                  const widthPct = 100 / lane.total;
+                  const leftPct = lane.col * widthPct;
+                  return (["am", "pm"] as const).map((half) => {
+                    const slotOffset = half === "am" ? 0 : 24;
+                    const localStart = Math.max(entry.startSlot, slotOffset);
+                    const localEnd = Math.min(entry.endSlot, slotOffset + 24);
+                    if (localEnd <= localStart) return null;
+                    const subColIdx = colIdx * 2 + (half === "pm" ? 1 : 0);
+                    const gridCol = subColIdx + 2;
+                    return (
+                      <div
+                        key={`entry-${entry.id}-${half}`}
+                        draggable
+                        onClick={(e) => {
+                          if (dragEntry) return;
+                          e.stopPropagation();
+                          setEditingTimeEntry(entry);
+                        }}
+                        onDragStart={(e) => {
+                          e.dataTransfer.effectAllowed = "move";
+                          setDragEntry(entry);
+                          setDropCell(null);
+                        }}
+                        onDragEnd={() => { setDragEntry(null); setDropCell(null); }}
+                        onTouchStart={(e) => handleEntryTouchStart(e, entry)}
+                        onTouchMove={handleEntryTouchMove}
+                        onTouchEnd={handleEntryTouchEnd}
+                        className={`rounded overflow-hidden z-10 cursor-pointer active:cursor-grabbing transition-opacity select-none ${
+                          isDragging ? "opacity-30" : "opacity-100"
+                        }`}
+                        style={{
+                          gridRow: `${localStart - slotOffset + 1} / ${localEnd - slotOffset + 1}`,
+                          gridColumn: gridCol,
+                          backgroundColor: `${entry.genre.color}20`,
+                          borderLeft: `3px solid ${entry.genre.color}`,
+                          width: `calc(${widthPct}% - 2px)`,
+                          marginLeft: `calc(${leftPct}% + 1px)`,
+                        }}
+                        title={`${entry.recurrenceRule || entry.parentRecurrenceId ? "🔁 " : ""}${slotToTime(entry.startSlot)}–${slotToTime(entry.endSlot)} [${entry.genre.type || "経費"}${entry.genre.subType ? `/${entry.genre.subType}` : ""}] ${entry.category.name} / ${entry.genre.name}${entry.title ? ` — ${entry.title}` : ""}`}
+                      >
+                        <div className="px-1 py-px overflow-hidden h-full leading-none">
+                          <p
+                            className="text-[9px] font-semibold truncate leading-tight"
+                            style={{ color: entry.genre.color }}
+                          >
+                            {entry.title || entry.genre.name}
+                          </p>
+                          <p className="text-[8px] text-slate-500 dark:text-slate-400 truncate leading-tight mt-0.5">
+                            <span
+                              className={`inline-block px-0.5 rounded-sm mr-0.5 font-semibold ${
+                                entry.genre.type === "投資"
+                                  ? "bg-blue-100 text-blue-600"
+                                  : entry.genre.type === "付随"
+                                  ? "bg-red-100 text-red-600"
+                                  : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                              }`}
+                            >
+                              {(entry.genre.type || "経")[0]}
+                            </span>
+                            {entry.category.name}・{entry.genre.name}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  });
+                });
               })}
             </div>
           </div>
