@@ -67,3 +67,60 @@ export function computeSleepSessions(
 
   return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
 }
+
+/**
+ * 睡眠セッションの HH:MM 編集時に、相棒タイムスタンプ (anchorIso) から見て
+ * 妥当な duration になる日付を推定して ISO を返す。
+ *
+ * 例: wakeAt = 5/19 09:24, ユーザーが sleepAt を「01:21」に編集 →
+ *   候補 [5/18 01:21 (dur=32h), 5/19 01:21 (dur=8h), 5/20 01:21 (dur=-16h)]
+ *   → 5/19 01:21 を選択 (dur が 0 < d < 20h で 7h に最も近い)
+ *
+ * @param hhmm        ユーザー入力 "HH:MM"
+ * @param anchorIso   相棒の ISO (sleepAt 編集なら wakeAt、wakeAt 編集なら sleepAt)
+ * @param fieldKind   編集中のフィールド種別
+ * @returns ISO 文字列
+ */
+export function smartReplaceSleepTime(
+  hhmm: string,
+  anchorIso: string,
+  fieldKind: "sleep" | "wake",
+): string {
+  const [hh, mm] = hhmm.split(":").map(Number);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return anchorIso;
+  const anchor = new Date(anchorIso);
+  // anchor の JST 日付を基準に ±1 日の候補を作る
+  const anchorJst = new Date(anchor.getTime() + 9 * HOUR_MS);
+  const y = anchorJst.getUTCFullYear();
+  const mo = anchorJst.getUTCMonth();
+  const d = anchorJst.getUTCDate();
+
+  const candidates = [-1, 0, 1].map((offset) =>
+    Date.UTC(y, mo, d + offset, hh, mm, 0, 0) - 9 * HOUR_MS,
+  );
+
+  const TARGET_MS = 7 * HOUR_MS; // 7 時間に最も近いものを優先
+  const MAX_VALID_MS = 20 * HOUR_MS;
+  const anchorMs = anchor.getTime();
+
+  let best = candidates[1]; // デフォルト: anchor と同日
+  let bestScore = Infinity;
+  for (const c of candidates) {
+    const sleepMs = fieldKind === "sleep" ? c : anchorMs;
+    const wakeMs = fieldKind === "wake" ? c : anchorMs;
+    const dur = wakeMs - sleepMs;
+    let score: number;
+    if (dur <= 0) {
+      score = 1e12 + Math.abs(dur);                // 負の duration は強くペナルティ
+    } else if (dur > MAX_VALID_MS) {
+      score = 1e9 + dur;                            // 20h 超もペナルティ
+    } else {
+      score = Math.abs(dur - TARGET_MS);            // 7h に近いほど良い
+    }
+    if (score < bestScore) {
+      bestScore = score;
+      best = c;
+    }
+  }
+  return new Date(best).toISOString();
+}
