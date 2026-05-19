@@ -5,6 +5,7 @@ import Link from "next/link";
 import { toJSTDateString } from "@/lib/utils";
 import { parseWeight, exerciseVolume } from "@/lib/workoutVolume";
 import { calcGymStats, GYM_START_DATE, fmtAvg } from "@/lib/gymStats";
+import { smartReplaceSleepTime } from "@/lib/sleep";
 import { SortableList, SortableItem } from "./SortableList";
 import { Line } from "react-chartjs-2";
 import {
@@ -82,17 +83,7 @@ function formatJSTHHMM(iso: string) {
   return `${hh}:${mm}`;
 }
 
-// Replace the HH:MM portion of an ISO timestamp while preserving its JST date.
-function replaceJSTHHMM(originalIso: string, hhmm: string): string {
-  const [hh, mm] = hhmm.split(":").map(Number);
-  const orig = new Date(originalIso);
-  const jst = new Date(orig.getTime() + 9 * 60 * 60 * 1000);
-  const y = jst.getUTCFullYear();
-  const mo = jst.getUTCMonth();
-  const d = jst.getUTCDate();
-  const utcMs = Date.UTC(y, mo, d, hh, mm, 0, 0) - 9 * 60 * 60 * 1000;
-  return new Date(utcMs).toISOString();
-}
+// 旧 replaceJSTHHMM は smartReplaceSleepTime に置き換え (lib/sleep.ts)
 
 function formatDurationHM(min: number) {
   const h = Math.floor(min / 60);
@@ -394,13 +385,17 @@ export default function HobbyPage() {
     if (!editingSleep) return;
     setSavingSleep(true);
     try {
+      // 起床時刻を先に決定し (基準は元の wakeAt) → 就寝時刻はその起床時刻から見て妥当な日付を選ぶ。
+      // これで「23:30→01:30」のような日跨ぎ編集も正しい日付に解釈される。
+      const newWakeAt = smartReplaceSleepTime(editWakeHM, editingSleep.sleepAt, "wake");
+      const newSleepAt = smartReplaceSleepTime(editSleepHM, newWakeAt, "sleep");
       const res = await fetch("/api/sleep-sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           date: editingSleep.date,
-          sleepAt: replaceJSTHHMM(editingSleep.sleepAt, editSleepHM),
-          wakeAt: replaceJSTHHMM(editingSleep.wakeAt, editWakeHM),
+          sleepAt: newSleepAt,
+          wakeAt: newWakeAt,
         }),
       });
       if (!res.ok) {
