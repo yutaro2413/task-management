@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { NOTE_SECTIONS, NoteSections, parseNote, serializeNote } from "@/lib/dailyNote";
 import { SortableList, SortableItem } from "./SortableList";
+import { resolveMenuWeight, type MenuWeight } from "@/lib/menuWeights";
 
 const DRAFT_KEY_PREFIX = "dailyNote-draft-";
 
@@ -10,10 +11,16 @@ type ExerciseMenu = {
   id: string;
   name: string;
   defaultWeight: string;
+  weights?: MenuWeight[];
   defaultReps: number;
   defaultSets: number;
   type: string;
 };
+
+type GymLocation = { id: string; name: string };
+type WorkoutRoutine = { id: string; name: string; menuIds: string[] };
+
+const LOCATION_STORAGE_KEY = "workoutSelectedLocation";
 
 type Exercise = {
   menuId?: string;
@@ -56,6 +63,10 @@ function WorkoutSection({
   checked,
   exercises,
   menus,
+  locations,
+  routines,
+  selectedLocationId,
+  onSelectLocation,
   onToggle,
   onUpdate,
   readOnly,
@@ -63,21 +74,39 @@ function WorkoutSection({
   checked: boolean;
   exercises: Exercise[];
   menus: ExerciseMenu[];
+  locations: GymLocation[];
+  routines: WorkoutRoutine[];
+  selectedLocationId: string | null;
+  onSelectLocation: (id: string | null) => void;
   onToggle: () => void;
   onUpdate: (exercises: Exercise[]) => void;
   readOnly?: boolean;
 }) {
   const [showPicker, setShowPicker] = useState(false);
 
+  // メニューを 1 件 Exercise に変換 (選択中の場所の重量を適用)
+  const menuToExercise = (menu: ExerciseMenu): Exercise => ({
+    menuId: menu.id,
+    name: menu.name,
+    weight: menu.type === "running" ? "" : resolveMenuWeight(menu, selectedLocationId),
+    reps: menu.defaultReps,
+    sets: menu.defaultSets,
+    type: menu.type,
+  });
+
   const addFromMenu = (menu: ExerciseMenu) => {
-    onUpdate([...exercises, {
-      menuId: menu.id,
-      name: menu.name,
-      weight: menu.defaultWeight,
-      reps: menu.defaultReps,
-      sets: menu.defaultSets,
-      type: menu.type,
-    }]);
+    onUpdate([...exercises, menuToExercise(menu)]);
+    setShowPicker(false);
+  };
+
+  // ルーティンを適用: 含まれるメニューを順に「追加」(既存はそのまま)
+  const applyRoutine = (routine: WorkoutRoutine) => {
+    const toAdd = routine.menuIds
+      .map((id) => menus.find((m) => m.id === id))
+      .filter((m): m is ExerciseMenu => Boolean(m))
+      .map(menuToExercise);
+    if (toAdd.length === 0) return;
+    onUpdate([...exercises, ...toAdd]);
     setShowPicker(false);
   };
 
@@ -124,6 +153,35 @@ function WorkoutSection({
 
       {checked && (
         <div className="px-3 py-2 space-y-2 border-t border-slate-100 dark:border-slate-800">
+          {/* 場所セレクタ + ルーティン (編集時のみ) */}
+          {!readOnly && locations.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] text-slate-400 dark:text-slate-500">場所:</span>
+              <button
+                onClick={() => onSelectLocation(null)}
+                className={`px-2 py-0.5 rounded-full text-[11px] font-medium border ${selectedLocationId === null ? "bg-emerald-100 text-emerald-700 border-emerald-300" : "bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700"}`}
+              >既定</button>
+              {locations.map((loc) => (
+                <button
+                  key={loc.id}
+                  onClick={() => onSelectLocation(loc.id)}
+                  className={`px-2 py-0.5 rounded-full text-[11px] font-medium border ${selectedLocationId === loc.id ? "bg-emerald-100 text-emerald-700 border-emerald-300" : "bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700"}`}
+                >{loc.name}</button>
+              ))}
+            </div>
+          )}
+          {!readOnly && routines.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] text-slate-400 dark:text-slate-500">ルーティン追加:</span>
+              {routines.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => applyRoutine(r)}
+                  className="px-2 py-0.5 rounded-full text-[11px] font-medium border border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30"
+                >+ {r.name}</button>
+              ))}
+            </div>
+          )}
           {readOnly ? (
             exercises.length > 0 ? (
               <div className="space-y-1">
@@ -244,13 +302,25 @@ export default function DailyNoteInput({ date }: { date: string }) {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [savedWorkout, setSavedWorkout] = useState<WorkoutLog>(null);
   const [menus, setMenus] = useState<ExerciseMenu[]>([]);
+  const [locations, setLocations] = useState<GymLocation[]>([]);
+  const [routines, setRoutines] = useState<WorkoutRoutine[]>([]);
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
+
+  // 選択中の場所を localStorage に永続化 (記録のたびに選び直さなくていい)
+  const selectLocation = useCallback((id: string | null) => {
+    setSelectedLocationId(id);
+    if (id) localStorage.setItem(LOCATION_STORAGE_KEY, id);
+    else localStorage.removeItem(LOCATION_STORAGE_KEY);
+  }, []);
 
   useEffect(() => {
     Promise.all([
       fetch(`/api/daily-notes?date=${date}`).then((r) => r.json()),
       fetch(`/api/workout-logs?date=${date}`).then((r) => r.json()),
       fetch("/api/exercise-menus").then((r) => r.json()),
-    ]).then(([noteData, workoutData, menuData]) => {
+      fetch("/api/gym-locations").then((r) => r.json()),
+      fetch("/api/workout-routines").then((r) => r.json()),
+    ]).then(([noteData, workoutData, menuData, locData, routData]) => {
       const saved = noteData?.content || "";
       setContent(saved);
       const stored = loadDraftFromStorage(date);
@@ -262,6 +332,13 @@ export default function DailyNoteInput({ date }: { date: string }) {
       }
 
       setMenus(menuData);
+      if (Array.isArray(locData)) setLocations(locData);
+      if (Array.isArray(routData)) setRoutines(routData);
+      // 保存済みの選択場所を復元 (存在チェック)
+      const storedLoc = localStorage.getItem(LOCATION_STORAGE_KEY);
+      if (storedLoc && Array.isArray(locData) && locData.some((l: GymLocation) => l.id === storedLoc)) {
+        setSelectedLocationId(storedLoc);
+      }
 
       if (workoutData && workoutData.exercises) {
         setSavedWorkout(workoutData);
@@ -436,6 +513,10 @@ export default function DailyNoteInput({ date }: { date: string }) {
                   checked
                   exercises={savedWorkout.exercises as Exercise[]}
                   menus={menus}
+                  locations={locations}
+                  routines={routines}
+                  selectedLocationId={selectedLocationId}
+                  onSelectLocation={selectLocation}
                   onToggle={() => {}}
                   onUpdate={() => {}}
                   readOnly
@@ -494,6 +575,10 @@ export default function DailyNoteInput({ date }: { date: string }) {
                 checked={workoutChecked}
                 exercises={exercises}
                 menus={menus}
+                locations={locations}
+                routines={routines}
+                selectedLocationId={selectedLocationId}
+                onSelectLocation={selectLocation}
                 onToggle={handleWorkoutToggle}
                 onUpdate={setExercises}
               />

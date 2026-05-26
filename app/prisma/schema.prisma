@@ -114,17 +114,37 @@ model DailyNote {
   updatedAt DateTime @updatedAt
 }
 
+// 筋トレを行う場所マスタ (ジムごとに使える重量が違うため)
+model GymLocation {
+  id        String   @id @default(cuid())
+  name      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // 筋トレメニューマスタ
 model ExerciseMenu {
   id            String   @id @default(cuid())
   name          String
   defaultWeight String   @default("")
+  weights       Json     @default("[]") // 場所別の重量 [{ locationId, weight }]
   defaultReps   Int      @default(10)
   defaultSets   Int      @default(3)
   type          String   @default("strength") // "strength" | "running"
   sortOrder     Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+// 筋トレルーティン (上半身A 等。その日に行うメニュー群のテンプレート)
+model WorkoutRoutine {
+  id        String   @id @default(cuid())
+  name      String
+  menuIds   Json     @default("[]") // 順序付き ExerciseMenu id 配列
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // 筋トレ記録

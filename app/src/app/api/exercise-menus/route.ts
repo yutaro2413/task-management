@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { normalizeWeights } from "@/lib/menuWeights";
 
 export async function GET() {
   const menus = await prisma.exerciseMenu.findMany({
@@ -15,6 +16,7 @@ export async function POST(request: NextRequest) {
     data: {
       name: body.name,
       defaultWeight: body.defaultWeight || "",
+      weights: normalizeWeights(body.weights),
       defaultReps: body.defaultReps ?? 10,
       defaultSets: body.defaultSets ?? 3,
       type: body.type || "strength",
@@ -41,6 +43,7 @@ export async function PUT(request: NextRequest) {
     data: {
       name: body.name,
       defaultWeight: body.defaultWeight || "",
+      ...("weights" in body ? { weights: normalizeWeights(body.weights) } : {}),
       defaultReps: body.defaultReps ?? 10,
       defaultSets: body.defaultSets ?? 3,
       type: body.type || "strength",
