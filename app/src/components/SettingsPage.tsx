@@ -39,7 +39,6 @@ export default function SettingsPage() {
   const [editingExpCat, setEditingExpCat] = useState<ExpenseCategory | null>(null);
   const [exerciseMenus, setExerciseMenus] = useState<ExerciseMenu[]>([]);
   const [newMenuName, setNewMenuName] = useState("");
-  const [newMenuWeight, setNewMenuWeight] = useState("");
   const [newMenuReps, setNewMenuReps] = useState(10);
   const [newMenuSets, setNewMenuSets] = useState(3);
   const [editingMenu, setEditingMenu] = useState<ExerciseMenu | null>(null);
@@ -156,9 +155,9 @@ export default function SettingsPage() {
     await fetch("/api/exercise-menus", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newMenuName.trim(), defaultWeight: newMenuWeight, defaultReps: newMenuReps, defaultSets: newMenuSets }),
+      body: JSON.stringify({ name: newMenuName.trim(), defaultReps: newMenuReps, defaultSets: newMenuSets }),
     });
-    setNewMenuName(""); setNewMenuWeight(""); setNewMenuReps(10); setNewMenuSets(3);
+    setNewMenuName(""); setNewMenuReps(10); setNewMenuSets(3);
     fetchData();
   };
   const updateExerciseMenu = async () => {
@@ -467,10 +466,6 @@ export default function SettingsPage() {
                             <>
                               <div className="flex items-center gap-2">
                                 <div className="flex items-center gap-1">
-                                  <input type="text" value={editingMenu.defaultWeight} onChange={(e) => setEditingMenu({ ...editingMenu, defaultWeight: e.target.value })} placeholder="重量" className="w-16 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
-                                  <span className="text-[10px] text-slate-400 dark:text-slate-500">kg(既定)</span>
-                                </div>
-                                <div className="flex items-center gap-1">
                                   <input type="number" value={editingMenu.defaultReps} onChange={(e) => setEditingMenu({ ...editingMenu, defaultReps: Math.max(0, Number(e.target.value)) })} className="w-14 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
                                   <span className="text-[10px] text-slate-400 dark:text-slate-500">回</span>
                                 </div>
@@ -479,9 +474,9 @@ export default function SettingsPage() {
                                   <span className="text-[10px] text-slate-400 dark:text-slate-500">set</span>
                                 </div>
                               </div>
-                              {gymLocations.length > 0 && (
+                              {gymLocations.length > 0 ? (
                                 <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-slate-800">
-                                  <p className="text-[10px] text-slate-400 dark:text-slate-500">場所別の重量 (空欄なら既定値)</p>
+                                  <p className="text-[10px] text-slate-400 dark:text-slate-500">場所別の重量</p>
                                   {gymLocations.map((loc) => {
                                     const cur = (editingMenu.weights ?? []).find((w) => w.locationId === loc.id)?.weight ?? "";
                                     return (
@@ -503,6 +498,8 @@ export default function SettingsPage() {
                                     );
                                   })}
                                 </div>
+                              ) : (
+                                <p className="text-[10px] text-slate-400 dark:text-slate-500 pt-1 border-t border-slate-100 dark:border-slate-800">先に下の「場所(ジム)」を登録すると場所別の重量を設定できます。</p>
                               )}
                             </>
                           )}
@@ -512,24 +509,41 @@ export default function SettingsPage() {
                           </div>
                         </div>
                       ) : (
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <span
-                              ref={setActivatorNodeRef}
-                              {...listeners}
-                              style={handleStyle}
-                              className="text-slate-400 dark:text-slate-500 text-lg leading-none cursor-grab active:cursor-grabbing select-none px-1 py-1"
-                              title="長押ししてドラッグで並び替え"
-                            >⋮⋮</span>
-                            <span className="text-sm">{menu.name}</span>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${menu.type === "running" ? "bg-blue-100 text-blue-600" : "bg-emerald-100 text-emerald-600"}`}>
-                              {menu.type === "running" ? "ランニング" : "筋トレ"}
-                            </span>
-                            {menu.type !== "running" && (
-                              <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                                {menu.defaultWeight && `${menu.defaultWeight}kg `}{menu.defaultReps}回×{menu.defaultSets}set
+                        <div className="flex items-start justify-between gap-2">
+                          <span
+                            ref={setActivatorNodeRef}
+                            {...listeners}
+                            style={handleStyle}
+                            className="text-slate-400 dark:text-slate-500 text-lg leading-none cursor-grab active:cursor-grabbing select-none px-1 py-1 flex-shrink-0"
+                            title="長押ししてドラッグで並び替え"
+                          >⋮⋮</span>
+                          <div className="flex-1 min-w-0 space-y-0.5">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm">{menu.name}</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${menu.type === "running" ? "bg-blue-100 text-blue-600" : "bg-emerald-100 text-emerald-600"}`}>
+                                {menu.type === "running" ? "ランニング" : "筋トレ"}
                               </span>
-                            )}
+                            </div>
+                            {menu.type !== "running" && (() => {
+                              const ws = (menu.weights ?? []).filter((w) => w.weight !== "");
+                              if (ws.length === 0) {
+                                return <p className="text-[10px] text-slate-400 dark:text-slate-500">{menu.defaultReps}回×{menu.defaultSets}set（重量未設定）</p>;
+                              }
+                              // 場所マスタの順に並べる
+                              return (
+                                <div className="space-y-0.5">
+                                  {gymLocations.map((loc) => {
+                                    const w = ws.find((x) => x.locationId === loc.id);
+                                    if (!w) return null;
+                                    return (
+                                      <p key={loc.id} className="text-[10px] text-slate-500 dark:text-slate-400">
+                                        <span className="text-slate-400 dark:text-slate-500">{loc.name}:</span> {w.weight}kg × {menu.defaultReps}回 × {menu.defaultSets}set
+                                      </p>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <button onClick={() => setEditingMenu(menu)} className="text-xs text-indigo-600">編集</button>
@@ -550,10 +564,6 @@ export default function SettingsPage() {
             </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1">
-                <input type="text" value={newMenuWeight} onChange={(e) => setNewMenuWeight(e.target.value)} placeholder="重量" className="w-16 px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
-                <span className="text-[10px] text-slate-400 dark:text-slate-500">kg</span>
-              </div>
-              <div className="flex items-center gap-1">
                 <input type="number" value={newMenuReps} onChange={(e) => setNewMenuReps(Math.max(0, Number(e.target.value)))} className="w-14 px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
                 <span className="text-[10px] text-slate-400 dark:text-slate-500">回</span>
               </div>
@@ -561,6 +571,7 @@ export default function SettingsPage() {
                 <input type="number" value={newMenuSets} onChange={(e) => setNewMenuSets(Math.max(0, Number(e.target.value)))} className="w-12 px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
                 <span className="text-[10px] text-slate-400 dark:text-slate-500">set</span>
               </div>
+              <span className="text-[10px] text-slate-400 dark:text-slate-500">重量は追加後に場所別で設定</span>
             </div>
           </div>
         </div>
