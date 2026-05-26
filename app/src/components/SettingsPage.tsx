@@ -12,7 +12,10 @@ import { features } from "@/lib/features";
 type Category = { id: string; name: string; excludeFromSummary: boolean };
 type Genre = { id: string; name: string; color: string; type: string; subType: string };
 type ExpenseCategory = { id: string; name: string; color: string; icon: string };
-type ExerciseMenu = { id: string; name: string; defaultWeight: string; defaultReps: number; defaultSets: number; type: string };
+type MenuWeight = { locationId: string; weight: string };
+type ExerciseMenu = { id: string; name: string; defaultWeight: string; weights?: MenuWeight[]; defaultReps: number; defaultSets: number; type: string };
+type GymLocation = { id: string; name: string };
+type WorkoutRoutine = { id: string; name: string; menuIds: string[] };
 
 const COLORS = [
   "#ef4444", "#f97316", "#eab308", "#22c55e", "#10b981",
@@ -40,22 +43,34 @@ export default function SettingsPage() {
   const [newMenuReps, setNewMenuReps] = useState(10);
   const [newMenuSets, setNewMenuSets] = useState(3);
   const [editingMenu, setEditingMenu] = useState<ExerciseMenu | null>(null);
+  // 場所 (ジム) マスタ
+  const [gymLocations, setGymLocations] = useState<GymLocation[]>([]);
+  const [newLocationName, setNewLocationName] = useState("");
+  const [editingLocation, setEditingLocation] = useState<GymLocation | null>(null);
+  // 筋トレルーティン
+  const [routines, setRoutines] = useState<WorkoutRoutine[]>([]);
+  const [newRoutineName, setNewRoutineName] = useState("");
+  const [editingRoutine, setEditingRoutine] = useState<WorkoutRoutine | null>(null);
   // NOTE: fetchData 冒頭の setFetching(true) は react-hooks/set-state-in-effect
   // ルールを満たすために必要（非同期 setState だけだと effect 内から呼び出せない）。
   const [, setFetching] = useState(false);
   const fetchData = useCallback(async () => {
     setFetching(true);
     try {
-      const [cats, gnrs, expCats, exMenus] = await Promise.all([
+      const [cats, gnrs, expCats, exMenus, locs, routs] = await Promise.all([
         fetch("/api/categories").then((r) => r.json()),
         fetch("/api/genres").then((r) => r.json()),
         fetch("/api/expense-categories").then((r) => r.json()),
         fetch("/api/exercise-menus").then((r) => r.json()),
+        fetch("/api/gym-locations").then((r) => r.json()),
+        fetch("/api/workout-routines").then((r) => r.json()),
       ]);
       setCategories(cats);
       setGenres(gnrs);
       setExpenseCategories(expCats);
       setExerciseMenus(exMenus);
+      setGymLocations(locs);
+      setRoutines(routs);
     } finally {
       setFetching(false);
     }
@@ -163,6 +178,46 @@ export default function SettingsPage() {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reorder: true, ids: newIds }),
+    });
+  };
+
+  // 場所 (ジム) CRUD
+  const addLocation = async () => {
+    if (!newLocationName.trim()) return;
+    await fetch("/api/gym-locations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newLocationName.trim() }) });
+    setNewLocationName(""); fetchData();
+  };
+  const updateLocation = async () => {
+    if (!editingLocation) return;
+    await fetch("/api/gym-locations", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editingLocation) });
+    setEditingLocation(null); fetchData();
+  };
+  const deleteLocation = async (id: string) => {
+    if (!confirm("この場所を削除しますか？（メニューの場所別重量からも消えます）")) return;
+    await fetch(`/api/gym-locations?id=${id}`, { method: "DELETE" }); fetchData();
+  };
+
+  // ルーティン CRUD
+  const addRoutine = async () => {
+    if (!newRoutineName.trim()) return;
+    await fetch("/api/workout-routines", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newRoutineName.trim(), menuIds: [] }) });
+    setNewRoutineName(""); fetchData();
+  };
+  const updateRoutine = async () => {
+    if (!editingRoutine) return;
+    await fetch("/api/workout-routines", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editingRoutine) });
+    setEditingRoutine(null); fetchData();
+  };
+  const deleteRoutine = async (id: string) => {
+    if (!confirm("このルーティンを削除しますか？")) return;
+    await fetch(`/api/workout-routines?id=${id}`, { method: "DELETE" }); fetchData();
+  };
+  const toggleRoutineMenu = (menuId: string) => {
+    if (!editingRoutine) return;
+    const has = editingRoutine.menuIds.includes(menuId);
+    setEditingRoutine({
+      ...editingRoutine,
+      menuIds: has ? editingRoutine.menuIds.filter((m) => m !== menuId) : [...editingRoutine.menuIds, menuId],
     });
   };
 
@@ -409,20 +464,47 @@ export default function SettingsPage() {
                             <button onClick={() => setEditingMenu({ ...editingMenu, type: "running" })} className={`px-3 py-1 rounded-full text-xs font-medium border ${editingMenu.type === "running" ? "bg-blue-100 text-blue-700 border-blue-300" : "bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700"}`}>ランニング</button>
                           </div>
                           {editingMenu.type !== "running" && (
-                            <div className="flex items-center gap-2">
-                              <div className="flex items-center gap-1">
-                                <input type="text" value={editingMenu.defaultWeight} onChange={(e) => setEditingMenu({ ...editingMenu, defaultWeight: e.target.value })} placeholder="重量" className="w-16 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
-                                <span className="text-[10px] text-slate-400 dark:text-slate-500">kg</span>
+                            <>
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1">
+                                  <input type="text" value={editingMenu.defaultWeight} onChange={(e) => setEditingMenu({ ...editingMenu, defaultWeight: e.target.value })} placeholder="重量" className="w-16 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                                  <span className="text-[10px] text-slate-400 dark:text-slate-500">kg(既定)</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <input type="number" value={editingMenu.defaultReps} onChange={(e) => setEditingMenu({ ...editingMenu, defaultReps: Math.max(0, Number(e.target.value)) })} className="w-14 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                                  <span className="text-[10px] text-slate-400 dark:text-slate-500">回</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <input type="number" value={editingMenu.defaultSets} onChange={(e) => setEditingMenu({ ...editingMenu, defaultSets: Math.max(0, Number(e.target.value)) })} className="w-12 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                                  <span className="text-[10px] text-slate-400 dark:text-slate-500">set</span>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-1">
-                                <input type="number" value={editingMenu.defaultReps} onChange={(e) => setEditingMenu({ ...editingMenu, defaultReps: Math.max(0, Number(e.target.value)) })} className="w-14 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
-                                <span className="text-[10px] text-slate-400 dark:text-slate-500">回</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <input type="number" value={editingMenu.defaultSets} onChange={(e) => setEditingMenu({ ...editingMenu, defaultSets: Math.max(0, Number(e.target.value)) })} className="w-12 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
-                                <span className="text-[10px] text-slate-400 dark:text-slate-500">set</span>
-                              </div>
-                            </div>
+                              {gymLocations.length > 0 && (
+                                <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-slate-800">
+                                  <p className="text-[10px] text-slate-400 dark:text-slate-500">場所別の重量 (空欄なら既定値)</p>
+                                  {gymLocations.map((loc) => {
+                                    const cur = (editingMenu.weights ?? []).find((w) => w.locationId === loc.id)?.weight ?? "";
+                                    return (
+                                      <div key={loc.id} className="flex items-center gap-2">
+                                        <span className="text-xs w-20 truncate text-slate-600 dark:text-slate-300">{loc.name}</span>
+                                        <input
+                                          type="text"
+                                          value={cur}
+                                          onChange={(e) => {
+                                            const others = (editingMenu.weights ?? []).filter((w) => w.locationId !== loc.id);
+                                            const next = e.target.value === "" ? others : [...others, { locationId: loc.id, weight: e.target.value }];
+                                            setEditingMenu({ ...editingMenu, weights: next });
+                                          }}
+                                          placeholder="重量"
+                                          className="w-16 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                        />
+                                        <span className="text-[10px] text-slate-400 dark:text-slate-500">kg</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </>
                           )}
                           <div className="flex gap-2">
                             <button onClick={updateExerciseMenu} className="text-xs text-indigo-600 font-medium">保存</button>
@@ -480,6 +562,96 @@ export default function SettingsPage() {
                 <span className="text-[10px] text-slate-400 dark:text-slate-500">set</span>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Gym Locations (場所) */}
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="px-4 py-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
+            <h2 className="text-sm font-semibold">場所 (ジム)</h2>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">場所ごとに使える重量が違う場合に登録。各メニュー編集で場所別の重量を設定できます。</p>
+          </div>
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {gymLocations.map((loc) => (
+              <div key={loc.id} className="px-4 py-3 flex items-center justify-between">
+                {editingLocation?.id === loc.id ? (
+                  <div className="flex items-center gap-2 flex-1">
+                    <input type="text" value={editingLocation.name} onChange={(e) => setEditingLocation({ ...editingLocation, name: e.target.value })} className="flex-1 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    <button onClick={updateLocation} className="text-xs text-indigo-600 font-medium">保存</button>
+                    <button onClick={() => setEditingLocation(null)} className="text-xs text-slate-400 dark:text-slate-500">取消</button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="text-sm">{loc.name}</span>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setEditingLocation(loc)} className="text-xs text-indigo-600">編集</button>
+                      <button onClick={() => deleteLocation(loc.id)} className="text-xs text-red-500">削除</button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2">
+            <input type="text" value={newLocationName} onChange={(e) => setNewLocationName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addLocation()} placeholder="新しい場所 (例: 自宅ジム)" className="flex-1 px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <button onClick={addLocation} disabled={!newLocationName.trim()} className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300">追加</button>
+          </div>
+        </div>
+
+        {/* Workout Routines (ルーティン) */}
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="px-4 py-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
+            <h2 className="text-sm font-semibold">筋トレルーティン</h2>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">「上半身A」等のメニュー群。記録時にまとめて追加できます。</p>
+          </div>
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {routines.map((r) => (
+              <div key={r.id} className="px-4 py-3">
+                {editingRoutine?.id === r.id ? (
+                  <div className="space-y-2">
+                    <input type="text" value={editingRoutine.name} onChange={(e) => setEditingRoutine({ ...editingRoutine, name: e.target.value })} className="w-full px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500">含めるメニュー (タップで選択)</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {exerciseMenus.map((m) => {
+                        const selected = editingRoutine.menuIds.includes(m.id);
+                        return (
+                          <button
+                            key={m.id}
+                            onClick={() => toggleRoutineMenu(m.id)}
+                            className={`px-2.5 py-1 rounded-full text-xs font-medium border ${selected ? "bg-emerald-100 text-emerald-700 border-emerald-300" : "bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700"}`}
+                          >
+                            {selected ? `${editingRoutine.menuIds.indexOf(m.id) + 1}. ` : ""}{m.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={updateRoutine} className="text-xs text-indigo-600 font-medium">保存</button>
+                      <button onClick={() => setEditingRoutine(null)} className="text-xs text-slate-400 dark:text-slate-500">取消</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0">
+                      <span className="text-sm font-medium">{r.name}</span>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
+                        {r.menuIds.length > 0
+                          ? r.menuIds.map((id) => exerciseMenus.find((m) => m.id === id)?.name).filter(Boolean).join(" / ")
+                          : "メニュー未設定"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button onClick={() => setEditingRoutine(r)} className="text-xs text-indigo-600">編集</button>
+                      <button onClick={() => deleteRoutine(r.id)} className="text-xs text-red-500">削除</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2">
+            <input type="text" value={newRoutineName} onChange={(e) => setNewRoutineName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addRoutine()} placeholder="新しいルーティン (例: 上半身A)" className="flex-1 px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <button onClick={addRoutine} disabled={!newRoutineName.trim()} className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300">追加</button>
           </div>
         </div>
       </div>
