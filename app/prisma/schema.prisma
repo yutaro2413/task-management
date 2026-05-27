@@ -149,11 +149,12 @@ model WorkoutRoutine {
 
 // 筋トレ記録
 model WorkoutLog {
-  id        String   @id @default(cuid())
-  date      DateTime @unique @db.Date
-  exercises Json     // [{menuId?, name, weight, reps, sets, type, distance?, duration?, pace?}]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  date       DateTime @unique @db.Date
+  exercises  Json     // [{menuId?, name, weight, reps, sets, type, distance?, duration?, pace?}]
+  locationId String? // 記録時に選択したジム (GymLocation.id)。過去ログは セサミ に移行済み
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 // 本マスタ（旧スキーマ。Book に移行中。次PRで削除予定）

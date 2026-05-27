@@ -34,7 +34,7 @@ type Exercise = {
   pace?: string;
 };
 
-type WorkoutLog = { exercises: Exercise[] } | null;
+type WorkoutLog = { exercises: Exercise[]; locationId?: string | null } | null;
 
 function saveDraftToStorage(date: string, draft: NoteSections) {
   const serialized = serializeNote(draft);
@@ -178,6 +178,9 @@ function WorkoutSection({
                 >+ {r.name}</button>
               ))}
             </div>
+          )}
+          {readOnly && selectedLocationName && (
+            <p className="text-[11px] text-emerald-600 font-medium">📍 {selectedLocationName}</p>
           )}
           {readOnly ? (
             exercises.length > 0 ? (
@@ -337,11 +340,13 @@ export default function DailyNoteInput({ date }: { date: string }) {
       setMenus(menuData);
       if (Array.isArray(locData)) setLocations(locData);
       if (Array.isArray(routData)) setRoutines(routData);
-      // 場所は常に1つ選択: 保存済み → 無ければ先頭の場所
+      // 場所は常に1つ選択: この日の記録の場所 → localStorage 保存値 → 先頭の場所
       if (Array.isArray(locData) && locData.length > 0) {
+        const logLoc = workoutData?.locationId;
+        const logValid = logLoc && locData.some((l: GymLocation) => l.id === logLoc);
         const storedLoc = localStorage.getItem(LOCATION_STORAGE_KEY);
-        const valid = storedLoc && locData.some((l: GymLocation) => l.id === storedLoc);
-        setSelectedLocationId(valid ? storedLoc : locData[0].id);
+        const storedValid = storedLoc && locData.some((l: GymLocation) => l.id === storedLoc);
+        setSelectedLocationId(logValid ? logLoc : storedValid ? storedLoc : locData[0].id);
       }
 
       if (workoutData && workoutData.exercises) {
@@ -411,9 +416,9 @@ export default function DailyNoteInput({ date }: { date: string }) {
         await fetch("/api/workout-logs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ date, exercises: filtered }),
+          body: JSON.stringify({ date, exercises: filtered, locationId: selectedLocationId }),
         });
-        setSavedWorkout({ exercises: filtered });
+        setSavedWorkout({ exercises: filtered, locationId: selectedLocationId });
         setExercises(filtered);
 
         // 保存時にマスタへ自動書き戻し: 選択場所の重量 + 回数 + set
