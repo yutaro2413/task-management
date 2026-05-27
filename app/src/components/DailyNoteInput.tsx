@@ -83,6 +83,7 @@ function WorkoutSection({
   readOnly?: boolean;
 }) {
   const [showPicker, setShowPicker] = useState(false);
+  const selectedLocationName = locations.find((l) => l.id === selectedLocationId)?.name ?? "";
 
   // メニューを 1 件 Exercise に変換 (選択中の場所の重量を適用)
   const menuToExercise = (menu: ExerciseMenu): Exercise => ({
@@ -157,10 +158,6 @@ function WorkoutSection({
           {!readOnly && locations.length > 0 && (
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[10px] text-slate-400 dark:text-slate-500">場所:</span>
-              <button
-                onClick={() => onSelectLocation(null)}
-                className={`px-2 py-0.5 rounded-full text-[11px] font-medium border ${selectedLocationId === null ? "bg-emerald-100 text-emerald-700 border-emerald-300" : "bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700"}`}
-              >既定</button>
               {locations.map((loc) => (
                 <button
                   key={loc.id}
@@ -253,22 +250,28 @@ function WorkoutSection({
                   <div className="absolute inset-0 bg-black/20" />
                   <div className="relative bg-white dark:bg-slate-900 rounded-t-2xl w-full max-w-lg max-h-[50vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
                     <div className="sticky top-0 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-4 py-3 flex items-center justify-between">
-                      <span className="text-sm font-bold">メニュー選択</span>
+                      <span className="text-sm font-bold">
+                        メニュー選択
+                        {selectedLocationName && <span className="text-[10px] text-emerald-600 ml-2">@{selectedLocationName}</span>}
+                      </span>
                       <button onClick={() => setShowPicker(false)} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M6 18L18 6M6 6l12 12" /></svg>
                       </button>
                     </div>
                     <div className="divide-y divide-slate-100 dark:divide-slate-800 pb-20">
-                      {menus.filter((m) => m.type === "strength").map((menu) => (
-                        <button
-                          key={menu.id}
-                          onClick={() => addFromMenu(menu)}
-                          className="w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-between"
-                        >
-                          <span className="text-sm font-medium">{menu.name}</span>
-                          <span className="text-xs text-slate-400 dark:text-slate-500">{menu.defaultWeight} × {menu.defaultReps}回 × {menu.defaultSets}set</span>
-                        </button>
-                      ))}
+                      {menus.filter((m) => m.type === "strength").map((menu) => {
+                        const w = resolveMenuWeight(menu, selectedLocationId);
+                        return (
+                          <button
+                            key={menu.id}
+                            onClick={() => addFromMenu(menu)}
+                            className="w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-between"
+                          >
+                            <span className="text-sm font-medium">{menu.name}</span>
+                            <span className="text-xs text-slate-400 dark:text-slate-500">{w || "?"} × {menu.defaultReps}回 × {menu.defaultSets}set</span>
+                          </button>
+                        );
+                      })}
                       <button
                         onClick={addRunning}
                         className="w-full px-4 py-3 text-left hover:bg-orange-50 flex items-center gap-2"
@@ -334,10 +337,11 @@ export default function DailyNoteInput({ date }: { date: string }) {
       setMenus(menuData);
       if (Array.isArray(locData)) setLocations(locData);
       if (Array.isArray(routData)) setRoutines(routData);
-      // 保存済みの選択場所を復元 (存在チェック)
-      const storedLoc = localStorage.getItem(LOCATION_STORAGE_KEY);
-      if (storedLoc && Array.isArray(locData) && locData.some((l: GymLocation) => l.id === storedLoc)) {
-        setSelectedLocationId(storedLoc);
+      // 場所は常に1つ選択: 保存済み → 無ければ先頭の場所
+      if (Array.isArray(locData) && locData.length > 0) {
+        const storedLoc = localStorage.getItem(LOCATION_STORAGE_KEY);
+        const valid = storedLoc && locData.some((l: GymLocation) => l.id === storedLoc);
+        setSelectedLocationId(valid ? storedLoc : locData[0].id);
       }
 
       if (workoutData && workoutData.exercises) {
@@ -411,6 +415,23 @@ export default function DailyNoteInput({ date }: { date: string }) {
         });
         setSavedWorkout({ exercises: filtered });
         setExercises(filtered);
+
+        // 保存時にマスタへ自動書き戻し: 選択場所の重量 + 回数 + set
+        if (selectedLocationId) {
+          const items = filtered
+            .filter((e) => e.type !== "running" && e.menuId)
+            .map((e) => ({ menuId: e.menuId, weight: e.weight, reps: e.reps, sets: e.sets }));
+          if (items.length > 0) {
+            await fetch("/api/workout-menu-sync", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ locationId: selectedLocationId, items }),
+            });
+            // ローカルの menus も最新化 (次回プリフィル用)
+            const fresh = await fetch("/api/exercise-menus").then((r) => r.json());
+            if (Array.isArray(fresh)) setMenus(fresh);
+          }
+        }
       } else if (!workoutChecked && savedWorkout) {
         await fetch(`/api/workout-logs?date=${date}`, { method: "DELETE" });
         setSavedWorkout(null);
