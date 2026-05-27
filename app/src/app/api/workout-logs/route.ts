@@ -29,10 +29,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
+  const locationId = typeof body.locationId === "string" ? body.locationId : null;
   const log = await prisma.workoutLog.upsert({
     where: { date: new Date(body.date) },
-    update: { exercises: body.exercises },
-    create: { date: new Date(body.date), exercises: body.exercises },
+    update: { exercises: body.exercises, locationId },
+    create: { date: new Date(body.date), exercises: body.exercises, locationId },
   });
   return NextResponse.json(log, { status: 201 });
 }
