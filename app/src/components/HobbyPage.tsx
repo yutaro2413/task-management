@@ -171,6 +171,7 @@ export default function HobbyPage() {
 
   // Workout chart state
   const [allWorkouts, setAllWorkouts] = useState<WorkoutLogEntry[]>([]);
+  const [exerciseMenus, setExerciseMenus] = useState<{ id: string; name: string }[]>([]);
   const [chartMode, setChartMode] = useState<"weight" | "volume">("weight");
   const [historyFilter, setHistoryFilter] = useState("");
   const [historyLimit, setHistoryLimit] = useState(20);
@@ -206,10 +207,12 @@ export default function HobbyPage() {
   const isToday = date === toJSTDateString();
 
   const fetchWorkouts = useCallback(async () => {
-    const data = await fetch("/api/workout-logs?startDate=2020-01-01&endDate=2099-12-31").then((r) => r.json());
-    if (Array.isArray(data)) {
-      setAllWorkouts(data);
-    }
+    const [logs, menus] = await Promise.all([
+      fetch("/api/workout-logs?startDate=2020-01-01&endDate=2099-12-31").then((r) => r.json()),
+      fetch("/api/exercise-menus").then((r) => r.json()),
+    ]);
+    if (Array.isArray(logs)) setAllWorkouts(logs);
+    if (Array.isArray(menus)) setExerciseMenus(menus);
   }, []);
 
   // 履歴の inline 編集: 指定された日のエクササイズ配列を patch して保存
@@ -454,10 +457,13 @@ export default function HobbyPage() {
   // chartMode により Y 軸の指標を切替:
   //   "weight" : 週ごとのメニュー別最大重量 (kg)
   //   "volume" : 週ごとのメニュー別最大ボリューム (重量 × 回数 × セット)
+  // 過去にメニューをリネームしていてもスナップショットの古い名前で重複表示されないよう、
+  // menuId があれば menuId で集約し、現マスタの名前を凡例に使う。
   const chartData = useMemo(() => {
     const weekMenuMax = new Map<string, Map<string, number>>();
-    const menuNames = new Set<string>();
+    const seriesKeys = new Set<string>();
     const weekKeys = new Set<string>();
+    const menuIdToCurrentName = new Map(exerciseMenus.map((m) => [m.id, m.name]));
 
     for (const log of allWorkouts) {
       const dateKey = typeof log.date === "string" && log.date.includes("T")
@@ -470,23 +476,25 @@ export default function HobbyPage() {
         if (ex.type === "running") continue;
         const value = chartMode === "volume" ? exerciseVolume(ex) : parseWeight(ex.weight);
         if (value === null) continue;
-        menuNames.add(ex.name);
+        const key = ex.menuId ?? ex.name;
+        seriesKeys.add(key);
         if (!weekMenuMax.has(wk)) weekMenuMax.set(wk, new Map());
         const menuMap = weekMenuMax.get(wk)!;
-        menuMap.set(ex.name, Math.max(menuMap.get(ex.name) || 0, value));
+        menuMap.set(key, Math.max(menuMap.get(key) || 0, value));
       }
     }
 
     const sortedWeeks = Array.from(weekKeys).sort();
     const labels = sortedWeeks.map((wk) => getWeekLabel(wk));
-    const sortedMenus = Array.from(menuNames).sort();
+    const labelFor = (key: string) => menuIdToCurrentName.get(key) ?? key;
+    const sortedKeys = Array.from(seriesKeys).sort((a, b) => labelFor(a).localeCompare(labelFor(b)));
 
     const POINT_STYLES = ["circle", "rect", "triangle", "rectRot", "star", "crossRot"] as const;
     const DASH_PATTERNS: number[][] = [[], [6, 4], [2, 3], [10, 4, 2, 4]];
 
-    const datasets = sortedMenus.map((menu, i) => ({
-      label: menu,
-      data: sortedWeeks.map((wk) => weekMenuMax.get(wk)?.get(menu) ?? null),
+    const datasets = sortedKeys.map((key, i) => ({
+      label: labelFor(key),
+      data: sortedWeeks.map((wk) => weekMenuMax.get(wk)?.get(key) ?? null),
       borderColor: CHART_COLORS[i % CHART_COLORS.length],
       backgroundColor: CHART_COLORS[i % CHART_COLORS.length] + "33",
       borderWidth: 2,
@@ -501,7 +509,7 @@ export default function HobbyPage() {
     }));
 
     return { labels, datasets };
-  }, [allWorkouts, chartMode]);
+  }, [allWorkouts, exerciseMenus, chartMode]);
 
   // ── Sleep chart data ──
   const sleepChart = useMemo(() => {
