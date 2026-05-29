@@ -15,6 +15,7 @@ type ExerciseMenu = {
   defaultReps: number;
   defaultSets: number;
   type: string;
+  tryHeavierNext?: boolean;
 };
 
 type GymLocation = { id: string; name: string };
@@ -32,6 +33,7 @@ type Exercise = {
   distance?: string;
   duration?: string;
   pace?: string;
+  tryHeavierNext?: boolean;
 };
 
 type WorkoutLog = { exercises: Exercise[]; locationId?: string | null } | null;
@@ -93,6 +95,7 @@ function WorkoutSection({
     reps: menu.defaultReps,
     sets: menu.defaultSets,
     type: menu.type,
+    tryHeavierNext: menu.tryHeavierNext ?? false,
   });
 
   const addFromMenu = (menu: ExerciseMenu) => {
@@ -187,6 +190,7 @@ function WorkoutSection({
               <div className="space-y-1">
                 {exercises.map((ex, i) => (
                   <p key={i} className="text-sm text-slate-700 dark:text-slate-200">
+                    {ex.tryHeavierNext && <span className="text-amber-500 mr-1" title="次回重さup">↑</span>}
                     {ex.type === "running"
                       ? `${ex.name} — ${ex.distance || "?"} / ${ex.duration || "?"} / ${ex.pace || "?"}`
                       : `${ex.name} — ${ex.weight} × ${ex.reps}回 × ${ex.sets}set`}
@@ -213,6 +217,14 @@ function WorkoutSection({
                           >⋮⋮</span>
                           <span className="text-xs font-bold text-slate-600 dark:text-slate-300 truncate">{ex.name}</span>
                         </div>
+                        {ex.type !== "running" && (
+                          <button
+                            onClick={() => updateExercise(idx, { tryHeavierNext: !ex.tryHeavierNext })}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold border flex-shrink-0 mr-1 ${ex.tryHeavierNext ? "bg-amber-100 text-amber-700 border-amber-300" : "bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700"}`}
+                            title="次回重さを上げる目印"
+                            aria-pressed={ex.tryHeavierNext ? true : false}
+                          >↑次回up</button>
+                        )}
                         <button onClick={() => removeExercise(idx)} className="p-0.5 text-slate-300 dark:text-slate-600 hover:text-red-500 flex-shrink-0" aria-label="削除">
                           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path d="M6 18L18 6M6 6l12 12" />
@@ -270,7 +282,10 @@ function WorkoutSection({
                             onClick={() => addFromMenu(menu)}
                             className="w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-between"
                           >
-                            <span className="text-sm font-medium">{menu.name}</span>
+                            <span className="text-sm font-medium">
+                              {menu.tryHeavierNext && <span className="text-amber-500 mr-1" title="次回重さup">↑</span>}
+                              {menu.name}
+                            </span>
                             <span className="text-xs text-slate-400 dark:text-slate-500">{w || "?"} × {menu.defaultReps}回 × {menu.defaultSets}set</span>
                           </button>
                         );
@@ -421,11 +436,18 @@ export default function DailyNoteInput({ date }: { date: string }) {
         setSavedWorkout({ exercises: filtered, locationId: selectedLocationId });
         setExercises(filtered);
 
-        // 保存時にマスタへ自動書き戻し: 選択場所の重量 + 回数 + set
+        // 保存時にマスタへ自動書き戻し: 選択場所の重量 + 回数 + set + 次回up目印
+        // 同じ menuId が複数行ある場合はサーバ側で重い方を採用 (回数/set もその行を使用)
         if (selectedLocationId) {
           const items = filtered
             .filter((e) => e.type !== "running" && e.menuId)
-            .map((e) => ({ menuId: e.menuId, weight: e.weight, reps: e.reps, sets: e.sets }));
+            .map((e) => ({
+              menuId: e.menuId,
+              weight: e.weight,
+              reps: e.reps,
+              sets: e.sets,
+              tryHeavierNext: e.tryHeavierNext ?? false,
+            }));
           if (items.length > 0) {
             await fetch("/api/workout-menu-sync", {
               method: "POST",
