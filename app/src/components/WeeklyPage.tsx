@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { getWeekDates, getDayLabel, formatDate, slotToTime, getMonthDates, getMonthLabel, toJSTDateKey, toJSTDateString } from "@/lib/utils";
 import { cachedFetch, invalidateCache } from "@/lib/cache";
 import { NOTE_SECTIONS, NoteSections, parseNote, serializeNote } from "@/lib/dailyNote";
@@ -182,6 +182,7 @@ export default function WeeklyPage() {
     }
   }, []);
   useEffect(() => { fetchWorkoutDates(); }, [fetchWorkoutDates]);
+  const workoutDateSet = useMemo(() => new Set(workoutDates), [workoutDates]);
 
   // Fetch master data for edit modal
   useEffect(() => {
@@ -863,16 +864,20 @@ export default function WeeklyPage() {
                 const days = ["日", "月", "火", "水", "木", "金", "土"];
                 const dow = wd.getDay();
                 const isWeekend = dow === 0 || dow === 6;
+                const wentToGym = workoutDateSet.has(dateKey);
                 return (
                   <div key={`hdr-${dateKey}`} className="border-r border-slate-100 dark:border-slate-800 px-1 py-1.5 text-center">
                     <p className={`text-xs font-semibold leading-tight ${isWeekend ? (dow === 0 ? "text-red-500" : "text-blue-500") : "text-slate-700 dark:text-slate-200"}`}>
                       {wd.getMonth() + 1}/{wd.getDate()}({days[dow]})
                     </p>
-                    {workSlots > 0 ? (
-                      <p className="text-[10px] text-indigo-600 font-medium leading-tight mt-0.5">{workHoursDisplay}h</p>
-                    ) : (
-                      <p className="text-[10px] text-slate-300 dark:text-slate-600 leading-tight mt-0.5">—</p>
-                    )}
+                    <p className="text-[10px] leading-tight mt-0.5">
+                      {workSlots > 0 ? (
+                        <span className="text-indigo-600 font-medium">{workHoursDisplay}h</span>
+                      ) : (
+                        <span className="text-slate-300 dark:text-slate-600">—</span>
+                      )}
+                      {wentToGym && <span className="ml-1" title="ジム記録あり">💪</span>}
+                    </p>
                     {expenseTotal ? (
                       <p className="text-[10px] text-rose-500 font-medium leading-tight">
                         -{expenseTotal >= 10000 ? `${Math.round(expenseTotal / 1000)}k` : expenseTotal.toLocaleString()}円
