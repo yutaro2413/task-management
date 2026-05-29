@@ -87,6 +87,15 @@ function WorkoutSection({
   const [showPicker, setShowPicker] = useState(false);
   const selectedLocationName = locations.find((l) => l.id === selectedLocationId)?.name ?? "";
 
+  // 「選択中の場所に器具がある」= weights に locationId 用の非空エントリがある
+  // ランニング (type=running) は場所に依存しないので常に対象
+  const isMenuAvailableAtLocation = (menu: ExerciseMenu): boolean => {
+    if (menu.type === "running") return true;
+    if (!selectedLocationId) return true;
+    const w = Array.isArray(menu.weights) ? menu.weights.find((x) => x.locationId === selectedLocationId) : undefined;
+    return Boolean(w && w.weight.trim() !== "");
+  };
+
   // メニューを 1 件 Exercise に変換 (選択中の場所の重量を適用)
   const menuToExercise = (menu: ExerciseMenu): Exercise => ({
     menuId: menu.id,
@@ -103,11 +112,11 @@ function WorkoutSection({
     setShowPicker(false);
   };
 
-  // ルーティンを適用: 含まれるメニューを順に「追加」(既存はそのまま)
+  // ルーティンを適用: 含まれるメニューのうち、選択中の場所で器具があるものだけ追加
   const applyRoutine = (routine: WorkoutRoutine) => {
     const toAdd = routine.menuIds
       .map((id) => menus.find((m) => m.id === id))
-      .filter((m): m is ExerciseMenu => Boolean(m))
+      .filter((m): m is ExerciseMenu => Boolean(m) && isMenuAvailableAtLocation(m!))
       .map(menuToExercise);
     if (toAdd.length === 0) return;
     onUpdate([...exercises, ...toAdd]);
@@ -274,7 +283,7 @@ function WorkoutSection({
                       </button>
                     </div>
                     <div className="divide-y divide-slate-100 dark:divide-slate-800 pb-20">
-                      {menus.filter((m) => m.type === "strength").map((menu) => {
+                      {menus.filter((m) => m.type === "strength" && isMenuAvailableAtLocation(m)).map((menu) => {
                         const w = resolveMenuWeight(menu, selectedLocationId);
                         return (
                           <button
@@ -296,8 +305,10 @@ function WorkoutSection({
                       >
                         <span className="text-sm font-medium text-orange-600">🏃 ランニング</span>
                       </button>
-                      {menus.filter((m) => m.type === "strength").length === 0 && (
-                        <p className="px-4 py-3 text-xs text-slate-400 dark:text-slate-500">設定からメニューを追加してください</p>
+                      {menus.filter((m) => m.type === "strength" && isMenuAvailableAtLocation(m)).length === 0 && (
+                        <p className="px-4 py-3 text-xs text-slate-400 dark:text-slate-500">
+                          {selectedLocationName ? `${selectedLocationName} には設定済みのメニューがありません。設定で重量を登録してください。` : "設定からメニューを追加してください"}
+                        </p>
                       )}
                     </div>
                   </div>
