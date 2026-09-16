@@ -12,8 +12,7 @@ import { features } from "@/lib/features";
 type Category = { id: string; name: string; excludeFromSummary: boolean };
 type Genre = { id: string; name: string; color: string; type: string; subType: string };
 type ExpenseCategory = { id: string; name: string; color: string; icon: string };
-type MenuWeight = { locationId: string; weight: string };
-type ExerciseMenu = { id: string; name: string; defaultWeight: string; weights?: MenuWeight[]; defaultReps: number; defaultSets: number; type: string };
+type ExerciseMenu = { id: string; name: string; locationIds?: string[]; defaultReps: number; defaultSets: number; type: string };
 type GymLocation = { id: string; name: string };
 type WorkoutRoutine = { id: string; name: string; menuIds: string[] };
 
@@ -476,30 +475,28 @@ export default function SettingsPage() {
                               </div>
                               {gymLocations.length > 0 ? (
                                 <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-slate-800">
-                                  <p className="text-[10px] text-slate-400 dark:text-slate-500">場所別の重量</p>
-                                  {gymLocations.map((loc) => {
-                                    const cur = (editingMenu.weights ?? []).find((w) => w.locationId === loc.id)?.weight ?? "";
-                                    return (
-                                      <div key={loc.id} className="flex items-center gap-2">
-                                        <span className="text-xs w-20 truncate text-slate-600 dark:text-slate-300">{loc.name}</span>
-                                        <input
-                                          type="text"
-                                          value={cur}
-                                          onChange={(e) => {
-                                            const others = (editingMenu.weights ?? []).filter((w) => w.locationId !== loc.id);
-                                            const next = e.target.value === "" ? others : [...others, { locationId: loc.id, weight: e.target.value }];
-                                            setEditingMenu({ ...editingMenu, weights: next });
-                                          }}
-                                          placeholder="重量"
-                                          className="w-16 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                        />
-                                        <span className="text-[10px] text-slate-400 dark:text-slate-500">kg</span>
-                                      </div>
-                                    );
-                                  })}
+                                  <p className="text-[10px] text-slate-400 dark:text-slate-500">できる場所 (未選択なら全ての場所に出ます)</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {gymLocations.map((loc) => {
+                                      const ids = editingMenu.locationIds ?? [];
+                                      const selected = ids.includes(loc.id);
+                                      return (
+                                        <button
+                                          key={loc.id}
+                                          onClick={() => setEditingMenu({
+                                            ...editingMenu,
+                                            locationIds: selected ? ids.filter((id) => id !== loc.id) : [...ids, loc.id],
+                                          })}
+                                          className={`px-2.5 py-1 rounded-full text-xs font-medium border ${selected ? "bg-emerald-100 text-emerald-700 border-emerald-300" : "bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700"}`}
+                                          aria-pressed={selected}
+                                        >{loc.name}</button>
+                                      );
+                                    })}
+                                  </div>
+                                  <p className="text-[10px] text-slate-400 dark:text-slate-500">重量は記録から引き継がれるので、ここでは設定しません。</p>
                                 </div>
                               ) : (
-                                <p className="text-[10px] text-slate-400 dark:text-slate-500 pt-1 border-t border-slate-100 dark:border-slate-800">先に下の「場所(ジム)」を登録すると場所別の重量を設定できます。</p>
+                                <p className="text-[10px] text-slate-400 dark:text-slate-500 pt-1 border-t border-slate-100 dark:border-slate-800">先に下の「場所(ジム)」を登録すると、この種目ができる場所を絞り込めます。</p>
                               )}
                             </>
                           )}
@@ -525,23 +522,16 @@ export default function SettingsPage() {
                               </span>
                             </div>
                             {menu.type !== "running" && (() => {
-                              const ws = (menu.weights ?? []).filter((w) => w.weight !== "");
-                              if (ws.length === 0) {
-                                return <p className="text-[10px] text-slate-400 dark:text-slate-500">{menu.defaultReps}回×{menu.defaultSets}set（重量未設定）</p>;
-                              }
-                              // 場所マスタの順に並べる
+                              const ids = menu.locationIds ?? [];
+                              // 場所マスタの順に並べる。未選択 = 場所を限定しない
+                              const names = gymLocations.filter((loc) => ids.includes(loc.id)).map((loc) => loc.name);
                               return (
-                                <div className="space-y-0.5">
-                                  {gymLocations.map((loc) => {
-                                    const w = ws.find((x) => x.locationId === loc.id);
-                                    if (!w) return null;
-                                    return (
-                                      <p key={loc.id} className="text-[10px] text-slate-500 dark:text-slate-400">
-                                        <span className="text-slate-400 dark:text-slate-500">{loc.name}:</span> {w.weight}kg × {menu.defaultReps}回 × {menu.defaultSets}set
-                                      </p>
-                                    );
-                                  })}
-                                </div>
+                                <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                                  <span className="text-slate-400 dark:text-slate-500">
+                                    {names.length > 0 ? names.join(" / ") : "全ての場所"}:
+                                  </span>{" "}
+                                  {menu.defaultReps}回 × {menu.defaultSets}set
+                                </p>
                               );
                             })()}
                           </div>

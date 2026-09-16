@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { normalizeWeights } from "@/lib/menuWeights";
+import { normalizeLocationIds } from "@/lib/workoutPrefill";
+
+// 筋トレメニューのマスタ。重量は持たない (記録から導出するため /api/exercise-menus/latest を参照)。
 
 export async function GET() {
   const menus = await prisma.exerciseMenu.findMany({
@@ -15,8 +17,7 @@ export async function POST(request: NextRequest) {
   const menu = await prisma.exerciseMenu.create({
     data: {
       name: body.name,
-      defaultWeight: body.defaultWeight || "",
-      weights: normalizeWeights(body.weights),
+      locationIds: normalizeLocationIds(body.locationIds),
       defaultReps: body.defaultReps ?? 10,
       defaultSets: body.defaultSets ?? 3,
       type: body.type || "strength",
@@ -42,8 +43,7 @@ export async function PUT(request: NextRequest) {
     where: { id: body.id },
     data: {
       name: body.name,
-      defaultWeight: body.defaultWeight || "",
-      ...("weights" in body ? { weights: normalizeWeights(body.weights) } : {}),
+      ...("locationIds" in body ? { locationIds: normalizeLocationIds(body.locationIds) } : {}),
       defaultReps: body.defaultReps ?? 10,
       defaultSets: body.defaultSets ?? 3,
       type: body.type || "strength",

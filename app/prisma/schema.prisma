@@ -124,18 +124,24 @@ model GymLocation {
 }
 
 // 筋トレメニューマスタ
+// 筋トレメニューのマスタ。
+// 重量は持たない: 「次回の重量 = その場所での直近の記録」として WorkoutLog から導出する。
 model ExerciseMenu {
   id              String   @id @default(cuid())
   name            String
-  defaultWeight   String   @default("")
-  weights         Json     @default("[]") // 場所別の重量 [{ locationId, weight }]
-  defaultReps     Int      @default(10)
-  defaultSets     Int      @default(3)
+  locationIds     Json     @default("[]") // この種目ができる場所 (GymLocation.id 配列)。空 = 場所を限定しない
+  defaultReps     Int      @default(10) // 記録がまだ無い時の既定値
+  defaultSets     Int      @default(3) // 記録がまだ無い時の既定値
   type            String   @default("strength") // "strength" | "running"
   tryHeavierNext  Boolean  @default(false) // 次回のトレーニングで重さを上げてみる目印
   sortOrder       Int      @default(0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  // 旧スキーマ (重量をマスタに持っていた頃の名残)。
+  // /api/migrate-menu-location-ids で locationIds へ移行済み。次PRで削除予定。
+  defaultWeight   String   @default("")
+  weights         Json     @default("[]") // 場所別の重量 [{ locationId, weight }]
 }
 
 // 筋トレルーティン (上半身A 等。その日に行うメニュー群のテンプレート)

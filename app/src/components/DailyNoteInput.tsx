@@ -3,15 +3,18 @@
 import { useState, useEffect, useCallback } from "react";
 import { NOTE_SECTIONS, NoteSections, parseNote, serializeNote } from "@/lib/dailyNote";
 import { SortableList, SortableItem } from "./SortableList";
-import { resolveExercisePrefill, applyMasterWeights, type MenuWeight } from "@/lib/menuWeights";
+import {
+  resolveExercisePrefill,
+  isMenuAvailableAt,
+  type LatestByMenu,
+} from "@/lib/workoutPrefill";
 
 const DRAFT_KEY_PREFIX = "dailyNote-draft-";
 
 type ExerciseMenu = {
   id: string;
   name: string;
-  defaultWeight: string;
-  weights?: MenuWeight[];
+  locationIds?: string[];
   defaultReps: number;
   defaultSets: number;
   type: string;
@@ -65,6 +68,7 @@ function WorkoutSection({
   checked,
   exercises,
   menus,
+  latest,
   locations,
   routines,
   selectedLocationId,
@@ -76,6 +80,8 @@ function WorkoutSection({
   checked: boolean;
   exercises: Exercise[];
   menus: ExerciseMenu[];
+  /** メニュー × 場所ごとの直近の記録 (プリフィルの元) */
+  latest: LatestByMenu;
   locations: GymLocation[];
   routines: WorkoutRoutine[];
   selectedLocationId: string | null;
@@ -87,20 +93,15 @@ function WorkoutSection({
   const [showPicker, setShowPicker] = useState(false);
   const selectedLocationName = locations.find((l) => l.id === selectedLocationId)?.name ?? "";
 
-  // 「選択中の場所に器具がある」= weights に locationId 用の非空エントリがある
-  // ランニング (type=running) は場所に依存しないので常に対象
-  const isMenuAvailableAtLocation = (menu: ExerciseMenu): boolean => {
-    if (menu.type === "running") return true;
-    if (!selectedLocationId) return true;
-    const w = Array.isArray(menu.weights) ? menu.weights.find((x) => x.locationId === selectedLocationId) : undefined;
-    return Boolean(w && w.weight.trim() !== "");
-  };
+  // 「選択中の場所でできる種目か」= locationIds に含まれるか (空なら場所を限定しない)
+  const isMenuAvailableAtLocation = (menu: ExerciseMenu): boolean =>
+    isMenuAvailableAt(menu, selectedLocationId);
 
   // メニューを 1 件 Exercise に変換。
   // current に同じメニューの行があればその値 (= 今入力中の重量) を引き継ぎ、
-  // 無ければ選択中の場所のマスタ重量を使う。
+  // 無ければ選択中の場所での直近の記録を使う。
   const menuToExercise = (menu: ExerciseMenu, current: Exercise[]): Exercise => {
-    const prefill = resolveExercisePrefill(menu, selectedLocationId, current);
+    const prefill = resolveExercisePrefill(menu, selectedLocationId, latest, current);
     return {
       menuId: menu.id,
       name: menu.name,
@@ -291,8 +292,9 @@ function WorkoutSection({
                     </div>
                     <div className="divide-y divide-slate-100 dark:divide-slate-800 pb-20">
                       {menus.filter((m) => m.type === "strength" && isMenuAvailableAtLocation(m)).map((menu) => {
-                        // 入力中の行がある場合はその重量を表示 (追加すると入る値と一致させる)
-                        const prefill = resolveExercisePrefill(menu, selectedLocationId, exercises);
+                        // 追加すると実際に入る値をそのまま表示する
+                        // (入力中の行 → その場所での直近の記録 → 既定値)
+                        const prefill = resolveExercisePrefill(menu, selectedLocationId, latest, exercises);
                         return (
                           <button
                             key={menu.id}
@@ -342,6 +344,8 @@ export default function DailyNoteInput({ date }: { date: string }) {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [savedWorkout, setSavedWorkout] = useState<WorkoutLog>(null);
   const [menus, setMenus] = useState<ExerciseMenu[]>([]);
+  // メニュー × 場所ごとの直近の記録。編集中の日より前の記録だけを見る
+  const [latest, setLatest] = useState<LatestByMenu>({});
   const [locations, setLocations] = useState<GymLocation[]>([]);
   const [routines, setRoutines] = useState<WorkoutRoutine[]>([]);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
@@ -360,7 +364,8 @@ export default function DailyNoteInput({ date }: { date: string }) {
       fetch("/api/exercise-menus").then((r) => r.json()),
       fetch("/api/gym-locations").then((r) => r.json()),
       fetch("/api/workout-routines").then((r) => r.json()),
-    ]).then(([noteData, workoutData, menuData, locData, routData]) => {
+      fetch(`/api/exercise-menus/latest?before=${date}`).then((r) => r.json()),
+    ]).then(([noteData, workoutData, menuData, locData, routData, latestData]) => {
       const saved = noteData?.content || "";
       setContent(saved);
       const stored = loadDraftFromStorage(date);
@@ -374,6 +379,7 @@ export default function DailyNoteInput({ date }: { date: string }) {
       setMenus(menuData);
       if (Array.isArray(locData)) setLocations(locData);
       if (Array.isArray(routData)) setRoutines(routData);
+      if (latestData && typeof latestData === "object") setLatest(latestData as LatestByMenu);
       // 場所は常に1つ選択: この日の記録の場所 → localStorage 保存値 → 先頭の場所
       if (Array.isArray(locData) && locData.length > 0) {
         const logLoc = workoutData?.locationId;
@@ -455,25 +461,17 @@ export default function DailyNoteInput({ date }: { date: string }) {
         setSavedWorkout({ exercises: filtered, locationId: selectedLocationId });
         setExercises(filtered);
 
-        // 保存時にマスタへ自動書き戻し: 選択場所の重量 + 回数 + set + 次回up目印
-        // 同じ menuId が複数行ある場合はサーバ側で重い方を採用 (回数/set もその行を使用)
-        // 場所が未登録 (locationId なし) でも defaultWeight として引き継げるよう常に送る
+        // 重量/回数/set は記録そのものが真実の源なので、マスタへの書き戻しは不要。
+        // 「↑次回up」だけは次回の意図でありどの記録にも属さないのでマスタへ同期する。
         const items = filtered
           .filter((e) => e.type !== "running" && e.menuId)
-          .map((e) => ({
-            menuId: e.menuId,
-            weight: e.weight,
-            reps: e.reps,
-            sets: e.sets,
-            tryHeavierNext: e.tryHeavierNext ?? false,
-          }));
+          .map((e) => ({ menuId: e.menuId, tryHeavierNext: e.tryHeavierNext ?? false }));
         if (items.length > 0) {
           await fetch("/api/workout-menu-sync", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ locationId: selectedLocationId, items }),
+            body: JSON.stringify({ items }),
           });
-          // ローカルの menus も最新化 (次回プリフィル用)
           const fresh = await fetch("/api/exercise-menus").then((r) => r.json());
           if (Array.isArray(fresh)) setMenus(fresh);
         }
@@ -495,15 +493,20 @@ export default function DailyNoteInput({ date }: { date: string }) {
     if (!workoutChecked) {
       setWorkoutChecked(true);
       if (exercises.length === 0) {
-        // Load previous workout as carry-over
-        // 重量は「選択中の場所のマスタ値」で上書きする (別のジムの記録をそのまま持ち込まない)
+        // 前回の「種目の並び」を引き継ぐ。重量/回数/set は選択中の場所での直近記録から引き直す
+        // (別のジムの記録をそのまま持ち込まないため)。その場所の記録が無ければ前回の値のまま。
         fetch("/api/workout-logs?startDate=2020-01-01&endDate=" + date)
           .then((r) => r.json())
           .then((prev) => {
-            if (Array.isArray(prev) && prev.length > 0) {
-              const carried = (prev[0].exercises as Exercise[]).map((e) => ({ ...e }));
-              setExercises(applyMasterWeights(carried, menus, selectedLocationId));
-            }
+            if (!Array.isArray(prev) || prev.length === 0) return;
+            const carried = (prev[0].exercises as Exercise[]).map((e) => {
+              const menu = e.menuId ? menus.find((m) => m.id === e.menuId) : undefined;
+              if (!menu || e.type === "running") return { ...e };
+              const prefill = resolveExercisePrefill(menu, selectedLocationId, latest);
+              if (prefill.weight.trim() === "") return { ...e };
+              return { ...e, weight: prefill.weight, reps: prefill.reps, sets: prefill.sets };
+            });
+            setExercises(carried);
           });
       }
     } else {
@@ -581,6 +584,7 @@ export default function DailyNoteInput({ date }: { date: string }) {
                   checked
                   exercises={savedWorkout.exercises as Exercise[]}
                   menus={menus}
+                  latest={latest}
                   locations={locations}
                   routines={routines}
                   selectedLocationId={selectedLocationId}
@@ -643,6 +647,7 @@ export default function DailyNoteInput({ date }: { date: string }) {
                 checked={workoutChecked}
                 exercises={exercises}
                 menus={menus}
+                latest={latest}
                 locations={locations}
                 routines={routines}
                 selectedLocationId={selectedLocationId}
