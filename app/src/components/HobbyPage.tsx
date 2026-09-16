@@ -5,6 +5,7 @@ import Link from "next/link";
 import { toJSTDateString } from "@/lib/utils";
 import { parseWeight, exerciseVolume } from "@/lib/workoutVolume";
 import { calcGymStats, GYM_START_DATE, fmtAvg } from "@/lib/gymStats";
+import { logDateKey, isLatestLogForMenu } from "@/lib/menuWeights";
 import { smartReplaceSleepTime } from "@/lib/sleep";
 import { SortableList, SortableItem } from "./SortableList";
 import { Line } from "react-chartjs-2";
@@ -30,12 +31,14 @@ type Exercise = {
   distance?: string;
   duration?: string;
   pace?: string;
+  tryHeavierNext?: boolean;
 };
 
 type WorkoutLogEntry = {
   id: string;
   date: string;
   exercises: Exercise[];
+  locationId?: string | null;
 };
 
 type BookTitle = { id: string; title: string };
@@ -216,8 +219,9 @@ export default function HobbyPage() {
   }, []);
 
   // 履歴の inline 編集: 指定された日のエクササイズ配列を patch して保存
+  // locationId は記録の場所。省略すると API 側で既存値が維持される
   const saveExercises = useCallback(
-    async (date: string, exercises: Exercise[], key: string) => {
+    async (date: string, exercises: Exercise[], key: string, locationId?: string | null) => {
       setSavingExerciseKey(key);
       try {
         if (exercises.length === 0) {
@@ -226,7 +230,11 @@ export default function HobbyPage() {
           await fetch("/api/workout-logs", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ date, exercises }),
+            body: JSON.stringify({
+              date,
+              exercises,
+              ...(locationId !== undefined ? { locationId } : {}),
+            }),
           });
         }
         await fetchWorkouts();
@@ -239,28 +247,45 @@ export default function HobbyPage() {
 
   const updateExerciseField = useCallback(
     async (logDate: string, idx: number, patch: Partial<Exercise>) => {
-      const log = allWorkouts.find((l) => {
-        const dk = typeof l.date === "string" && l.date.includes("T") ? l.date.split("T")[0] : l.date;
-        return dk === logDate;
-      });
+      const log = allWorkouts.find((l) => logDateKey(l.date) === logDate);
       if (!log) return;
       const next = log.exercises.map((ex, i) => (i === idx ? { ...ex, ...patch } : ex));
       // 値が変わっていなければ何もしない
       if (JSON.stringify(next[idx]) === JSON.stringify(log.exercises[idx])) return;
-      await saveExercises(logDate, next, `${logDate}-${idx}`);
+      await saveExercises(logDate, next, `${logDate}-${idx}`, log.locationId);
+
+      // 重量/回数/set を直した時は、その種目の最新記録ならマスタにも反映する。
+      // (過去ログの修正で今の重量が巻き戻らないよう、より新しい記録があればスキップ)
+      const edited = next[idx];
+      const touchesMaster = "weight" in patch || "reps" in patch || "sets" in patch;
+      if (
+        !touchesMaster ||
+        !edited.menuId ||
+        edited.type === "running" ||
+        !isLatestLogForMenu(allWorkouts, edited.menuId, logDate)
+      ) {
+        return;
+      }
+      // 同じメニューの行をまとめて送る (重い行がマスタに採用される)
+      const items = next
+        .filter((e) => e.menuId === edited.menuId && e.type !== "running")
+        .map((e) => ({ menuId: e.menuId, weight: e.weight, reps: e.reps, sets: e.sets }));
+      await fetch("/api/workout-menu-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locationId: log.locationId ?? null, items }),
+      });
+      await fetchWorkouts();
     },
-    [allWorkouts, saveExercises],
+    [allWorkouts, saveExercises, fetchWorkouts],
   );
 
   const deleteExerciseRow = useCallback(
     async (logDate: string, idx: number) => {
-      const log = allWorkouts.find((l) => {
-        const dk = typeof l.date === "string" && l.date.includes("T") ? l.date.split("T")[0] : l.date;
-        return dk === logDate;
-      });
+      const log = allWorkouts.find((l) => logDateKey(l.date) === logDate);
       if (!log) return;
       const next = log.exercises.filter((_, i) => i !== idx);
-      await saveExercises(logDate, next, `${logDate}-${idx}-del`);
+      await saveExercises(logDate, next, `${logDate}-${idx}-del`, log.locationId);
     },
     [allWorkouts, saveExercises],
   );
@@ -268,14 +293,11 @@ export default function HobbyPage() {
   // 長押しドラッグ並び替え (履歴の各日のエクササイズ)
   const reorderHistoryExercises = useCallback(
     async (logDate: string, newIds: string[]) => {
-      const log = allWorkouts.find((l) => {
-        const dk = typeof l.date === "string" && l.date.includes("T") ? l.date.split("T")[0] : l.date;
-        return dk === logDate;
-      });
+      const log = allWorkouts.find((l) => logDateKey(l.date) === logDate);
       if (!log) return;
       const newOrder = newIds.map((id) => log.exercises[parseInt(id.replace("ex-", ""), 10)]);
       if (newOrder.every((e, i) => e === log.exercises[i])) return;
-      await saveExercises(logDate, newOrder, `${logDate}-reorder`);
+      await saveExercises(logDate, newOrder, `${logDate}-reorder`, log.locationId);
     },
     [allWorkouts, saveExercises],
   );
@@ -816,7 +838,7 @@ export default function HobbyPage() {
                       <p className="px-4 py-6 text-center text-xs text-slate-400 dark:text-slate-500">該当する記録がありません</p>
                     ) : (
                       filteredHistory.map((log) => {
-                        const dateKey = typeof log.date === "string" && log.date.includes("T") ? log.date.split("T")[0] : log.date;
+                        const dateKey = logDateKey(log.date);
                         return (
                           <div key={log.id} className="px-4 py-3 space-y-1.5">
                             <div className="flex items-center justify-between">

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { NOTE_SECTIONS, NoteSections, parseNote, serializeNote } from "@/lib/dailyNote";
 import { SortableList, SortableItem } from "./SortableList";
-import { resolveMenuWeight, type MenuWeight } from "@/lib/menuWeights";
+import { resolveExercisePrefill, applyMasterWeights, type MenuWeight } from "@/lib/menuWeights";
 
 const DRAFT_KEY_PREFIX = "dailyNote-draft-";
 
@@ -96,30 +96,37 @@ function WorkoutSection({
     return Boolean(w && w.weight.trim() !== "");
   };
 
-  // メニューを 1 件 Exercise に変換 (選択中の場所の重量を適用)
-  const menuToExercise = (menu: ExerciseMenu): Exercise => ({
-    menuId: menu.id,
-    name: menu.name,
-    weight: menu.type === "running" ? "" : resolveMenuWeight(menu, selectedLocationId),
-    reps: menu.defaultReps,
-    sets: menu.defaultSets,
-    type: menu.type,
-    tryHeavierNext: menu.tryHeavierNext ?? false,
-  });
+  // メニューを 1 件 Exercise に変換。
+  // current に同じメニューの行があればその値 (= 今入力中の重量) を引き継ぎ、
+  // 無ければ選択中の場所のマスタ重量を使う。
+  const menuToExercise = (menu: ExerciseMenu, current: Exercise[]): Exercise => {
+    const prefill = resolveExercisePrefill(menu, selectedLocationId, current);
+    return {
+      menuId: menu.id,
+      name: menu.name,
+      weight: menu.type === "running" ? "" : prefill.weight,
+      reps: prefill.reps,
+      sets: prefill.sets,
+      type: menu.type,
+      tryHeavierNext: menu.tryHeavierNext ?? false,
+    };
+  };
 
   const addFromMenu = (menu: ExerciseMenu) => {
-    onUpdate([...exercises, menuToExercise(menu)]);
+    onUpdate([...exercises, menuToExercise(menu, exercises)]);
     setShowPicker(false);
   };
 
   // ルーティンを適用: 含まれるメニューのうち、選択中の場所で器具があるものだけ追加
   const applyRoutine = (routine: WorkoutRoutine) => {
-    const toAdd = routine.menuIds
-      .map((id) => menus.find((m) => m.id === id))
-      .filter((m): m is ExerciseMenu => Boolean(m) && isMenuAvailableAtLocation(m!))
-      .map(menuToExercise);
-    if (toAdd.length === 0) return;
-    onUpdate([...exercises, ...toAdd]);
+    const next = [...exercises];
+    for (const id of routine.menuIds) {
+      const menu = menus.find((m) => m.id === id);
+      if (!menu || !isMenuAvailableAtLocation(menu)) continue;
+      next.push(menuToExercise(menu, next));
+    }
+    if (next.length === exercises.length) return;
+    onUpdate(next);
     setShowPicker(false);
   };
 
@@ -284,7 +291,8 @@ function WorkoutSection({
                     </div>
                     <div className="divide-y divide-slate-100 dark:divide-slate-800 pb-20">
                       {menus.filter((m) => m.type === "strength" && isMenuAvailableAtLocation(m)).map((menu) => {
-                        const w = resolveMenuWeight(menu, selectedLocationId);
+                        // 入力中の行がある場合はその重量を表示 (追加すると入る値と一致させる)
+                        const prefill = resolveExercisePrefill(menu, selectedLocationId, exercises);
                         return (
                           <button
                             key={menu.id}
@@ -295,7 +303,7 @@ function WorkoutSection({
                               {menu.tryHeavierNext && <span className="text-amber-500 mr-1" title="次回重さup">↑</span>}
                               {menu.name}
                             </span>
-                            <span className="text-xs text-slate-400 dark:text-slate-500">{w || "?"} × {menu.defaultReps}回 × {menu.defaultSets}set</span>
+                            <span className="text-xs text-slate-400 dark:text-slate-500">{prefill.weight || "?"} × {prefill.reps}回 × {prefill.sets}set</span>
                           </button>
                         );
                       })}
@@ -449,26 +457,25 @@ export default function DailyNoteInput({ date }: { date: string }) {
 
         // 保存時にマスタへ自動書き戻し: 選択場所の重量 + 回数 + set + 次回up目印
         // 同じ menuId が複数行ある場合はサーバ側で重い方を採用 (回数/set もその行を使用)
-        if (selectedLocationId) {
-          const items = filtered
-            .filter((e) => e.type !== "running" && e.menuId)
-            .map((e) => ({
-              menuId: e.menuId,
-              weight: e.weight,
-              reps: e.reps,
-              sets: e.sets,
-              tryHeavierNext: e.tryHeavierNext ?? false,
-            }));
-          if (items.length > 0) {
-            await fetch("/api/workout-menu-sync", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ locationId: selectedLocationId, items }),
-            });
-            // ローカルの menus も最新化 (次回プリフィル用)
-            const fresh = await fetch("/api/exercise-menus").then((r) => r.json());
-            if (Array.isArray(fresh)) setMenus(fresh);
-          }
+        // 場所が未登録 (locationId なし) でも defaultWeight として引き継げるよう常に送る
+        const items = filtered
+          .filter((e) => e.type !== "running" && e.menuId)
+          .map((e) => ({
+            menuId: e.menuId,
+            weight: e.weight,
+            reps: e.reps,
+            sets: e.sets,
+            tryHeavierNext: e.tryHeavierNext ?? false,
+          }));
+        if (items.length > 0) {
+          await fetch("/api/workout-menu-sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ locationId: selectedLocationId, items }),
+          });
+          // ローカルの menus も最新化 (次回プリフィル用)
+          const fresh = await fetch("/api/exercise-menus").then((r) => r.json());
+          if (Array.isArray(fresh)) setMenus(fresh);
         }
       } else if (!workoutChecked && savedWorkout) {
         await fetch(`/api/workout-logs?date=${date}`, { method: "DELETE" });
@@ -489,11 +496,13 @@ export default function DailyNoteInput({ date }: { date: string }) {
       setWorkoutChecked(true);
       if (exercises.length === 0) {
         // Load previous workout as carry-over
+        // 重量は「選択中の場所のマスタ値」で上書きする (別のジムの記録をそのまま持ち込まない)
         fetch("/api/workout-logs?startDate=2020-01-01&endDate=" + date)
           .then((r) => r.json())
           .then((prev) => {
             if (Array.isArray(prev) && prev.length > 0) {
-              setExercises((prev[0].exercises as Exercise[]).map((e) => ({ ...e })));
+              const carried = (prev[0].exercises as Exercise[]).map((e) => ({ ...e }));
+              setExercises(applyMasterWeights(carried, menus, selectedLocationId));
             }
           });
       }
