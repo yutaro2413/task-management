@@ -30,9 +30,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const body = await request.json();
   const locationId = typeof body.locationId === "string" ? body.locationId : null;
+  // partial-safe: locationId を送ってこない呼び出し (履歴のインライン編集など) で
+  // 既存の記録場所を消してしまわないよう、キーがある時だけ上書きする
+  const patchLocation = "locationId" in body;
   const log = await prisma.workoutLog.upsert({
     where: { date: new Date(body.date) },
-    update: { exercises: body.exercises, locationId },
+    update: { exercises: body.exercises, ...(patchLocation ? { locationId } : {}) },
     create: { date: new Date(body.date), exercises: body.exercises, locationId },
   });
   return NextResponse.json(log, { status: 201 });
