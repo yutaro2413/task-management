@@ -59,3 +59,17 @@ curl -X POST https://<your-app>/api/migrate-books-from-titles
 ```
 
 冪等。実行後、既存の読書ログは新 `Book` レコードに紐づき、`/books` 一覧から閲覧できるようになる。
+
+## 筋トレメニューの「できる場所」移行（一回限り）
+
+筋トレの重量はマスタ（`ExerciseMenu`）に持たず、記録（`WorkoutLog`）から導出する方式に変更した。
+旧 `weights`（場所別の重量）が持っていた「その場所に器具があるか」の情報を `locationIds` へ移すため、デプロイ後に一度だけ実行する。
+
+```bash
+curl -X POST https://<your-app>/api/migrate-menu-location-ids
+```
+
+冪等。重量そのものは記録側に既にあるため移行不要。実行後、メニューピッカーの絞り込みが `locationIds` で動くようになる。
+実行前は全メニューが「場所を限定しない」扱いになり、どの場所でも一覧に出る（データは失われない）。
+
+旧 `defaultWeight` / `weights` カラムはこの移行のために残してある。次PRで削除予定。

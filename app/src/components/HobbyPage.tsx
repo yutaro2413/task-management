@@ -5,7 +5,7 @@ import Link from "next/link";
 import { toJSTDateString } from "@/lib/utils";
 import { parseWeight, exerciseVolume } from "@/lib/workoutVolume";
 import { calcGymStats, GYM_START_DATE, fmtAvg } from "@/lib/gymStats";
-import { logDateKey, isLatestLogForMenu } from "@/lib/menuWeights";
+import { logDateKey } from "@/lib/workoutPrefill";
 import { smartReplaceSleepTime } from "@/lib/sleep";
 import { SortableList, SortableItem } from "./SortableList";
 import { Line } from "react-chartjs-2";
@@ -252,32 +252,11 @@ export default function HobbyPage() {
       const next = log.exercises.map((ex, i) => (i === idx ? { ...ex, ...patch } : ex));
       // 値が変わっていなければ何もしない
       if (JSON.stringify(next[idx]) === JSON.stringify(log.exercises[idx])) return;
+      // 重量はここ (記録) が真実の源。マスタへの書き戻しは不要で、
+      // 次回のプリフィルはこの記録から導出される。
       await saveExercises(logDate, next, `${logDate}-${idx}`, log.locationId);
-
-      // 重量/回数/set を直した時は、その種目の最新記録ならマスタにも反映する。
-      // (過去ログの修正で今の重量が巻き戻らないよう、より新しい記録があればスキップ)
-      const edited = next[idx];
-      const touchesMaster = "weight" in patch || "reps" in patch || "sets" in patch;
-      if (
-        !touchesMaster ||
-        !edited.menuId ||
-        edited.type === "running" ||
-        !isLatestLogForMenu(allWorkouts, edited.menuId, logDate)
-      ) {
-        return;
-      }
-      // 同じメニューの行をまとめて送る (重い行がマスタに採用される)
-      const items = next
-        .filter((e) => e.menuId === edited.menuId && e.type !== "running")
-        .map((e) => ({ menuId: e.menuId, weight: e.weight, reps: e.reps, sets: e.sets }));
-      await fetch("/api/workout-menu-sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ locationId: log.locationId ?? null, items }),
-      });
-      await fetchWorkouts();
     },
-    [allWorkouts, saveExercises, fetchWorkouts],
+    [allWorkouts, saveExercises],
   );
 
   const deleteExerciseRow = useCallback(
