@@ -138,8 +138,20 @@ describe("resolveExercisePrefill", () => {
     expect(resolveExercisePrefill(bench, "sesame", latest)).toEqual({ weight: "45", reps: 8, sets: 3 });
   });
 
-  it("記録がまだ無い種目はマスタの既定回数/set・重量は空", () => {
+  it("記録がまだ無い種目はマスタの初期値", () => {
     expect(resolveExercisePrefill(bench, "sesame", {})).toEqual({ weight: "", reps: 10, sets: 3 });
+    const seeded = { ...bench, defaultWeight: "10" };
+    expect(resolveExercisePrefill(seeded, "sesame", {})).toEqual({ weight: "10", reps: 10, sets: 3 });
+  });
+
+  it("記録があればマスタの初期値より記録が優先される", () => {
+    const seeded = { ...bench, defaultWeight: "10" };
+    expect(resolveExercisePrefill(seeded, "sesame", latest)).toEqual({ weight: "45", reps: 8, sets: 3 });
+  });
+
+  it("別の場所に記録が無ければマスタの初期値に戻る", () => {
+    const seeded = { ...bench, defaultWeight: "10" };
+    expect(resolveExercisePrefill(seeded, "anytime", latest)).toEqual({ weight: "10", reps: 10, sets: 3 });
   });
 
   it("入力中の同じメニューの行を最優先 (2セット目の追加)", () => {

@@ -12,7 +12,7 @@ import { features } from "@/lib/features";
 type Category = { id: string; name: string; excludeFromSummary: boolean };
 type Genre = { id: string; name: string; color: string; type: string; subType: string };
 type ExpenseCategory = { id: string; name: string; color: string; icon: string };
-type ExerciseMenu = { id: string; name: string; locationIds?: string[]; defaultReps: number; defaultSets: number; type: string };
+type ExerciseMenu = { id: string; name: string; note?: string; locationIds?: string[]; defaultWeight?: string; defaultReps: number; defaultSets: number; type: string };
 type GymLocation = { id: string; name: string };
 type WorkoutRoutine = { id: string; name: string; menuIds: string[] };
 
@@ -38,6 +38,7 @@ export default function SettingsPage() {
   const [editingExpCat, setEditingExpCat] = useState<ExpenseCategory | null>(null);
   const [exerciseMenus, setExerciseMenus] = useState<ExerciseMenu[]>([]);
   const [newMenuName, setNewMenuName] = useState("");
+  const [newMenuWeight, setNewMenuWeight] = useState("");
   const [newMenuReps, setNewMenuReps] = useState(10);
   const [newMenuSets, setNewMenuSets] = useState(3);
   const [editingMenu, setEditingMenu] = useState<ExerciseMenu | null>(null);
@@ -154,9 +155,14 @@ export default function SettingsPage() {
     await fetch("/api/exercise-menus", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newMenuName.trim(), defaultReps: newMenuReps, defaultSets: newMenuSets }),
+      body: JSON.stringify({
+        name: newMenuName.trim(),
+        defaultWeight: newMenuWeight.trim(),
+        defaultReps: newMenuReps,
+        defaultSets: newMenuSets,
+      }),
     });
-    setNewMenuName(""); setNewMenuReps(10); setNewMenuSets(3);
+    setNewMenuName(""); setNewMenuWeight(""); setNewMenuReps(10); setNewMenuSets(3);
     fetchData();
   };
   const updateExerciseMenu = async () => {
@@ -457,13 +463,25 @@ export default function SettingsPage() {
                       {editingMenu?.id === menu.id ? (
                         <div className="space-y-2">
                           <input type="text" value={editingMenu.name} onChange={(e) => setEditingMenu({ ...editingMenu, name: e.target.value })} className="w-full px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                          <textarea
+                            value={editingMenu.note ?? ""}
+                            onChange={(e) => setEditingMenu({ ...editingMenu, note: e.target.value })}
+                            placeholder="メモ（フォームのポイントなど）"
+                            rows={2}
+                            className="w-full px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-xs resize-y leading-relaxed focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          />
                           <div className="flex gap-1">
                             <button onClick={() => setEditingMenu({ ...editingMenu, type: "strength" })} className={`px-3 py-1 rounded-full text-xs font-medium border ${editingMenu.type === "strength" ? "bg-emerald-100 text-emerald-700 border-emerald-300" : "bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700"}`}>筋トレ</button>
                             <button onClick={() => setEditingMenu({ ...editingMenu, type: "running" })} className={`px-3 py-1 rounded-full text-xs font-medium border ${editingMenu.type === "running" ? "bg-blue-100 text-blue-700 border-blue-300" : "bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700"}`}>ランニング</button>
                           </div>
                           {editingMenu.type !== "running" && (
                             <>
+                              <p className="text-[10px] text-slate-400 dark:text-slate-500">初期値（記録がまだ無い時だけ使われます。記録があればそちらが優先）</p>
                               <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1">
+                                  <input type="text" value={editingMenu.defaultWeight ?? ""} onChange={(e) => setEditingMenu({ ...editingMenu, defaultWeight: e.target.value })} placeholder="重量" className="w-16 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                                  <span className="text-[10px] text-slate-400 dark:text-slate-500">kg</span>
+                                </div>
                                 <div className="flex items-center gap-1">
                                   <input type="number" value={editingMenu.defaultReps} onChange={(e) => setEditingMenu({ ...editingMenu, defaultReps: Math.max(0, Number(e.target.value)) })} className="w-14 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
                                   <span className="text-[10px] text-slate-400 dark:text-slate-500">回</span>
@@ -525,15 +543,19 @@ export default function SettingsPage() {
                               const ids = menu.locationIds ?? [];
                               // 場所マスタの順に並べる。未選択 = 場所を限定しない
                               const names = gymLocations.filter((loc) => ids.includes(loc.id)).map((loc) => loc.name);
+                              const w = (menu.defaultWeight ?? "").trim();
                               return (
                                 <p className="text-[10px] text-slate-500 dark:text-slate-400">
                                   <span className="text-slate-400 dark:text-slate-500">
                                     {names.length > 0 ? names.join(" / ") : "全ての場所"}:
                                   </span>{" "}
-                                  {menu.defaultReps}回 × {menu.defaultSets}set
+                                  {w ? `${w}kg × ` : ""}{menu.defaultReps}回 × {menu.defaultSets}set
                                 </p>
                               );
                             })()}
+                            {menu.note?.trim() && (
+                              <p className="text-[10px] text-slate-400 dark:text-slate-500 whitespace-pre-wrap leading-relaxed pl-2 border-l-2 border-slate-100 dark:border-slate-800">{menu.note}</p>
+                            )}
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <button onClick={() => setEditingMenu(menu)} className="text-xs text-indigo-600">編集</button>
@@ -554,6 +576,10 @@ export default function SettingsPage() {
             </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1">
+                <input type="text" value={newMenuWeight} onChange={(e) => setNewMenuWeight(e.target.value)} placeholder="重量" className="w-16 px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                <span className="text-[10px] text-slate-400 dark:text-slate-500">kg</span>
+              </div>
+              <div className="flex items-center gap-1">
                 <input type="number" value={newMenuReps} onChange={(e) => setNewMenuReps(Math.max(0, Number(e.target.value)))} className="w-14 px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
                 <span className="text-[10px] text-slate-400 dark:text-slate-500">回</span>
               </div>
@@ -561,8 +587,8 @@ export default function SettingsPage() {
                 <input type="number" value={newMenuSets} onChange={(e) => setNewMenuSets(Math.max(0, Number(e.target.value)))} className="w-12 px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
                 <span className="text-[10px] text-slate-400 dark:text-slate-500">set</span>
               </div>
-              <span className="text-[10px] text-slate-400 dark:text-slate-500">重量は追加後に場所別で設定</span>
             </div>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500">初回の初期値です。一度記録すれば、以降はその場所での直近の記録が引き継がれます。メモ・できる場所は追加後に「編集」から。</p>
           </div>
         </div>
 
