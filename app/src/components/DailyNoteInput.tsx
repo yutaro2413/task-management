@@ -14,7 +14,9 @@ const DRAFT_KEY_PREFIX = "dailyNote-draft-";
 type ExerciseMenu = {
   id: string;
   name: string;
+  note?: string;
   locationIds?: string[];
+  defaultWeight?: string;
   defaultReps: number;
   defaultSets: number;
   type: string;
@@ -299,13 +301,18 @@ function WorkoutSection({
                           <button
                             key={menu.id}
                             onClick={() => addFromMenu(menu)}
-                            className="w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-between"
+                            className="w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800"
                           >
-                            <span className="text-sm font-medium">
-                              {menu.tryHeavierNext && <span className="text-amber-500 mr-1" title="次回重さup">↑</span>}
-                              {menu.name}
+                            <span className="flex items-center justify-between gap-2">
+                              <span className="text-sm font-medium">
+                                {menu.tryHeavierNext && <span className="text-amber-500 mr-1" title="次回重さup">↑</span>}
+                                {menu.name}
+                              </span>
+                              <span className="text-xs text-slate-400 dark:text-slate-500 flex-shrink-0">{prefill.weight || "?"} × {prefill.reps}回 × {prefill.sets}set</span>
                             </span>
-                            <span className="text-xs text-slate-400 dark:text-slate-500">{prefill.weight || "?"} × {prefill.reps}回 × {prefill.sets}set</span>
+                            {menu.note?.trim() && (
+                              <span className="block mt-1 text-[10px] text-slate-400 dark:text-slate-500 whitespace-pre-wrap leading-relaxed">{menu.note}</span>
+                            )}
                           </button>
                         );
                       })}

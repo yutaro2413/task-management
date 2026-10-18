@@ -108,6 +108,8 @@ export function pickLatest(
 
 export type MenuLike = {
   id: string;
+  /** 記録がまだ無い時の初期値 */
+  defaultWeight?: string;
   defaultReps: number;
   defaultSets: number;
   type?: string;
@@ -125,7 +127,7 @@ export type DraftExerciseLike = {
  * メニューを記録に追加する時のプリフィル値。優先順位:
  *   1. 入力中の同じメニューの行 (2 セット目を足した時に、さっき上げた重量が入る)
  *   2. その場所での直近の記録
- *   3. マスタの既定回数/set (重量は空 = 初めてやる種目)
+ *   3. マスタの初期値 (その種目をまだ一度もやっていない時だけ)
  */
 export function resolveExercisePrefill(
   menu: MenuLike,
@@ -135,7 +137,7 @@ export function resolveExercisePrefill(
 ): { weight: string; reps: number; sets: number } {
   const previous = pickLatest(latest, menu.id, locationId);
   const fallback = {
-    weight: previous?.weight ?? "",
+    weight: previous?.weight ?? menu.defaultWeight ?? "",
     reps: previous?.reps ?? menu.defaultReps,
     sets: previous?.sets ?? menu.defaultSets,
   };
